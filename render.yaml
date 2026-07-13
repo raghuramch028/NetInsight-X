@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: netinsight-x
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn netinsight.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DJANGO_SETTINGS_MODULE
+        value: netinsight.config.settings
+      - key: NETINSIGHT_DEMO_MODE
+        value: "True"

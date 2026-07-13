@@ -6,3 +6,5 @@ scikit-learn>=1.0.0
 matplotlib>=3.5.0
 seaborn>=0.11.0
 django>=4.2,<6.0
+gunicorn>=20.1.0
+whitenoise>=6.0.0
