@@ -1,0 +1,224 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}Bandwidth Optimization (LP & KKT Verification){% endblock %}
+
+{% block content %}
+<!-- Optimization Math and Setup -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="glass-card">
+            <h4 class="mb-3 text-primary"><i class="fa-solid fa-square-root-variable me-2"></i>Linear Programming Formulation</h4>
+            <p class="text-muted small">
+                We formulate bandwidth allocation as a constrained Linear Program. The objective is to maximize the utility of allocated bandwidths $x_i$ weighted by traffic priorities $c_i$, subject to total link capacity $B$ and Class-of-Service QoS constraints:
+            </p>
+            <div class="bg-dark bg-opacity-25 p-3 rounded mb-3 font-monospace small">
+                <div class="text-info">Maximize &nbsp; &sum; c_i * x_i</div>
+                <div class="text-muted">Subject to:</div>
+                <div class="ps-3">&sum; x_i &le; B &nbsp; (Total Link Capacity)</div>
+                <div class="ps-3">x_i &ge; m_i &nbsp; (Minimum Bandwidth Requirement per Class i)</div>
+                <div class="ps-3">x_i &le; M_i &nbsp; (Maximum Bandwidth Limit per Class i)</div>
+            </div>
+            <p class="text-muted small mb-0">
+                <strong>Convexity Justification:</strong> The objective function is linear (affine), and all constraints are linear inequalities defining a closed convex polytope. A linear optimization problem is structurally convex, ensuring that any local optimum found by the CVXOPT interior-point solver is a global optimum.
+            </p>
+        </div>
+    </div>
+
+    <!-- Parameter Config Form -->
+    <div class="col-lg-4">
+        <div class="glass-card h-100">
+            <h4 class="mb-4">Configure Constraints</h4>
+            <form method="post" action="{% url 'dashboard:optimization' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Link Capacity (Mbps)</label>
+                    <input type="number" class="form-control bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="capacity" value="{{ total_capacity_mbps|floatformat:0 }}" required>
+                </div>
+                
+                <div class="text-muted small mb-2">Class Priorities & Mins (Mbps)</div>
+                <div class="d-flex flex-column gap-2 mb-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="small text-muted">Web Priority</span>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="priorities" value="{{ input_priorities.0 }}" required>
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted">Web Min (Mbps)</span>
+                            <input type="number" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="min_bounds" value="{{ input_min_bounds.0 }}" required>
+                            <input type="hidden" name="max_bounds" value="{{ input_max_bounds.0 }}">
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="small text-muted">Streaming Priority</span>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="priorities" value="{{ input_priorities.1 }}" required>
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted">Stream Min (Mbps)</span>
+                            <input type="number" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="min_bounds" value="{{ input_min_bounds.1 }}" required>
+                            <input type="hidden" name="max_bounds" value="{{ input_max_bounds.1 }}">
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="small text-muted">File Priority</span>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="priorities" value="{{ input_priorities.2 }}" required>
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted">File Min (Mbps)</span>
+                            <input type="number" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="min_bounds" value="{{ input_min_bounds.2 }}" required>
+                            <input type="hidden" name="max_bounds" value="{{ input_max_bounds.2 }}">
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="small text-muted">Critical Priority</span>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="priorities" value="{{ input_priorities.3 }}" required>
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted">Crit Min (Mbps)</span>
+                            <input type="number" class="form-control form-control-sm bg-dark bg-opacity-50 border-secondary text-white font-monospace" name="min_bounds" value="{{ input_min_bounds.3 }}" required>
+                            <input type="hidden" name="max_bounds" value="{{ input_max_bounds.3 }}">
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-rotate me-2"></i>Run Optimizer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Allocation Results -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="m-0"><i class="fa-solid fa-chart-bar text-info me-2"></i>Optimization Allocations</h4>
+                {% if status == 'optimal' %}
+                    <span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>OPTIMAL</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>FALLBACK</span>
+                {% endif %}
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Traffic Class</th>
+                            <th>Priority (c_i)</th>
+                            <th>Min Req (Mbps)</th>
+                            <th>Allocated (x_i*)</th>
+                            <th>Share Ratio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in mapped_allocations %}
+                            <tr>
+                                <td class="font-bold text-white">{{ item.class }}</td>
+                                <td class="font-monospace text-center">{{ item.priority }}</td>
+                                <td class="font-monospace">{{ item.min_req|floatformat:1 }}</td>
+                                <td class="font-monospace font-bold text-info fs-5">{{ item.allocated|floatformat:2 }} Mbps</td>
+                                <td>
+                                    <div class="progress" style="height: 6px; background-color: var(--bg-primary);">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: {% widthratio item.allocated total_capacity_mbps 100 %}%;"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 p-3 rounded d-flex justify-content-between align-items-center" style="background-color: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15);">
+                <span class="text-muted small">Maximized Objective Utility:</span>
+                <span class="font-monospace font-bold text-primary fs-4">{{ utility|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KKT Verification Matrix -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="m-0"><i class="fa-solid fa-calculator text-purple me-2"></i>KKT Optimality Verification</h4>
+                {% if kkt.is_optimal %}
+                    <span class="badge bg-success text-white"><i class="fa-solid fa-square-check me-1"></i>VERIFIED</span>
+                {% else %}
+                    <span class="badge bg-danger text-white"><i class="fa-solid fa-circle-xmark me-1"></i>FAILED</span>
+                {% endif %}
+            </div>
+            
+            <p class="text-muted small">
+                We perform KKT numerical verification to validate the solver outputs against optimality conditions ($\epsilon = 10^{-5}$):
+            </p>
+            
+            <ul class="list-group list-group-flush bg-transparent">
+                <!-- Condition 1 -->
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="font-bold">1. Primal Feasibility ($G x^* - h \le 0$)</div>
+                        <div class="text-muted small">Checks if constraints are satisfied within tolerance limit</div>
+                    </div>
+                    <div class="text-end">
+                        {% if kkt.primal_feasible %}
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="fa-solid fa-check me-1"></i>Pass</span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="fa-solid fa-xmark me-1"></i>Fail</span>
+                        {% endif %}
+                        <div class="small font-monospace text-muted mt-1">res: {{ kkt.max_primal_violation|stringformat:".2e" }}</div>
+                    </div>
+                </li>
+                
+                <!-- Condition 2 -->
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="font-bold">2. Dual Feasibility ($\lambda^* \ge 0$)</div>
+                        <div class="text-muted small">Checks if Lagrange multipliers remain non-negative</div>
+                    </div>
+                    <div class="text-end">
+                        {% if kkt.dual_feasible %}
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="fa-solid fa-check me-1"></i>Pass</span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="fa-solid fa-xmark me-1"></i>Fail</span>
+                        {% endif %}
+                        <div class="small font-monospace text-muted mt-1">min &lambda;: {{ kkt.min_dual_multiplier|stringformat:".2e" }}</div>
+                    </div>
+                </li>
+
+                <!-- Condition 3 -->
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="font-bold">3. Complementary Slackness ($\lambda^* \cdot (G x^* - h) = 0$)</div>
+                        <div class="text-muted small">Checks if binding constraints map to active multipliers</div>
+                    </div>
+                    <div class="text-end">
+                        {% if kkt.complementary_slackness_satisfied %}
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="fa-solid fa-check me-1"></i>Pass</span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="fa-solid fa-xmark me-1"></i>Fail</span>
+                        {% endif %}
+                        <div class="small font-monospace text-muted mt-1">res: {{ kkt.max_complementary_slackness_violation|stringformat:".2e" }}</div>
+                    </div>
+                </li>
+
+                <!-- Condition 4 -->
+                <li class="list-group-item bg-transparent border-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="font-bold">4. Stationarity ($-c + G^T \lambda^* = 0$)</div>
+                        <div class="text-muted small">Checks gradient of the Lagrangian relative to decision values</div>
+                    </div>
+                    <div class="text-end">
+                        {% if kkt.stationarity_satisfied %}
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="fa-solid fa-check me-1"></i>Pass</span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="fa-solid fa-xmark me-1"></i>Fail</span>
+                        {% endif %}
+                        <div class="small font-monospace text-muted mt-1">res: {{ kkt.max_stationarity_violation|stringformat:".2e" }}</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

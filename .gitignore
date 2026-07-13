@@ -1,0 +1,31 @@
+# Virtual Environment
+venv/
+.venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# Database files
+*.db
+*.sqlite3
+netinsight/database/netinsight.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+.project
+.pydevproject
+
+# ML models (excluding pre-trained models if necessary, but we generate it)
+# We can allow svm_model.joblib and scaler.joblib since they can be trained dynamically
+# data/ contains the large datasets
+data/

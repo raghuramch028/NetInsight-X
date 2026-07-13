@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetInsight-X | Decision Support System</title>
+    
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1, h2, h3, h4, h5, h6, .display-font {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: var(--transition-smooth);
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.15);
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-glass);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 32px;
+            padding-left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: var(--transition-smooth);
+        }
+
+        .nav-item-link:hover, .nav-item-link.active {
+            color: var(--text-main);
+            background-color: rgba(59, 130, 246, 0.15);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+        }
+        
+        .nav-item-link.active i {
+            color: var(--accent-blue);
+        }
+
+        /* Main Content Container */
+        .main-content {
+            margin-left: 280px;
+            padding: 40px;
+            flex: 1;
+        }
+
+        /* Badge/State Styling */
+        .state-badge {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .state-normal {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .state-busy {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .state-congested {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .state-failure {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Tables style */
+        .custom-table {
+            color: var(--text-main);
+        }
+        .custom-table th {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-glass);
+            padding: 12px 16px;
+        }
+        .custom-table td {
+            border-bottom: 1px solid var(--border-glass);
+            padding: 14px 16px;
+            vertical-align: middle;
+        }
+        .custom-table tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Micro-animations */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.96); }
+        }
+        .pulse-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-slow 2s infinite ease-in-out;
+        }
+        .pulse-normal { background-color: var(--accent-green); }
+        .pulse-busy { background-color: var(--accent-blue); }
+        .pulse-congested { background-color: var(--accent-yellow); }
+        .pulse-failure { background-color: var(--accent-red); }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>NetInsight-X</span>
+        </a>
+        <ul class="nav-menu">
+            <li>
+                <a href="{% url 'dashboard:index' %}" class="nav-item-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Real-Time Monitor</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:analytics' %}" class="nav-item-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Traffic Analytics</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:optimization' %}" class="nav-item-link {% if request.resolver_match.url_name == 'optimization' %}active{% endif %}">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Bandwidth Optimizer</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:prediction' %}" class="nav-item-link {% if request.resolver_match.url_name == 'prediction' %}active{% endif %}">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Predictive Markov</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                    <span>Traffic Classifier</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:reports' %}" class="nav-item-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                    <i class="fa-solid fa-file-invoice"></i>
+                    <span>Analytical Reports</span>
+                </a>
+            </li>
+        </ul>
+        
+        <div class="mt-auto p-3 text-center rounded glass-card border-0" style="background-color: rgba(255,255,255,0.03);">
+            <div class="small text-muted mb-1">Operational Mode</div>
+            {% if demo_mode or True %}
+                <span class="badge bg-primary text-white"><i class="fa-solid fa-circle-play me-1"></i>Replay (Demo)</span>
+            {% else %}
+                <span class="badge bg-success text-white"><i class="fa-solid fa-circle-dot me-1"></i>Live Sniffer</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Top Title Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <span class="text-muted text-uppercase tracking-wider small">Decision Support System</span>
+                <h1 class="display-6 font-bold m-0">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div>
+                <span class="text-muted me-2"><i class="fa-regular fa-clock me-1"></i>System Time:</span>
+                <span id="system-time" class="font-monospace"></span>
+            </div>
+        </div>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS Bundle CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Update live system time clock
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('system-time').innerText = now.toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

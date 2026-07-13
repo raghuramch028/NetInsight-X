@@ -1,0 +1,133 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}Traffic Analytics Summary{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Summary Cards -->
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <i class="fa-solid fa-box-open text-primary fs-2 mb-3"></i>
+            <div class="text-muted small text-uppercase">Total Packets (Last 60s)</div>
+            <h2 class="display-font font-bold mt-2 mb-0">{{ summary.total_packets|default:0 }}</h2>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <i class="fa-solid fa-database text-success fs-2 mb-3"></i>
+            <div class="text-muted small text-uppercase">Data Volume (Last 60s)</div>
+            <h2 class="display-font font-bold mt-2 mb-0">
+                {% if summary.total_bytes > 1048576 %}
+                    {{ summary.total_mb|floatformat:2 }} <span class="fs-6 text-muted">MB</span>
+                {% else %}
+                    {{ summary.total_bytes|default:0 }} <span class="fs-6 text-muted">Bytes</span>
+                {% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <i class="fa-solid fa-laptop text-warning fs-2 mb-3"></i>
+            <div class="text-muted small text-uppercase">Active Host Devices</div>
+            <h2 class="display-font font-bold mt-2 mb-0">{{ summary.active_devices|default:0 }} <span class="fs-6 text-muted">IPs</span></h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Protocol distribution table -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <h4 class="mb-4"><i class="fa-solid fa-circle-nodes text-primary me-2"></i>Protocol Share Distribution</h4>
+            <p class="text-muted small">
+                Analyzes protocol headers (TCP/UDP/ICMP) within the sliding monitoring window. Encrypted tunnel payloads are read under outer headers.
+            </p>
+            <div class="table-responsive mt-3">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Protocol</th>
+                            <th>Packet Count</th>
+                            <th>Byte Count</th>
+                            <th>Percentage Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proto in protocols %}
+                            <tr>
+                                <td>
+                                    {% if proto.protocol == 'TCP' %}
+                                        <span class="badge bg-primary">TCP</span>
+                                    {% elif proto.protocol == 'UDP' %}
+                                        <span class="badge bg-success">UDP</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">{{ proto.protocol }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="font-monospace">{{ proto.packet_count }}</td>
+                                <td class="font-monospace">{{ proto.byte_count }}</td>
+                                <td class="font-monospace font-bold text-info">{{ proto.percentage|floatformat:1 }}%</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No protocol share data captured in this window.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Consumers table -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <h4 class="mb-4"><i class="fa-solid fa-arrow-down-wide-narrow text-warning me-2"></i>Top Bandwidth Consumers</h4>
+            <p class="text-muted small">
+                Identifies local LAN hosts transmitting the highest cumulative traffic bytes within the sliding monitoring window.
+            </p>
+            <div class="table-responsive mt-3">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Source Host IP</th>
+                            <th>Transmitted Volume</th>
+                            <th>Traffic Ratio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for client in consumers %}
+                            <tr>
+                                <td><span class="badge bg-secondary">#{{ forloop.counter }}</span></td>
+                                <td class="font-monospace font-bold text-white">{{ client.src_ip }}</td>
+                                <td class="font-monospace">
+                                    {% if client.total_bytes > 1048576 %}
+                                        {{ client.total_mb|floatformat:2 }} MB
+                                    {% else %}
+                                        {{ client.total_bytes }} Bytes
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 6px; background-color: var(--bg-primary);">
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ client.percentage }}%;" aria-valuenow="{{ client.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="font-monospace text-muted small" style="min-width: 45px;">{{ client.percentage|floatformat:1 }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No consumer metrics recorded in this window.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
