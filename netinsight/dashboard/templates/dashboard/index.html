@@ -1,129 +1,250 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Real-Time Network Monitor{% endblock %}
+{% block page_title %}Real-Time Network Telemetry{% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
-    <!-- Stat Card 1: Network State -->
-    <div class="col-md-3">
-        <div class="glass-card d-flex flex-column justify-content-between h-100">
-            <div>
-                <div class="text-muted small text-uppercase mb-2">Network Health State</div>
-                <h3 id="card-state-text" class="m-0 display-font text-capitalize">Loading...</h3>
-            </div>
-            <div class="mt-4 d-flex align-items-center justify-content-between">
-                <span id="card-state-badge" class="state-badge state-normal">
-                    <span id="card-state-pulse" class="pulse-indicator pulse-normal"></span>
-                    <span id="card-state-label">NORMAL</span>
-                </span>
-                <i class="fa-solid fa-heart-pulse text-muted fs-4"></i>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stat Card 2: Throughput -->
-    <div class="col-md-3">
-        <div class="glass-card d-flex flex-column justify-content-between h-100">
-            <div>
-                <div class="text-muted small text-uppercase mb-2">Throughput</div>
-                <h2 id="card-throughput" class="display-font font-bold m-0 text-info">0.00 <span class="fs-6 text-muted">Mbps</span></h2>
-            </div>
-            <div class="mt-4 d-flex justify-content-between align-items-center">
-                <span id="card-packet-rate" class="text-muted font-monospace small">0.0 pps</span>
-                <i class="fa-solid fa-arrow-right-arrow-left text-info fs-4"></i>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stat Card 3: Passive Latency -->
-    <div class="col-md-3">
-        <div class="glass-card d-flex flex-column justify-content-between h-100">
-            <div>
-                <div class="text-muted small text-uppercase mb-2">Latency (Passive RTT)*</div>
-                <h2 id="card-latency" class="display-font font-bold m-0 text-danger">0 <span class="fs-6 text-muted">ms</span></h2>
-            </div>
-            <div class="mt-4 d-flex justify-content-between align-items-center">
-                <span class="text-muted small" style="font-size: 0.75rem;">*Approximated metric</span>
-                <i class="fa-solid fa-gauge-high text-danger fs-4"></i>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stat Card 4: Passive Packet Loss -->
-    <div class="col-col-md-3 col-12">
-        <div class="glass-card d-flex flex-column justify-content-between h-100">
-            <div>
-                <div class="text-muted small text-uppercase mb-2">Packet Loss (Heuristic)*</div>
-                <h2 id="card-loss" class="display-font font-bold m-0 text-warning">0.00 <span class="fs-6 text-muted">%</span></h2>
-            </div>
-            <div class="mt-4 d-flex justify-content-between align-items-center">
-                <span class="text-muted small" style="font-size: 0.75rem;">*Estimated loss</span>
-                <i class="fa-solid fa-circle-exclamation text-warning fs-4"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <!-- Chart: Live Throughput & Utilization -->
+    <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
-        <div class="glass-card h-100">
-            <h4 class="mb-4">Live Network Load (Last 30 Windows)</h4>
-            <div style="height: 320px; position: relative;">
-                <canvas id="liveChart"></canvas>
+        <div class="saas-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <span class="text-secondary small font-mono">QoS Status Profile</span>
+                    <h3 class="font-bold h5 mt-1 mb-0">System Operational Health</h3>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span id="card-state-badge" class="saas-badge 
+                        {% if current_state == 'NORMAL' %}badge-normal
+                        {% elif current_state == 'BUSY' %}badge-busy
+                        {% elif current_state == 'CONGESTED' %}badge-congested
+                        {% else %}badge-failure{% endif %}">
+                        <span id="card-state-pulse" class="pulse-indicator 
+                            {% if current_state == 'NORMAL' %}pulse-normal
+                            {% elif current_state == 'BUSY' %}pulse-busy
+                            {% elif current_state == 'CONGESTED' %}pulse-congested
+                            {% else %}pulse-failure{% endif %}">
+                        </span>
+                        <span id="card-state-label">{{ current_state }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Dynamic MDP Advisory Action -->
+            <div class="p-3 rounded mb-4" style="background-color: rgba(59,130,246,0.04); border: 1px dashed rgba(59,130,246,0.2);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="small text-secondary font-mono d-block">MDP Decision Advisory Policy</span>
+                        <span id="mdp-action" class="font-bold text-white fs-6 mt-1 d-inline-block">
+                            <i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>{{ mdp_rec.recommended_action }}
+                        </span>
+                    </div>
+                    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem;">SOLVER ACTIVE</span>
+                </div>
+            </div>
+
+            <!-- Throughput Metric and link capacity progress bar -->
+            <div>
+                <div class="d-flex justify-content-between align-items-end mb-2">
+                    <div>
+                        <span class="text-secondary small font-mono d-block">Active Network Throughput</span>
+                        <h2 id="card-throughput" class="display-font font-bold mt-1 mb-0 text-white" style="font-size: 2.2rem;">
+                            {{ latest_metrics.throughput_mbps|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">Mbps</span>
+                        </h2>
+                    </div>
+                    <span class="small text-secondary font-mono">Capacity: {{ link_capacity_mbps|floatformat:0 }} Mbps</span>
+                </div>
+                
+                <div class="progress" style="height: 6px; background-color: var(--bg-primary);">
+                    <div id="capacity-progress" class="progress-bar bg-primary" role="progressbar" style="width: {{ latest_metrics.bandwidth_util|default:0 }}%;"></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MDP Recommendation Box -->
+    <!-- Secondary Metrics Panel -->
     <div class="col-lg-4">
-        <div class="glass-card h-100 border-primary" style="border: 1px solid rgba(59,130,246,0.3) !important;">
-            <div class="d-flex align-items-center justify-content-between mb-4">
-                <h4 class="m-0 text-primary">Decision Support Recommendation</h4>
-                <span class="badge bg-primary text-white"><i class="fa-solid fa-brain me-1"></i>MDP Engine</span>
+        <div class="d-flex flex-column gap-4 h-100">
+            <!-- Latency Card -->
+            <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-secondary small font-mono">Avg Latency (RTT)</span>
+                    <h3 id="card-latency" class="font-bold text-white m-0 mt-1" style="font-size: 1.6rem;">
+                        {{ latest_metrics.latency_ms|floatformat:0|default:"0" }} <span class="fs-6 text-secondary fw-normal">ms</span>
+                    </h3>
+                </div>
+                <div class="p-3 rounded-circle bg-dark bg-opacity-25 border border-secondary" style="border-color: var(--border-subtle) !important;">
+                    <i data-lucide="clock" class="text-secondary" style="width:20px;height:20px;"></i>
+                </div>
             </div>
-            <div class="p-3 rounded mb-4" style="background-color: rgba(59,130,246,0.06); border: 1px dashed rgba(59,130,246,0.2);">
-                <div class="text-muted small mb-1">Recommended Advisory Action:</div>
-                <h4 id="mdp-action" class="text-white font-bold m-0">
-                    <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Loading...
-                </h4>
+
+            <!-- Packet Loss Card -->
+            <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-secondary small font-mono">Packet Loss Rate</span>
+                    <h3 id="card-loss" class="font-bold text-white m-0 mt-1" style="font-size: 1.6rem;">
+                        {{ latest_metrics.packet_loss|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">%</span>
+                    </h3>
+                </div>
+                <div class="p-3 rounded-circle bg-dark bg-opacity-25 border border-secondary" style="border-color: var(--border-subtle) !important;">
+                    <i data-lucide="shield-alert" class="text-secondary" style="width:20px;height:20px;"></i>
+                </div>
             </div>
-            
-            <p class="text-muted small mb-4">
-                Markov Decision Process (MDP) calculates actions by maximizing transition rewards over discount factor $\gamma = {{ gamma|default:0.90 }}$. Recommendations are advisory only.
-            </p>
-            
-            <div class="text-muted small mb-2">Expected Values per Action:</div>
-            <div id="mdp-values-list" class="d-flex flex-column gap-2">
-                <!-- Populated dynamically -->
+
+            <!-- Packet Rate Card -->
+            <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-secondary small font-mono">Packet Arrival Rate</span>
+                    <h3 id="card-packet-rate" class="font-bold text-white m-0 mt-1" style="font-size: 1.6rem;">
+                        {{ latest_metrics.packet_rate|floatformat:1|default:"0.0" }} <span class="fs-6 text-secondary fw-normal">pps</span>
+                    </h3>
+                </div>
+                <div class="p-3 rounded-circle bg-dark bg-opacity-25 border border-secondary" style="border-color: var(--border-subtle) !important;">
+                    <i data-lucide="zap" class="text-secondary" style="width:20px;height:20px;"></i>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Real-time packets table -->
-<div class="glass-card mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="m-0">Real-Time Packet Stream Logs</h4>
-        <div class="small text-muted font-monospace"><span id="packet-count-badge" class="badge bg-secondary">0</span> packets recorded</div>
+<!-- Graph and Topology Row -->
+<div class="row g-4 mb-4">
+    <!-- Real-time Throughput line chart -->
+    <div class="col-lg-7">
+        <div class="saas-card h-100">
+            <h4 class="mb-4 text-white font-bold h6"><i data-lucide="activity" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Throughput & Utilization History</h4>
+            <div style="height: 240px; position: relative;">
+                <canvas id="liveThroughputChart"></canvas>
+            </div>
+        </div>
     </div>
-    <div class="table-responsive">
+
+    <!-- Interactive Network Topology -->
+    <div class="col-lg-5">
+        <div class="saas-card h-100">
+            <h4 class="mb-4 text-white font-bold h6"><i data-lucide="git-branch" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
+            
+            <div class="d-flex justify-content-center align-items-center" style="height: 240px;">
+                <svg viewBox="0 0 320 200" width="100%" height="100%" class="font-mono">
+                    <style>
+                        .flow-line {
+                            stroke: #3b82f6;
+                            stroke-width: 1.5;
+                            stroke-dasharray: 6, 6;
+                            animation: flowAnimation 8s linear infinite;
+                        }
+                        @keyframes flowAnimation {
+                            from { stroke-dashoffset: 60; }
+                            to { stroke-dashoffset: 0; }
+                        }
+                        .node-circle {
+                            fill: #0d111c;
+                            stroke: #475569;
+                            stroke-width: 1.5;
+                            transition: var(--transition-fast);
+                        }
+                        .node-circle:hover {
+                            stroke: #3b82f6;
+                            fill: #131929;
+                        }
+                        .node-text {
+                            fill: #94a3b8;
+                            font-size: 8px;
+                            text-anchor: middle;
+                        }
+                        .active-pulse {
+                            fill: #10b981;
+                            opacity: 0.15;
+                            animation: pulseRing 3s infinite ease-out;
+                            transform-origin: center;
+                        }
+                        @keyframes pulseRing {
+                            0% { transform: scale(1); opacity: 0.4; }
+                            100% { transform: scale(1.8); opacity: 0; }
+                        }
+                    </style>
+                    
+                    <!-- Connection Paths -->
+                    <line x1="60" y1="130" x2="160" y2="90" class="flow-line" />
+                    <line x1="110" y1="150" x2="160" y2="90" class="flow-line" />
+                    <line x1="210" y1="150" x2="160" y2="90" class="flow-line" />
+                    <line x1="260" y1="130" x2="160" y2="90" class="flow-line" />
+                    <line x1="160" y1="90" x2="160" y2="35" class="flow-line" style="stroke: #10b981; animation-duration: 4s;" />
+
+                    <!-- Internet Gateway -->
+                    <circle cx="160" cy="35" r="16" class="node-circle" style="stroke: #10b981;" />
+                    <text x="160" y="38" fill="#10b981" font-size="8px" text-anchor="middle" font-weight="bold">WAN</text>
+                    <text x="160" y="15" class="node-text">Gateway</text>
+
+                    <!-- Central DSS Monitor Router -->
+                    <circle cx="160" cy="90" r="18" class="node-circle" style="stroke: #3b82f6;" />
+                    <text x="160" y="93" fill="#3b82f6" font-size="8px" text-anchor="middle" font-weight="bold">DSS</text>
+                    <text x="160" y="68" class="node-text" style="fill:#fff;">Router Monitor</text>
+
+                    <!-- Host Nodes -->
+                    <!-- Host 1 -->
+                    <circle cx="60" cy="130" r="12" class="node-circle" />
+                    <text x="60" y="133" fill="#94a3b8" font-size="7px" text-anchor="middle">.1</text>
+                    <text x="60" y="150" class="node-text">LocalHost.1</text>
+
+                    <!-- Host 2 -->
+                    <circle cx="110" cy="150" r="12" class="node-circle" />
+                    <text x="110" y="153" fill="#94a3b8" font-size="7px" text-anchor="middle">.15</text>
+                    <text x="110" y="170" class="node-text">LocalHost.15</text>
+
+                    <!-- Host 3 -->
+                    <circle cx="210" cy="150" r="12" class="node-circle" />
+                    <text x="210" y="153" fill="#94a3b8" font-size="7px" text-anchor="middle">.22</text>
+                    <text x="210" y="170" class="node-text">LocalHost.22</text>
+
+                    <!-- Host 4 -->
+                    <circle cx="260" cy="130" r="12" class="node-circle" />
+                    <text x="260" y="133" fill="#94a3b8" font-size="7px" text-anchor="middle">.33</text>
+                    <text x="260" y="150" class="node-text">LocalHost.33</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expected MDP Values List -->
+<div class="saas-card mb-4">
+    <h4 class="mb-4 text-white font-bold h6"><i data-lucide="line-chart" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Expected State-Action Utility (Bellman Updates)</h4>
+    <div id="mdp-values-list" class="d-flex flex-column gap-2">
+        {% for name, val in mdp_rec.action_values.items %}
+            <div class="d-flex justify-content-between align-items-center p-2 rounded {% if name == mdp_rec.recommended_action %}bg-primary bg-opacity-25{% endif %}">
+                <span class="{% if name == mdp_rec.recommended_action %}text-primary font-bold{% else %}text-secondary{% endif %}" style="font-size:0.9rem;">{{ name }}</span>
+                <span class="badge {% if name == mdp_rec.recommended_action %}bg-primary{% else %}bg-secondary{% endif %} font-mono">{{ val|floatformat:2 }}</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Live Packet Log Table -->
+<div class="saas-card mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-white font-bold h6">
+            <i data-lucide="list" class="d-inline-block me-2 text-warning" style="width:16px;height:16px;vertical-align:-2px;"></i>Real-Time Packet Flow Log
+        </h4>
+        <span class="badge bg-secondary font-mono" id="packet-count-badge">0</span>
+    </div>
+    
+    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
         <table class="table custom-table">
             <thead>
                 <tr>
                     <th>Protocol</th>
                     <th>Source IP</th>
                     <th>Destination IP</th>
-                    <th>Port Src &rarr; Dst</th>
+                    <th>Source Port</th>
+                    <th>Dest Port</th>
                     <th>Size (Bytes)</th>
                     <th>TTL</th>
                     <th>Timestamp</th>
-                    <th>Detection Note</th>
                 </tr>
             </thead>
             <tbody id="packet-tbody">
                 <tr>
-                    <td colspan="8" class="text-center text-muted">Listening for network packet streams...</td>
+                    <td colspan="8" class="text-center text-secondary py-4">Listening for incoming packet flows...</td>
                 </tr>
             </tbody>
         </table>
@@ -135,21 +256,20 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const refreshInterval = {{ refresh_interval|default:2000 }};
-    const maxDataPoints = 30;
+    const refreshInterval = 2000;  // Poll every 2 seconds
+    const maxDataPoints = 15;
     
-    // Setup Chart.js
-    const ctx = document.getElementById('liveChart').getContext('2d');
-    const labels = [];
-    const throughputData = [];
-    const utilizationData = [];
+    // Setup empty arrays for dynamic chart updates
+    const labels = Array(maxDataPoints).fill("");
+    const throughputData = Array(maxDataPoints).fill(0);
+    const utilizationData = Array(maxDataPoints).fill(0);
+
+    const ctx = document.getElementById('liveThroughputChart').getContext('2d');
     
-    for (let i = 0; i < maxDataPoints; i++) {
-        labels.push('');
-        throughputData.push(0);
-        utilizationData.push(0);
-    }
-    
+    // Set custom grid color variables to match base layout
+    const gridColor = 'rgba(255, 255, 255, 0.04)';
+    const textColor = '#94a3b8';
+
     const liveChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -159,10 +279,10 @@
                     label: 'Throughput (Mbps)',
                     data: throughputData,
                     borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    borderWidth: 2.5,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.3,
                     yAxisID: 'y'
                 },
                 {
@@ -170,10 +290,10 @@
                     data: utilizationData,
                     borderColor: '#10b981',
                     backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
+                    borderWidth: 1.5,
+                    borderDash: [4, 4],
                     fill: false,
-                    tension: 0.4,
+                    tension: 0.3,
                     yAxisID: 'y1'
                 }
             ]
@@ -183,29 +303,29 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: '#94a3b8' }
+                    labels: { color: textColor, font: { size: 11, family: 'Inter' } }
                 }
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8' }
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { size: 10, family: 'JetBrains Mono' } }
                 },
                 y: {
                     type: 'linear',
                     display: true,
                     position: 'left',
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#3b82f6' },
-                    title: { display: true, text: 'Throughput (Mbps)', color: '#3b82f6' }
+                    grid: { color: gridColor },
+                    ticks: { color: '#3b82f6', font: { size: 10, family: 'JetBrains Mono' } },
+                    title: { display: true, text: 'Throughput (Mbps)', color: '#3b82f6', font: { size: 10, family: 'Inter', weight: 'bold' } }
                 },
                 y1: {
                     type: 'linear',
                     display: true,
                     position: 'right',
                     grid: { drawOnChartArea: false },
-                    ticks: { color: '#10b981' },
-                    title: { display: true, text: 'Utilization (%)', color: '#10b981' },
+                    ticks: { color: '#10b981', font: { size: 10, family: 'JetBrains Mono' } },
+                    title: { display: true, text: 'Utilization (%)', color: '#10b981', font: { size: 10, family: 'Inter', weight: 'bold' } },
                     min: 0,
                     max: 100
                 }
@@ -220,32 +340,35 @@
             .then(data => {
                 // Update stats cards
                 const mbps = (data.throughput / 1e6).toFixed(2);
-                document.getElementById('card-throughput').innerHTML = `${mbps} <span class="fs-6 text-muted">Mbps</span>`;
+                document.getElementById('card-throughput').innerHTML = `${mbps} <span class="fs-6 text-secondary fw-normal">Mbps</span>`;
                 document.getElementById('card-packet-rate').innerText = `${data.packet_rate.toFixed(1)} pps`;
-                document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-muted">ms</span>`;
-                document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-muted">%</span>`;
+                document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-secondary fw-normal">ms</span>`;
+                document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-secondary fw-normal">%</span>`;
+                
+                // Update Progress bar
+                document.getElementById('capacity-progress').style.width = `${data.bandwidth_util}%`;
                 
                 const state = data.network_state;
-                document.getElementById('card-state-text').innerText = state.toLowerCase();
+                document.getElementById('card-state-text')?.innerText = state.toLowerCase();
                 const badge = document.getElementById('card-state-badge');
                 const pulse = document.getElementById('card-state-pulse');
                 const label = document.getElementById('card-state-label');
                 
-                badge.className = 'state-badge';
+                badge.className = 'saas-badge';
                 pulse.className = 'pulse-indicator';
                 label.innerText = state;
                 
                 if (state === 'NORMAL') {
-                    badge.classList.add('state-normal');
+                    badge.classList.add('badge-normal');
                     pulse.classList.add('pulse-normal');
                 } else if (state === 'BUSY') {
-                    badge.classList.add('state-busy');
+                    badge.classList.add('badge-busy');
                     pulse.classList.add('pulse-busy');
                 } else if (state === 'CONGESTED') {
-                    badge.classList.add('state-congested');
+                    badge.classList.add('badge-congested');
                     pulse.classList.add('pulse-congested');
                 } else {
-                    badge.classList.add('state-failure');
+                    badge.classList.add('badge-failure');
                     pulse.classList.add('pulse-failure');
                 }
                 
@@ -265,7 +388,7 @@
                     const bestAction = data.mdp_recommendation.recommended_action;
                     const actionVals = data.mdp_recommendation.action_values;
                     
-                    document.getElementById('mdp-action').innerHTML = `<i class="fa-solid fa-circle-info text-info me-2"></i>${bestAction}`;
+                    document.getElementById('mdp-action').innerHTML = `<i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>${bestAction}`;
                     
                     let valuesHtml = "";
                     Object.keys(actionVals).forEach(actName => {
@@ -273,12 +396,13 @@
                         const valStr = parseFloat(actionVals[actName]).toFixed(2);
                         valuesHtml += `
                             <div class="d-flex justify-content-between align-items-center p-2 rounded ${isBest ? 'bg-primary bg-opacity-25' : ''}">
-                                <span class="${isBest ? 'text-primary font-bold' : 'text-muted'}">${actName}</span>
-                                <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-monospace">${valStr}</span>
+                                <span class="${isBest ? 'text-primary font-bold' : 'text-secondary'}" style="font-size:0.9rem;">${actName}</span>
+                                <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-mono">${valStr}</span>
                             </div>
                         `;
                     });
                     document.getElementById('mdp-values-list').innerHTML = valuesHtml;
+                    lucide.createIcons(); // Refresh icons inside modified dynamic list
                 }
             });
 
@@ -290,7 +414,7 @@
                 const badge = document.getElementById('packet-count-badge');
                 
                 if (data.packets.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Listening for network packet streams...</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-secondary py-4">Listening for incoming packet flows...</td></tr>`;
                     badge.innerText = 0;
                     return;
                 }
@@ -304,33 +428,23 @@
                     // Style badge for protocol
                     let protoBadge = '';
                     if (pkt.protocol === 'TCP') {
-                        protoBadge = '<span class="badge bg-primary text-white">TCP</span>';
+                        protoBadge = '<span class="badge bg-primary text-white font-mono" style="font-size:0.7rem;">TCP</span>';
                     } else if (pkt.protocol === 'UDP') {
-                        protoBadge = '<span class="badge bg-success text-white">UDP</span>';
+                        protoBadge = '<span class="badge bg-success text-white font-mono" style="font-size:0.7rem;">UDP</span>';
                     } else {
-                        protoBadge = '<span class="badge bg-warning text-dark">ICMP</span>';
-                    }
-                    
-                    // Identify suspicious port matches in text note
-                    let note = '<span class="text-muted">-</span>';
-                    if (pkt.size > 1400 && pkt.protocol === 'TCP') {
-                        note = '<span class="text-info"><i class="fa-solid fa-file-export me-1"></i>Large Segment</span>';
-                    } else if (pkt.dst_port === 80 || pkt.dst_port === 443) {
-                        note = '<span class="text-muted">Web Traffic</span>';
-                    } else if (pkt.dst_port === 22 || pkt.dst_port === 445) {
-                        note = '<span class="text-warning"><i class="fa-solid fa-shield-halved me-1"></i>Secure Port</span>';
+                        protoBadge = '<span class="badge bg-warning text-dark font-mono" style="font-size:0.7rem;">ICMP</span>';
                     }
                     
                     html += `
                         <tr>
                             <td>${protoBadge}</td>
-                            <td class="font-monospace">${pkt.src_ip}</td>
-                            <td class="font-monospace">${pkt.dst_ip}</td>
-                            <td><span class="badge bg-secondary font-monospace">${pkt.src_port} &rarr; ${pkt.dst_port}</span></td>
-                            <td class="font-monospace">${pkt.size}</td>
-                            <td class="font-monospace">${pkt.ttl}</td>
-                            <td class="font-monospace text-muted">${timeStr}</td>
-                            <td>${note}</td>
+                            <td class="font-mono">${pkt.src_ip}</td>
+                            <td class="font-mono">${pkt.dst_ip}</td>
+                            <td class="font-mono">${pkt.src_port}</td>
+                            <td class="font-mono">${pkt.dst_port}</td>
+                            <td class="font-mono">${pkt.size}</td>
+                            <td class="font-mono">${pkt.ttl}</td>
+                            <td class="font-mono text-secondary">${timeStr}</td>
                         </tr>
                     `;
                 });

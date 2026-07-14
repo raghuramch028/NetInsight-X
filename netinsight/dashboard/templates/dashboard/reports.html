@@ -1,15 +1,17 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Historical Analytical Reports{% endblock %}
+{% block page_title %}Historical Telemetry Reports{% endblock %}
 
 {% block content %}
-<div class="glass-card mb-4">
+<div class="saas-card mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0"><i class="fa-solid fa-file-shield text-primary me-2"></i>Network Diagnostics & Analytics Reports</h4>
-        <span class="badge bg-secondary"><i class="fa-solid fa-circle-info me-1"></i>Static Render</span>
+        <h4 class="m-0 text-white font-bold h6">
+            <i data-lucide="folder-git" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Historical Telemetry Reports
+        </h4>
+        <span class="badge bg-secondary font-mono" style="font-size: 0.75rem;">STATIC ENGINE RENDER</span>
     </div>
-    <p class="text-muted small">
-        These historical analytical reports are generated using Matplotlib and Seaborn by querying the SQLite database records. The plots evaluate throughput, latency, and operational health cycles. Multiple export formats (PDF/PNG) will be supported in future extensions.
+    <p class="text-secondary small mb-0">
+        These historical analytical diagnostic charts are generated in-memory using Matplotlib and Seaborn by pulling stored SQLite logs. The graphs trace throughput variations, handshake latency cycles, and operational health patterns.
     </p>
 </div>
 
@@ -17,12 +19,14 @@
     <div class="row g-4 mb-4">
         <!-- Plot 1: Throughput and Latency Correlation -->
         <div class="col-lg-8">
-            <div class="glass-card">
-                <h5 class="mb-4 text-info"><i class="fa-solid fa-chart-line me-2"></i>Throughput & Latency Correlation Plot</h5>
-                <div class="text-center bg-dark bg-opacity-25 p-3 rounded border border-secondary">
-                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow-lg" style="max-height: 400px;">
+            <div class="saas-card">
+                <h5 class="mb-4 text-white font-bold h6">
+                    <i data-lucide="line-chart" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Throughput & Latency Correlation Matrix
+                </h5>
+                <div class="text-center p-3 rounded border border-secondary bg-dark bg-opacity-25" style="border-color: var(--border-subtle) !important;">
+                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow" style="max-height: 400px; filter: brightness(0.9) contrast(1.15);">
                 </div>
-                <div class="mt-3 text-muted small">
+                <div class="mt-3 text-secondary small">
                     This dual-axis time-series visualization traces how passive handshake latency scales alongside overall throughput. Spikes in throughput typically correspond to latency jumps due to queueing delays.
                 </div>
             </div>
@@ -30,22 +34,24 @@
 
         <!-- Plot 2: State History Distribution -->
         <div class="col-lg-4">
-            <div class="glass-card h-100">
-                <h5 class="mb-4 text-warning"><i class="fa-solid fa-chart-simple me-2"></i>Operational State Frequencies</h5>
-                <div class="text-center bg-dark bg-opacity-25 p-3 rounded border border-secondary">
-                    <img src="data:image/png;base64,{{ plots.states_distribution }}" alt="Operational States Count Plot" class="img-fluid rounded shadow-lg" style="max-height: 300px;">
+            <div class="saas-card h-100">
+                <h5 class="mb-4 text-white font-bold h6">
+                    <i data-lucide="bar-chart-2" class="d-inline-block me-2 text-warning" style="width:16px;height:16px;vertical-align:-2px;"></i>Operational State Occurrence
+                </h5>
+                <div class="text-center p-3 rounded border border-secondary bg-dark bg-opacity-25" style="border-color: var(--border-subtle) !important;">
+                    <img src="data:image/png;base64,{{ plots.states_distribution }}" alt="Operational States Count Plot" class="img-fluid rounded shadow" style="max-height: 300px; filter: brightness(0.9) contrast(1.15);">
                 </div>
-                <div class="mt-3 text-muted small">
+                <div class="mt-3 text-secondary small">
                     Count distribution of classified operational states (NORMAL, BUSY, CONGESTED, FAILURE) logged in the database.
                 </div>
             </div>
         </div>
     </div>
 {% else %}
-    <div class="glass-card text-center py-5">
-        <i class="fa-solid fa-chart-line text-muted fs-1 mb-3"></i>
-        <h4 class="text-muted">Insufficient Analytics Data</h4>
-        <p class="text-muted small">
+    <div class="saas-card text-center py-5">
+        <i data-lucide="bar-chart" class="text-secondary mb-3" style="width:48px;height:48px;"></i>
+        <h4 class="text-secondary h6">Telemetry Database Aggregating...</h4>
+        <p class="text-secondary small">
             To view diagnostic charts, ensure the packet capture monitor is running and has accumulated at least a few minutes of packet metrics.
         </p>
     </div>

@@ -56,13 +56,19 @@ def index_view(request):
     # Get latest metrics
     latest = analytics_engine.get_latest_metrics()
     
+    # Scale throughput to Mbps and latency to ms for template display
+    latest["throughput_mbps"] = latest["throughput"] / 1e6
+    latest["latency_ms"] = latest["latency"] * 1000.0
+    
     # Run MDP recommendation based on current network state
     state_name = latest.get("network_state") or predictor.classify_state(latest["bandwidth_util"]/100.0, latest["packet_loss"]/100.0)
     mdp_rec = mdp_engine.get_recommendation(state_name)
     
     context = {
         "refresh_interval": settings.DASHBOARD_REFRESH_INTERVAL,
+        "latest_metrics": latest,
         "latest": latest,
+        "current_state": state_name,
         "state_name": state_name,
         "mdp_rec": mdp_rec,
         "demo_mode": settings.DEMO_MODE,

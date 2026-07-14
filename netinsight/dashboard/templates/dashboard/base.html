@@ -3,70 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetInsight-X | Decision Support System</title>
+    <title>NetInsight-X Telemetry</title>
     
     <!-- Bootstrap 5 CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Google Fonts: Outfit & Inter -->
+    <!-- Google Fonts: Inter (SaaS Sans) and Outfit (Headings) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-glass: rgba(30, 41, 59, 0.7);
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-yellow: #f59e0b;
-            --accent-red: #ef4444;
-            --accent-purple: #8b5cf6;
-            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --bg-primary: #07090e;      /* Deep space dark */
+            --bg-secondary: #0d111c;    /* Elevated panel bg */
+            --bg-tertiary: #131929;     /* Dropdowns, controls */
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            --border-hover: rgba(255, 255, 255, 0.1);
+            --text-main: #f1f5f9;       /* Slate 100 */
+            --text-secondary: #94a3b8;  /* Slate 400 */
+            --text-muted: #475569;      /* Slate 600 */
+            --accent-blue: #3b82f6;     /* SaaS Blue */
+            --accent-green: #10b981;    /* Success */
+            --accent-yellow: #f59e0b;   /* Warning */
+            --accent-red: #ef4444;      /* Danger */
+            --accent-purple: #8b5cf6;   /* Predictive/ML */
+            --font-mono: 'JetBrains Mono', monospace;
+            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
             background-color: var(--bg-primary);
             color: var(--text-main);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
             display: flex;
-            flex-direction: column;
         }
 
         h1, h2, h3, h4, h5, h6, .display-font {
             font-family: 'Outfit', sans-serif;
-            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
         }
 
-        /* Glassmorphism Cards */
-        .glass-card {
-            background: var(--bg-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            transition: var(--transition-smooth);
-        }
-        .glass-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.15);
-        }
-
-        /* Sidebar Styling */
+        /* SaaS Layout Container */
         .sidebar {
-            width: 280px;
+            width: 250px;
             background-color: var(--bg-secondary);
-            border-right: 1px solid var(--border-glass);
+            border-right: 1px solid var(--border-subtle);
             height: 100vh;
             position: fixed;
             top: 0;
@@ -75,19 +59,26 @@
             padding: 24px 16px;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
-        
+
         .sidebar-brand {
-            font-size: 1.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #60a5fa, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 32px;
-            padding-left: 12px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-decoration: none;
+            margin-bottom: 28px;
+            padding-left: 8px;
             display: flex;
             align-items: center;
             gap: 10px;
+            letter-spacing: -0.03em;
+        }
+
+        .sidebar-brand i, .sidebar-brand svg {
+            color: var(--accent-blue);
+            width: 20px;
+            height: 20px;
         }
 
         .nav-menu {
@@ -96,119 +87,164 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 4px;
         }
 
         .nav-item-link {
             display: flex;
             align-items: center;
-            gap: 14px;
-            color: var(--text-muted);
+            gap: 12px;
+            color: var(--text-secondary);
             text-decoration: none;
-            padding: 12px 16px;
-            border-radius: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
             font-weight: 500;
-            transition: var(--transition-smooth);
+            font-size: 0.9rem;
+            transition: var(--transition-fast);
+            border: 1px solid transparent;
         }
 
-        .nav-item-link:hover, .nav-item-link.active {
+        .nav-item-link:hover {
             color: var(--text-main);
-            background-color: rgba(59, 130, 246, 0.15);
-            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+            background-color: rgba(255, 255, 255, 0.02);
+            border-color: var(--border-subtle);
         }
-        
-        .nav-item-link.active i {
+
+        .nav-item-link.active {
+            color: var(--text-main);
+            background-color: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.15);
+        }
+
+        .nav-item-link.active svg {
             color: var(--accent-blue);
         }
 
-        /* Main Content Container */
         .main-content {
-            margin-left: 280px;
-            padding: 40px;
+            margin-left: 250px;
+            padding: 32px 48px;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
 
-        /* Badge/State Styling */
-        .state-badge {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            padding: 8px 16px;
-            border-radius: 9999px;
+        /* SaaS Telemetry Cards */
+        .saas-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 24px;
+            transition: var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .saas-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        /* Header navigation top bar */
+        .top-navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .breadcrumb-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Status Pills */
+        .saas-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
-        .state-normal {
-            background-color: rgba(16, 185, 129, 0.15);
+
+        .badge-normal {
+            background-color: rgba(16, 185, 129, 0.06);
             color: var(--accent-green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border: 1px solid rgba(16, 185, 129, 0.15);
         }
-        .state-busy {
-            background-color: rgba(59, 130, 246, 0.15);
+
+        .badge-busy {
+            background-color: rgba(59, 130, 246, 0.06);
             color: var(--accent-blue);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.15);
         }
-        .state-congested {
-            background-color: rgba(245, 158, 11, 0.15);
+
+        .badge-congested {
+            background-color: rgba(245, 158, 11, 0.06);
             color: var(--accent-yellow);
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            border: 1px solid rgba(245, 158, 11, 0.15);
         }
-        .state-failure {
-            background-color: rgba(239, 68, 68, 0.15);
+
+        .badge-failure {
+            background-color: rgba(239, 68, 68, 0.06);
             color: var(--accent-red);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.15);
         }
 
-        /* Tables style */
+        /* SaaS Data Table */
         .custom-table {
-            color: var(--text-main);
-        }
-        .custom-table th {
-            font-family: 'Outfit', sans-serif;
-            color: var(--text-muted);
-            font-weight: 600;
-            border-bottom: 2px solid var(--border-glass);
-            padding: 12px 16px;
-        }
-        .custom-table td {
-            border-bottom: 1px solid var(--border-glass);
-            padding: 14px 16px;
-            vertical-align: middle;
-        }
-        .custom-table tr:hover td {
-            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-main) !important;
+            margin: 0;
         }
 
-        /* Micro-animations */
-        @keyframes pulse-slow {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(0.96); }
+        .custom-table th {
+            background-color: rgba(255, 255, 255, 0.01) !important;
+            color: var(--text-secondary) !important;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 16px !important;
+            border-bottom: 1px solid var(--border-subtle) !important;
         }
-        .pulse-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse-slow 2s infinite ease-in-out;
+
+        .custom-table td {
+            background-color: transparent !important;
+            padding: 12px 16px !important;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-subtle) !important;
+            color: var(--text-main) !important;
         }
-        .pulse-normal { background-color: var(--accent-green); }
-        .pulse-busy { background-color: var(--accent-blue); }
-        .pulse-congested { background-color: var(--accent-yellow); }
-        .pulse-failure { background-color: var(--accent-red); }
+
+        .custom-table tr:hover td {
+            background-color: rgba(255, 255, 255, 0.015) !important;
+        }
+
+        /* Monospace Styling */
+        .font-mono {
+            font-family: var(--font-mono) !important;
+            font-size: 0.85rem;
+        }
 
         /* Scrollbars */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
             background: var(--bg-primary);
         }
         ::-webkit-scrollbar-thumb {
-            background: var(--bg-secondary);
-            border-radius: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: var(--accent-blue);
@@ -220,70 +256,73 @@
 
     <!-- Sidebar Navigation -->
     <div class="sidebar">
-        <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
-            <i class="fa-solid fa-chart-line"></i>
-            <span>NetInsight-X</span>
-        </a>
-        <ul class="nav-menu">
-            <li>
-                <a href="{% url 'dashboard:index' %}" class="nav-item-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                    <i class="fa-solid fa-house"></i>
-                    <span>Real-Time Monitor</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'dashboard:analytics' %}" class="nav-item-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
-                    <i class="fa-solid fa-chart-pie"></i>
-                    <span>Traffic Analytics</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'dashboard:optimization' %}" class="nav-item-link {% if request.resolver_match.url_name == 'optimization' %}active{% endif %}">
-                    <i class="fa-solid fa-sliders"></i>
-                    <span>Bandwidth Optimizer</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'dashboard:prediction' %}" class="nav-item-link {% if request.resolver_match.url_name == 'prediction' %}active{% endif %}">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Predictive Markov</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
-                    <i class="fa-solid fa-magnifying-glass-chart"></i>
-                    <span>Traffic Classifier</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'dashboard:reports' %}" class="nav-item-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
-                    <i class="fa-solid fa-file-invoice"></i>
-                    <span>Analytical Reports</span>
-                </a>
-            </li>
-        </ul>
+        <div>
+            <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
+                <i data-lucide="activity"></i>
+                <span>NetInsight-X</span>
+            </a>
+            
+            <ul class="nav-menu">
+                <li>
+                    <a href="{% url 'dashboard:index' %}" class="nav-item-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+                        <i data-lucide="monitor"></i>
+                        <span>Live Monitor</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:analytics' %}" class="nav-item-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Traffic Analytics</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:optimization' %}" class="nav-item-link {% if request.resolver_match.url_name == 'optimization' %}active{% endif %}">
+                        <i data-lucide="sliders-horizontal"></i>
+                        <span>Bandwidth Optimizer</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:prediction' %}" class="nav-item-link {% if request.resolver_match.url_name == 'prediction' %}active{% endif %}">
+                        <i data-lucide="wand-2"></i>
+                        <span>Predictive Markov</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
+                        <i data-lucide="fingerprint"></i>
+                        <span>Traffic Classifier</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:reports' %}" class="nav-item-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                        <i data-lucide="file-text"></i>
+                        <span>Analytical Reports</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
         
-        <div class="mt-auto p-3 text-center rounded glass-card border-0" style="background-color: rgba(255,255,255,0.03);">
-            <div class="small text-muted mb-1">Operational Mode</div>
+        <div class="p-3 text-center rounded border border-secondary bg-dark bg-opacity-25" style="border-color: var(--border-subtle) !important;">
+            <div class="small text-secondary mb-1" style="font-size: 0.75rem;">OPERATIONAL STATE</div>
             {% if demo_mode %}
-                <span class="badge bg-primary text-white"><i class="fa-solid fa-circle-play me-1"></i>Replay (Demo)</span>
+                <span class="saas-badge badge-normal font-mono" style="font-size: 0.7rem;"><i data-lucide="play-circle" style="width:12px;height:12px;"></i>REPLAY</span>
             {% else %}
-                <span class="badge bg-success text-white"><i class="fa-solid fa-circle-dot me-1"></i>Live Sniffer</span>
+                <span class="saas-badge badge-busy font-mono" style="font-size: 0.7rem;"><i data-lucide="wifi" style="width:12px;height:12px;"></i>LIVE SNIFF</span>
             {% endif %}
         </div>
     </div>
 
     <!-- Main Content Area -->
     <div class="main-content">
-        <!-- Top Title Bar -->
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
             <div>
-                <span class="text-muted text-uppercase tracking-wider small">Decision Support System</span>
-                <h1 class="display-6 font-bold m-0">{% block page_title %}Dashboard{% endblock %}</h1>
+                <span class="breadcrumb-label">Decision Support System</span>
+                <h2 class="h4 font-bold m-0 mt-1">{% block page_title %}Dashboard{% endblock %}</h2>
             </div>
-            <div>
-                <span class="text-muted me-2"><i class="fa-regular fa-clock me-1"></i>System Time:</span>
-                <span id="system-time" class="font-monospace"></span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-secondary small font-mono"><i data-lucide="clock" class="d-inline-block me-1 align-text-top" style="width:14px;height:14px;"></i>TIME:</span>
+                <span id="system-time" class="font-mono text-white fw-bold"></span>
             </div>
         </div>
 
@@ -292,14 +331,19 @@
 
     <!-- Bootstrap JS Bundle CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Lucide Icons UMD CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         // Update live system time clock
         function updateTime() {
             const now = new Date();
-            document.getElementById('system-time').innerText = now.toLocaleTimeString();
+            document.getElementById('system-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
         }
         setInterval(updateTime, 1000);
         updateTime();
+        
+        // Initialize Lucide Icons
+        lucide.createIcons();
     </script>
     {% block extra_js %}{% endblock %}
 </body>

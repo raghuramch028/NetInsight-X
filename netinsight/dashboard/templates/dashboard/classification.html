@@ -1,102 +1,106 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Traffic Classification (SVM Classifier){% endblock %}
+{% block page_title %}Traffic Classification (SVM Inference Engine){% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
     <!-- Model Performance Summary -->
     <div class="col-lg-4">
-        <div class="glass-card h-100">
+        <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="m-0"><i class="fa-solid fa-microchip text-primary me-2"></i>SVM Model Profile</h4>
+                <h4 class="m-0 text-white font-bold h6">
+                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>SVM Model Profile
+                </h4>
                 {% if model_loaded %}
-                    <span class="badge bg-success text-white">ACTIVE</span>
+                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">Active</span>
                 {% else %}
-                    <span class="badge bg-warning text-dark">HEURISTIC</span>
+                    <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;">Heuristics</span>
                 {% endif %}
             </div>
             
-            <p class="text-muted small mb-4">
+            <p class="text-secondary small mb-4">
                 The classification module is built using a Support Vector Machine trained on the benchmark UNSW-NB15 dataset.
             </p>
 
             <ul class="list-group list-group-flush bg-transparent">
-                <li class="list-group-item bg-transparent border-secondary px-0 text-white d-flex justify-content-between">
-                    <span class="text-muted small">Classifier Type</span>
-                    <span class="font-bold font-monospace text-primary">RBF Kernel SVM</span>
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                    <span class="text-secondary small font-mono">Kernel Model</span>
+                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">RBF SVC</span>
                 </li>
-                <li class="list-group-item bg-transparent border-secondary px-0 text-white d-flex justify-content-between">
-                    <span class="text-muted small">Features Used</span>
-                    <span class="text-end font-bold small" style="max-width: 180px;">Size, Protocol, Latency, Packet Rate, Connection Freq</span>
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                    <span class="text-secondary small font-mono">Accuracy Score</span>
+                    <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">{{ stats.accuracy|floatformat:1 }}%</span>
                 </li>
-                <li class="list-group-item bg-transparent border-secondary px-0 text-white d-flex justify-content-between">
-                    <span class="text-muted small">Accuracy</span>
-                    <span class="font-monospace text-success font-bold">{{ stats.accuracy|floatformat:1 }}%</span>
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                    <span class="text-secondary small font-mono">F1-Score Metrics</span>
+                    <span class="font-mono text-info fw-bold" style="font-size:0.8rem;">{{ stats.f1_score|floatformat:1 }}%</span>
                 </li>
-                <li class="list-group-item bg-transparent border-secondary px-0 text-white d-flex justify-content-between">
-                    <span class="text-muted small">F1-Score</span>
-                    <span class="font-monospace text-info font-bold">{{ stats.f1_score|floatformat:1 }}%</span>
-                </li>
-                <li class="list-group-item bg-transparent border-0 px-0 text-white d-flex justify-content-between">
-                    <span class="text-muted small">Deployment Status</span>
-                    <span class="font-bold text-success"><i class="fa-solid fa-circle-check me-1"></i>Active Inference</span>
+                <li class="list-group-item bg-transparent border-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small font-mono">Inference Port</span>
+                    <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE</span>
                 </li>
             </ul>
         </div>
     </div>
 
-    <!-- Explanation of Preprocessing -->
+    <!-- Preprocessing explanation -->
     <div class="col-lg-8">
-        <div class="glass-card h-100">
-            <h4 class="mb-3 text-info"><i class="fa-solid fa-gears me-2"></i>Feature Engineering & Mapping Methodology</h4>
-            <p class="text-muted small">
-                <strong>Benchmark Dataset Mapping:</strong> Official UNSW-NB15 dataset rows categorize traffic into Normal and attack vectors. Since standard datasets do not map application categories directly, we engineered traffic groupings for normal flows:
+        <div class="saas-card h-100">
+            <h4 class="mb-3 text-info font-bold h6">
+                <i data-lucide="git-merge" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Feature Mapping Methodology
+            </h4>
+            <p class="text-secondary small mb-4">
+                <strong>Benchmark Dataset Mapping:</strong> Official UNSW-NB15 records classify traffic into Normal and attack flows. Since standard security sets do not map application classes directly, we engineered groupings:
             </p>
+            
             <div class="row g-2 mb-3">
                 <div class="col-6">
-                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small">
-                        <span class="font-bold text-white d-block mb-1">Web Browsing</span>
-                        Mapped from HTTP, SSL, DNS services with standard small-to-medium sizes.
+                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Web Browsing</span>
+                        Mapped from HTTP, SSL, and DNS services with standard small-to-medium payload sizes.
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small">
-                        <span class="font-bold text-white d-block mb-1">Streaming</span>
-                        Mapped from high-rate UDP streams with continuous transmission sizes.
+                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Streaming</span>
+                        Mapped from high-rate UDP streams with continuous payload transmission sizes.
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small">
-                        <span class="font-bold text-white d-block mb-1">File Transfer</span>
-                        Mapped from FTP/SFTP services or massive TCP segment transfer sizes.
+                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">File Transfer</span>
+                        Mapped from FTP/SFTP services or massive TCP segment transfer packet sizes.
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small">
-                        <span class="font-bold text-white d-block mb-1">Potentially Suspicious</span>
+                    <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Potentially Suspicious</span>
                         Mapped from raw attack categories (DoS, Backdoor, Fuzzers, etc.).
                     </div>
                 </div>
             </div>
-            <p class="text-muted small mb-0">
-                <strong>Why RBF Kernel:</strong> Network traffic features represent a complex overlapping space that is not linearly separable. The Radial Basis Function (RBF) Kernel projects these metrics into an infinite-dimensional Hilbert space to construct optimal non-linear classification hyperplanes.
+            
+            <p class="text-secondary small mb-0">
+                <strong>Why RBF Kernel:</strong> Network traffic dimensions exhibit highly overlapping parameters. The Radial Basis Function (RBF) Kernel projects these metrics into an infinite-dimensional Hilbert space to construct optimal classification boundaries.
             </p>
         </div>
     </div>
 </div>
 
 <!-- Classifications log table -->
-<div class="glass-card mb-4">
-    <h4 class="mb-4"><i class="fa-solid fa-list-check text-success me-2"></i>Recent Packet Classifications (Last 50 Packets)</h4>
+<div class="saas-card mb-4">
+    <h4 class="mb-4 text-white font-bold h6">
+        <i data-lucide="table" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Recent Packet Classification Inference History
+    </h4>
     <div class="table-responsive">
         <table class="table custom-table">
             <thead>
                 <tr>
                     <th>Protocol</th>
-                    <th>Source Host</th>
-                    <th>Destination Host</th>
-                    <th>Ports</th>
-                    <th>Size</th>
+                    <th>Source Host IP</th>
+                    <th>Destination Host IP</th>
+                    <th>Ports Sequence</th>
+                    <th>Size (Bytes)</th>
                     <th>TTL</th>
                     <th>Classification Label</th>
                 </tr>
@@ -106,33 +110,33 @@
                     <tr>
                         <td>
                             {% if pkt.protocol == 'TCP' %}
-                                <span class="badge bg-primary">TCP</span>
+                                <span class="badge bg-primary font-mono text-white" style="font-size:0.7rem;">TCP</span>
                             {% elif pkt.protocol == 'UDP' %}
-                                <span class="badge bg-success">UDP</span>
+                                <span class="badge bg-success font-mono text-white" style="font-size:0.7rem;">UDP</span>
                             {% else %}
-                                <span class="badge bg-warning text-dark">{{ pkt.protocol }}</span>
+                                <span class="badge bg-warning font-mono text-dark" style="font-size:0.7rem;">{{ pkt.protocol }}</span>
                             {% endif %}
                         </td>
-                        <td class="font-monospace">{{ pkt.src_ip }}</td>
-                        <td class="font-monospace">{{ pkt.dst_ip }}</td>
-                        <td><span class="badge bg-secondary font-monospace">{{ pkt.src_port }} &rarr; {{ pkt.dst_port }}</span></td>
-                        <td class="font-monospace">{{ pkt.size }} Bytes</td>
-                        <td class="font-monospace">{{ pkt.ttl }}</td>
+                        <td class="font-mono">{{ pkt.src_ip }}</td>
+                        <td class="font-mono">{{ pkt.dst_ip }}</td>
+                        <td><span class="badge bg-secondary font-mono text-secondary" style="background-color:rgba(255,255,255,0.02) !important; border:1px solid var(--border-subtle); font-size:0.7rem;">{{ pkt.src_port }} &rarr; {{ pkt.dst_port }}</span></td>
+                        <td class="font-mono">{{ pkt.size }} Bytes</td>
+                        <td class="font-mono">{{ pkt.ttl }}</td>
                         <td>
                             {% if pkt.classification == 'Web Browsing' %}
-                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="fa-solid fa-globe me-1"></i>Web Browsing</span>
+                                <span class="saas-badge badge-busy font-mono" style="font-size:0.7rem;"><i data-lucide="globe" style="width:11px;height:11px;vertical-align:-1px;"></i>Web Browsing</span>
                             {% elif pkt.classification == 'Streaming' %}
-                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="fa-solid fa-circle-play me-1"></i>Streaming</span>
+                                <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;"><i data-lucide="play" style="width:11px;height:11px;vertical-align:-1px;"></i>Streaming</span>
                             {% elif pkt.classification == 'File Transfer' %}
-                                <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1"><i class="fa-solid fa-file-arrow-down me-1"></i>File Transfer</span>
+                                <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem; color: #a855f7; border-color: rgba(168,85,247,0.2); background-color: rgba(168,85,247,0.05);"><i data-lucide="file-down" style="width:11px;height:11px;vertical-align:-1px;"></i>File Transfer</span>
                             {% else %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Suspicious</span>
+                                <span class="saas-badge badge-failure font-mono" style="font-size:0.7rem;"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i>Suspicious</span>
                             {% endif %}
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted">No packets captured in database to perform classification inference.</td>
+                        <td colspan="7" class="text-center text-secondary py-4">No packet logs recorded to perform inference.</td>
                     </tr>
                 {% endfor %}
             </tbody>
