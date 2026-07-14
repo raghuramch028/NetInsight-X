@@ -76,8 +76,8 @@ Calculates operational network states (NORMAL, BUSY, CONGESTED, FAILURE) and est
 Computes advisory recommendations using action-dependent transition matrices and configurable rewards via Value Iteration.
 
 * **Methods:**
-  * `solve_value_iteration() -> tuple`: Iteratively updates state values to converge on optimal policies.
-  * `get_recommendation(current_state_name) -> dict`: Looks up optimal actions (Reallocate Bandwidth, Reroute Traffic, Prioritize Critical Services) and returns expected value estimates.
+  * `solve_value_iteration(tolerance: float = 1e-6, max_iter: int = 1000) -> tuple`: Iteratively updates state values to converge on optimal policies. Returns `(V, policy)` arrays.
+  * `get_recommendation(current_state_name) -> dict`: Looks up optimal actions (`Reallocate Bandwidth`, `Reroute Traffic`, `Prioritize Critical Services`) and returns expected value estimates.
 
 ---
 
@@ -87,12 +87,83 @@ Computes advisory recommendations using action-dependent transition matrices and
 Runs the preprocessing, scaling, and training pipelines to save trained SVM parameters.
 
 * **Features mapped:** Packet Size, Protocol, Latency, Packet Rate, Connection Frequency.
-* **Algorithm:** Support Vector Machine (SVC) with RBF Kernel.
+* **Algorithm:** Support Vector Machine (`SVC`) with RBF Kernel.
+* **Model artifacts:** `svm_model.joblib` and `scaler.joblib` are loaded from the directory resolved by `settings.SVM_MODEL_PATH` (or `NETINSIGHT_SVM_PATH` env var). If absent, a deterministic synthetic dataset is generated and a model is trained on the fly.
 
 ### 5.2 `TrafficClassifier` (in `classifier.py`)
 Performs classification inference on incoming packets.
 
+* **Constructor:** `TrafficClassifier(model_path: str | None = None, window_duration: float = 10.0)`
+  * `model_path` overrides `settings.SVM_MODEL_PATH`.
+  * `window_duration` is the rolling window in seconds for packet-rate and connection-frequency features.
 * **Methods:**
-  * `load_model() -> bool`: Loads the saved SVM joblib model and features scaler.
-  * `update_ip_cache(src_ip, dst_ip, size, timestamp) -> tuple`: Maintains in-memory packet rates and unique connection destination frequencies.
-  * `classify_packet(packet_dict) -> str`: Runs model predictions, falling back to rule-based heuristics if the SVM files are missing.
+  * `load_model() -> bool`: Loads the saved SVM `joblib` model and `scaler.joblib` from the model directory. Reloads at call time; returns `True` on success.
+  * `update_ip_cache(src_ip, dst_ip, size, timestamp) -> tuple[float, float]`: Maintains in-memory packet rates and unique connection destination frequencies.
+  * `classify_packet(packet_dict) -> str`: Runs model predictions, falling back to rule-based heuristics if the SVM files are missing. Returns one of `Web Browsing`, `Streaming`, `File Transfer`, `Potentially Suspicious`.
+
+---
+
+## 6. Dashboard Web & JSON API (`netinsight/dashboard`)
+
+The Django dashboard exposes both server-rendered pages and JSON endpoints used by the front-end Chart.js widgets.
+
+### 6.1 Web Pages
+
+| URL | View | Description |
+| :--- | :--- | :--- |
+| `/` | `index_view` | Live telemetry dashboard with metrics, charts, and packet log. |
+| `/analytics/` | `analytics_view` | Protocol distribution and top bandwidth consumers. |
+| `/optimization/` | `optimization_view` | LP bandwidth allocator and KKT verification results. |
+| `/prediction/` | `prediction_view` | Markov state forecast and MDP advisory policy. |
+| `/classification/` | `classification_view` | SVM model status and recent packet classification history. |
+| `/reports/` | `reports_view` | Historical telemetry charts rendered as base64 PNG images. |
+
+### 6.2 JSON Endpoints
+
+#### `GET /api/live-metrics/`
+
+Returns the most recent computed metrics plus the current state and MDP recommendation.
+
+**Response (example):**
+
+```json
+{
+  "timestamp": 1784033083.253445,
+  "throughput": 593559.33,
+  "packet_rate": 96.08,
+  "bandwidth_util": 0.5936,
+  "latency": 0.0123,
+  "packet_loss": 0.0,
+  "network_state": "NORMAL",
+  "active_devices_count": 4,
+  "mdp_recommendation": {
+    "current_state": "NORMAL",
+    "recommended_action": "Reallocate Bandwidth",
+    "expected_value": 95.38
+  }
+}
+```
+
+#### `GET /api/live-packets/`
+
+Returns the 20 most recently captured packets ordered by insertion ID.
+
+**Response (example):**
+
+```json
+{
+  "packets": [
+    {
+      "id": 1234,
+      "src_ip": "192.168.1.22",
+      "dst_ip": "8.8.8.8",
+      "src_port": 45678,
+      "dst_port": 443,
+      "protocol": "TCP",
+      "size": 1042,
+      "timestamp": 1784033083.25,
+      "ttl": 64
+    }
+  ]
+}
+```

@@ -33,32 +33,45 @@ Packet Capture Layer (Multi-threaded Scapy Sniffer / Replay Mode)
 ## 2. Prerequisites & Installation
 
 ### 2.1 Windows Environment Setup
-1. **Python 3.10+** (Python 3.14 was verified during development).
+1. **Python 3.10+** (verified with Python 3.10.12).
 2. **Npcap**: Scapy requires Npcap to capture live sockets on Windows.
    * Download and install **[Npcap](https://npcap.com/)**.
    * Select *"Install Npcap in WinPcap API-compatible Mode"* during installation.
 3. **Elevated Privileges (Administrator)**: Raw socket packet sniffing requires Administrator permissions on Windows. Run your terminal (cmd/PowerShell) as Administrator.
 
-### 2.2 Quickstart Commands
+### 2.2 Linux / macOS Environment Setup
+* **Linux:** Install `libpcap-dev` and run with `sudo`, or grant capabilities to Python:
+  ```bash
+  sudo apt-get install libpcap-dev
+  sudo setcap cap_net_raw,cap_net_admin=eip /path/to/venv/bin/python
+  ```
+* **macOS:** `libpcap` is usually pre-installed; run with `sudo` for live capture.
+
+### 2.3 Quickstart Commands
 From the project root folder:
 
-```powershell
+```bash
 # 1. Initialize virtual environment
 python -m venv venv
 
 # 2. Activate virtual environment
-# On PowerShell:
-.\venv\Scripts\Activate.ps1
-# On CMD:
-.\venv\Scripts\activate.bat
+source venv/bin/activate  # Linux/macOS
+# .\venv\Scripts\Activate.ps1  # PowerShell
+# .\venv\Scripts\activate.bat  # CMD
 
 # 3. Install requirements
 pip install -r requirements.txt
 
-# 4. Initialize Django Database
+# 4. (Optional) Train/regenerate the SVM model files
+python -m netinsight.classification.train
+
+# 5. Collect static files for deployment
+python manage.py collectstatic --noinput
+
+# 6. Initialize Django Database
 python manage.py migrate
 
-# 5. Start Django Application
+# 7. Start Django Application
 python manage.py runserver
 ```
 
@@ -68,19 +81,40 @@ Open your browser and navigate to: **[http://localhost:8000/](http://localhost:8
 
 ## 3. Project Configuration
 
-Configure network monitor interfaces, link capacities, or decision weights inside **`netinsight/config/settings.py`**:
-* **`CAPTURE_INTERFACE`**: Bind to a specific network adapter index (defaults to `None` to auto-detect).
-* **`LINK_CAPACITY`**: Configurable bandwidth scale in bps (default: `100_000_000.0` or 100 Mbps).
-* **`DEMO_MODE`**: If `True`, the capture module replays simulated packet transitions representing distinct network loads. Switch to `False` to sniff live physical interface traffic.
+Configuration is managed via environment variables and **`netinsight/config/settings.py`**.
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `DJANGO_SECRET_KEY` | (development fallback) | Django secret key. **Must be set in production.** |
+| `DEBUG` | `True` | Set to `False` in production. |
+| `ALLOWED_HOSTS` | `*` | Comma-separated list of hosts. |
+| `DATABASE_URL` or `NETINSIGHT_DB_PATH` | `netinsight/database/netinsight.db` | Path to the SQLite database. |
+| `NETINSIGHT_SVM_PATH` | `netinsight/classification/svm_model.joblib` | Path to the persisted SVM model. |
+| `NETINSIGHT_DEMO_MODE` | `True` | Set to `False` to capture live traffic. |
+| `NETINSIGHT_LOG_LEVEL` | `INFO` | Logging level for the `netinsight` logger. |
+
+Core tunables in `netinsight/config/settings.py`:
+* **`CAPTURE_INTERFACE`**: Network adapter index to bind to (`None` for auto-detect).
+* **`LINK_CAPACITY`**: Bandwidth scale in bps (default: `100_000_000.0` = 100 Mbps).
+* **`QOS_PRIORITIES` / `QOS_MIN_BANDWIDTH` / `QOS_MAX_BANDWIDTH`**: Optimization weights and bounds.
+* **`STATE_THRESHOLDS`**: Markov state classification thresholds.
+
+For Render and other PaaS deployments, use the env variables above instead of editing `settings.py`.
 
 ---
 
 ## 4. Run Diagnostic Tests
 
-To run the complete test suite verifying all 6 modules (capture, database, analytics, optimization, prediction, classification, and views):
+To run the complete test suite verifying all modules (capture, database, analytics, optimization, prediction, classification, and views):
 
-```powershell
-.\venv\Scripts\python.exe -m unittest discover -s netinsight/tests/
+```bash
+python -m unittest discover -s netinsight/tests/
+```
+
+To apply linting and style checks:
+
+```bash
+ruff check netinsight/ manage.py
 ```
 
 ---
@@ -106,7 +140,10 @@ netinsight/
 
 ## 6. Detailed Mathematical Reports
 For full mathematical derivations, variables, and algorithms, refer to:
-* **SRS & Technical Report:** [IEEE_Report.md](file:///c:/Users/raghu/OneDrive/Desktop/MFC-3/docs/IEEE_Report.md)
-* **Mathematical Derivations:** [Mathematical_Formulation.md](file:///c:/Users/raghu/OneDrive/Desktop/MFC-3/docs/Mathematical_Formulation.md)
-* **Database Schema Layout:** [DatabaseDesign.md](file:///c:/Users/raghu/OneDrive/Desktop/MFC-3/docs/DatabaseDesign.md)
-* **Programmatic APIs:** [API.md](file:///c:/Users/raghu/OneDrive/Desktop/MFC-3/docs/API.md)
+* **Installation & Operations:** [docs/Installation.md](docs/Installation.md)
+* **Configuration Reference:** [docs/Configuration.md](docs/Configuration.md)
+* **SRS & Technical Report:** [docs/IEEE_Report.md](docs/IEEE_Report.md)
+* **Mathematical Derivations:** [docs/Mathematical_Formulation.md](docs/Mathematical_Formulation.md)
+* **Database Schema Layout:** [docs/DatabaseDesign.md](docs/DatabaseDesign.md)
+* **Programmatic APIs:** [docs/API.md](docs/API.md)
+* **System Architecture:** [docs/Architecture.md](docs/Architecture.md)

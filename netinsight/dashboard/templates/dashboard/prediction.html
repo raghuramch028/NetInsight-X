@@ -11,7 +11,7 @@
                 <i data-lucide="line-chart" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Multi-Step Ahead State Forecasting
             </h4>
             <p class="text-secondary small mb-4">
-                We classify the network state into four zones: NORMAL, BUSY, CONGESTED, and FAILURE. Below are the predicted state probability distributions calculated $k$ steps ahead using the estimated transition matrix ($s^{(t+k)} = s^{(t)} P^k$):
+                We classify the network state into four zones: NORMAL, BUSY, CONGESTED, and FAILURE. Below are the predicted state probability distributions calculated <em>k</em> steps ahead using the estimated transition matrix (s<sup>(t+k)</sup> = s<sup>(t)</sup> P<sup>k</sup>):
             </p>
             
             <div class="mb-4">
@@ -48,7 +48,7 @@
     <div class="col-lg-6">
         <div class="saas-card h-100">
             <h4 class="mb-4 text-white font-bold h6">
-                <i data-lucide="matrix" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Markov Transition Matrix (P)
+                <i data-lucide="table" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Markov Transition Matrix (P)
             </h4>
             <p class="text-secondary small mb-3">
                 Calculated dynamically from transitions between network states recorded in the <code>state_history</code> database table.

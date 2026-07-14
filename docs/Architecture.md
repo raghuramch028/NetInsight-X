@@ -79,3 +79,13 @@ To prevent UI freeze or frame loss, capture operations utilize a **Producer-Cons
 
 ## 2. Demonstration / Replay Mode
 When active capture is disabled (`settings.DEMO_MODE = True`), the Sniffer thread transitions to a generator that simulates network packets. It generates statistical packet patterns matching distinct network congestion states (Normal, Busy, Congested, Failure) to validate downstream analytics, predictors, and optimizer code paths.
+
+---
+
+## 3. Security, Configuration, and Observability
+
+* **Environment-driven configuration:** `DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `NETINSIGHT_DB_PATH`, `NETINSIGHT_SVM_PATH`, `NETINSIGHT_DEMO_MODE`, and `NETINSIGHT_LOG_LEVEL` are read from the environment at startup, making the project deployable on Render and similar PaaS platforms without editing source files.
+* **Static file serving:** WhiteNoise serves collected static files in production; `python manage.py collectstatic --noinput` is part of the standard build flow.
+* **Structured logging:** A `LOGGING` dictionary routes `netinsight`, `django`, and `matplotlib` loggers through a single console handler. `print()` statements in backend modules have been replaced with `logging` calls.
+* **Thread safety and resource cleanup:** The capture pipeline uses a bounded `queue.Queue`, `threading.Lock` for shared window counters and caches, and `with` blocks around database connections to prevent connection leaks.
+* **Graceful degradation:** If the SVM model is missing, the classifier falls back to deterministic heuristics; if the CVXOPT solver reports infeasibility, a proportional fallback allocation is returned with KKT indicators set to `False`.

@@ -1,27 +1,40 @@
+import logging
 import os
+import shutil
+import tempfile
 import time
 import unittest
-import tempfile
-import logging
 from pathlib import Path
-from scapy.all import IP, TCP, UDP
+
+from scapy.all import IP, TCP
+
+from netinsight.capture.monitor import LiveMonitor
+from netinsight.capture.parser import PacketParser
+from netinsight.config import settings
+from netinsight.database import db_manager
 
 logger = logging.getLogger(__name__)
 
-# Force temporary database path for testing
-test_db_dir = tempfile.TemporaryDirectory()
-os.environ["NETINSIGHT_DB_PATH"] = str(Path(test_db_dir.name) / "test_netinsight.db")
-os.environ["NETINSIGHT_DEMO_MODE"] = "True"
-
-from netinsight.config import settings
-from netinsight.capture.parser import PacketParser
-from netinsight.capture.monitor import LiveMonitor
-from netinsight.database import db_manager
 
 class TestPacketCapture(unittest.TestCase):
-    
+
+    @classmethod
+    def setUpClass(cls):
+        cls._orig_db_path = settings.DB_PATH
+        cls._orig_demo_mode = settings.DEMO_MODE
+        cls.test_db_dir = tempfile.mkdtemp()
+        settings.DB_PATH = str(Path(cls.test_db_dir) / "test_netinsight.db")
+        os.environ["NETINSIGHT_DB_PATH"] = settings.DB_PATH
+        settings.DEMO_MODE = True
+        os.environ["NETINSIGHT_DEMO_MODE"] = "True"
+
+    @classmethod
+    def tearDownClass(cls):
+        settings.DB_PATH = cls._orig_db_path
+        settings.DEMO_MODE = cls._orig_demo_mode
+        shutil.rmtree(cls.test_db_dir, ignore_errors=True)
+
     def setUp(self):
-        # Initialize database schema on temporary file
         db_manager.init_db()
         db_manager.clear_db()
         self.parser = PacketParser()
@@ -40,9 +53,9 @@ class TestPacketCapture(unittest.TestCase):
         # Create a mock Scapy IP/TCP packet
         pkt = IP(src="192.168.1.50", dst="10.0.0.1", ttl=64) / TCP(sport=12345, dport=80, seq=1000, flags="S")
         pkt.time = time.time()
-        
+
         parsed = self.parser.parse(pkt)
-        
+
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed["src_ip"], "192.168.1.50")
         self.assertEqual(parsed["dst_ip"], "10.0.0.1")
@@ -65,7 +78,7 @@ class TestPacketCapture(unittest.TestCase):
         pkt2 = IP(src="10.0.0.1", dst="192.168.1.50") / TCP(sport=80, dport=12345, seq=5000, ack=1001, flags="SA")
         pkt2.time = t_syn_ack
         parsed2 = self.parser.parse(pkt2)
-        
+
         # Check parser RTT calculation
         self.assertIsNotNone(parsed2["latency_est"])
         self.assertAlmostEqual(parsed2["latency_est"], 0.050, places=3)
@@ -76,15 +89,15 @@ class TestPacketCapture(unittest.TestCase):
         # Scapy payload length > 0 is needed to trigger seq tracker checks
         flow_pkt1 = flow_pkt1 / "SOME PAYLOAD DATA"
         flow_pkt1.time = time.time()
-        
+
         parsed1 = self.parser.parse(flow_pkt1)
         self.assertFalse(parsed1["is_retransmission"])
-        
+
         # Identical packet (duplicate sequence number) signifying a TCP retransmission
         flow_pkt2 = IP(src="192.168.1.50", dst="10.0.0.1") / TCP(sport=12345, dport=80, seq=2000, flags="A")
         flow_pkt2 = flow_pkt2 / "SOME PAYLOAD DATA"
         flow_pkt2.time = time.time() + 0.1
-        
+
         parsed2 = self.parser.parse(flow_pkt2)
         self.assertTrue(parsed2["is_retransmission"])
         self.assertAlmostEqual(self.parser.get_estimated_loss_rate(), 50.0, places=1)
@@ -92,29 +105,33 @@ class TestPacketCapture(unittest.TestCase):
     def test_live_monitor_demo_run(self):
         """Starts and stops LiveMonitor in DEMO_MODE, verifying packets flow to SQL."""
         monitor = LiveMonitor()
-        monitor.start()
-        
-        # Let it run for 1.5 seconds to accumulate packets and write to SQL
-        time.sleep(1.5)
-        monitor.stop()
-        
-        # Check that packets were inserted into the DB
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT COUNT(*) FROM packets")
-        packet_count = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM metrics")
-        metrics_count = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM state_history")
-        history_count = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        self.assertGreater(packet_count, 0, "Packets table should have entries in Demo Mode.")
-        logger.info(f"Test Run Summary: Captured {packet_count} packets and generated {metrics_count} metric logs.")
+        try:
+            monitor.start()
+
+            # Let it run for 2.5 seconds to accumulate packets and write metrics to SQL
+            time.sleep(2.5)
+
+            # Check that packets were inserted into the DB
+            conn = db_manager.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM packets")
+            packet_count = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM metrics")
+            metrics_count = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM state_history")
+            history_count = cursor.fetchone()[0]
+
+            conn.close()
+
+            self.assertGreater(packet_count, 0, "Packets table should have entries in Demo Mode.")
+            self.assertGreater(metrics_count, 0, "Metrics table should have entries in Demo Mode.")
+            self.assertGreaterEqual(history_count, 0)
+            logger.info(f"Test Run Summary: Captured {packet_count} packets and generated {metrics_count} metric logs.")
+        finally:
+            monitor.stop()
 
 if __name__ == "__main__":
     unittest.main()

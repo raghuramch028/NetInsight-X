@@ -1,31 +1,32 @@
-import time
 import logging
-from scapy.all import IP, TCP, UDP, ICMP, Packet
+import time
+
+from scapy.all import IP, TCP, UDP, Packet
 
 logger = logging.getLogger(__name__)
 
 class PacketParser:
     """Parses raw Scapy packets and estimates network metrics like latency and packet loss.
-    
+
     This class utilizes passive heuristics suitable for a live monitor.
     """
-    
+
     def __init__(self):
         # Maps TCP flow keys to handshake timestamps
         # flow_key: (src_ip, src_port, dst_ip, dst_port)
         self.syn_tracker = {}       # flow_key -> timestamp of SYN
         self.syn_ack_tracker = {}   # reverse_flow_key -> timestamp of SYN-ACK
-        
+
         # Maps flow keys to their last packet arrival timestamp (for inter-packet delay estimation)
         self.last_packet_time = {}  # flow_key -> timestamp
         self.rolling_inter_packet_delays = []
         self.max_delay_history = 1000
-        
+
         # Maps TCP flow keys to a set of observed sequence numbers to detect duplicate sequence retransmissions
         self.flow_seq_numbers = {}  # flow_key -> set of sequence numbers
         self.total_packets_per_flow = {} # flow_key -> count
         self.retransmitted_packets_per_flow = {} # flow_key -> count
-        
+
         # Protocols mapping
         self.proto_map = {1: "ICMP", 6: "TCP", 17: "UDP"}
 
@@ -35,7 +36,7 @@ class PacketParser:
 
     def parse(self, packet: Packet) -> dict | None:
         """Decodes a Scapy packet and extracts network features.
-        
+
         Also calculates passive estimations of latency and packet loss.
         """
         if not packet.haslayer(IP):
@@ -59,10 +60,10 @@ class PacketParser:
             tcp_layer = packet[TCP]
             src_port = int(tcp_layer.sport)
             dst_port = int(tcp_layer.dport)
-            
+
             flow_key = self.get_flow_key(src_ip, src_port, dst_ip, dst_port)
             rev_flow_key = self.get_flow_key(dst_ip, dst_port, src_ip, src_port)
-            
+
             # --- Latency Estimation (TCP Handshake RTT Heuristic) ---
             flags = tcp_layer.flags
             if flags & 0x02:  # SYN flag is set
@@ -74,19 +75,18 @@ class PacketParser:
                     if rev_flow_key in self.syn_tracker:
                         latency_est = timestamp - self.syn_tracker[rev_flow_key]
                         del self.syn_tracker[rev_flow_key]
-            elif flags & 0x10:  # ACK flag is set
+            elif flags & 0x10 and flow_key in self.syn_ack_tracker:  # ACK flag is set
                 # If we tracked a SYN-ACK, compute RTT on first ACK
-                if flow_key in self.syn_ack_tracker:
-                    latency_est = timestamp - self.syn_ack_tracker[flow_key]
-                    del self.syn_ack_tracker[flow_key]
+                latency_est = timestamp - self.syn_ack_tracker[flow_key]
+                del self.syn_ack_tracker[flow_key]
 
             # --- Packet Loss Estimation (TCP Retransmission Heuristic) ---
             seq_num = tcp_layer.seq
             self.total_packets_per_flow[flow_key] = self.total_packets_per_flow.get(flow_key, 0) + 1
-            
+
             if flow_key not in self.flow_seq_numbers:
                 self.flow_seq_numbers[flow_key] = set()
-                
+
             # If sequence number was already seen, classify as retransmission (potential packet loss marker)
             # Avoid counting empty ACKs as duplicate seqs by checking if payload size > 0
             payload_len = len(tcp_layer.payload)

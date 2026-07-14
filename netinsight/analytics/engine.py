@@ -1,31 +1,31 @@
-import time
 import logging
-import sqlite3
+import time
+
 import pandas as pd
-from netinsight.config import settings
+
 from netinsight.database import db_manager
 
 logger = logging.getLogger(__name__)
 
 class AnalyticsEngine:
     """Computes traffic statistics, protocol distributions, and devices activity.
-    
+
     All calculations are done using Pandas and SQLite.
     Each method includes mathematical and assumption notes.
     """
-    
+
     def __init__(self):
         pass
 
     def get_latest_metrics(self) -> dict:
         """Retrieves the most recent entry from the metrics table.
-        
+
         If no data is present, returns default zero metrics to handle empty states gracefully.
         """
         conn = db_manager.get_connection()
         try:
             df = pd.read_sql_query(
-                "SELECT * FROM metrics ORDER BY timestamp DESC LIMIT 1", 
+                "SELECT * FROM metrics ORDER BY timestamp DESC LIMIT 1",
                 conn
             )
             if df.empty:
@@ -53,14 +53,14 @@ class AnalyticsEngine:
 
     def get_historical_metrics(self, limit: int = 100) -> pd.DataFrame:
         """Retrieves a historical dataframe of computed metrics.
-        
+
         Useful for analytical reports and plotting.
         """
         conn = db_manager.get_connection()
         try:
             df = pd.read_sql_query(
-                "SELECT * FROM metrics ORDER BY timestamp DESC LIMIT ?", 
-                conn, 
+                "SELECT * FROM metrics ORDER BY timestamp DESC LIMIT ?",
+                conn,
                 params=(limit,)
             )
             if df.empty:
@@ -74,7 +74,7 @@ class AnalyticsEngine:
 
     def get_protocol_distribution(self, window_seconds: float = 60.0) -> pd.DataFrame:
         """Computes the distribution of protocols within the given recent time window.
-        
+
         Formula:
             Protocol % = (Count of Protocol Packets / Total Packets) * 100
         Assumptions:
@@ -93,7 +93,7 @@ class AnalyticsEngine:
             )
             if df.empty:
                 return pd.DataFrame(columns=["protocol", "packet_count", "byte_count", "percentage"])
-            
+
             total_pkts = df["packet_count"].sum()
             df["percentage"] = (df["packet_count"] / total_pkts) * 100.0 if total_pkts > 0 else 0.0
             return df
@@ -105,7 +105,7 @@ class AnalyticsEngine:
 
     def get_top_consumers(self, limit: int = 5, window_seconds: float = 60.0) -> pd.DataFrame:
         """Identifies top source IP addresses by cumulative traffic size.
-        
+
         Formula:
             Traffic(IP) = Sum(Packet Size) for SrcIP = IP
         Assumptions:
@@ -125,7 +125,7 @@ class AnalyticsEngine:
             )
             if df.empty:
                 return pd.DataFrame(columns=["src_ip", "packet_count", "total_bytes", "percentage"])
-            
+
             total_bytes_window = df["total_bytes"].sum()
             df["percentage"] = (df["total_bytes"] / total_bytes_window) * 100.0 if total_bytes_window > 0 else 0.0
             return df
@@ -137,7 +137,7 @@ class AnalyticsEngine:
 
     def get_active_devices_count(self, window_seconds: float = 300.0) -> int:
         """Returns the number of unique active source devices in the recent window.
-        
+
         Assumptions:
             Devices emit at least one packet within the window to be counted.
         """
@@ -165,7 +165,7 @@ class AnalyticsEngine:
                 conn,
                 params=(cutoff,)
             )
-            
+
             if df.empty or df.iloc[0]["total_packets"] is None or df.iloc[0]["total_packets"] == 0:
                 return {
                     "total_packets": 0,
@@ -173,7 +173,7 @@ class AnalyticsEngine:
                     "avg_packet_size": 0.0,
                     "active_devices": 0
                 }
-                
+
             summary = df.iloc[0].to_dict()
             summary["active_devices"] = self.get_active_devices_count(window_seconds)
             return summary

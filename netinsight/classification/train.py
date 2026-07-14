@@ -1,22 +1,17 @@
-import os
-import joblib
 import logging
+from pathlib import Path
+
+import joblib
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-
-logger = logging.getLogger(__name__)
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 from netinsight.config import settings
 
-# Constants
-MODEL_PATH = Path(settings.SVM_MODEL_PATH)
-SCALER_PATH = MODEL_PATH.parent / "scaler.joblib"
-MODEL_DIR = MODEL_PATH.parent
+logger = logging.getLogger(__name__)
 
 # Feature definitions
 # 1. Packet Size (sbytes)
@@ -32,20 +27,25 @@ CLASS_LABELS = {
     3: "Potentially Suspicious"
 }
 
+def _model_paths() -> tuple[Path, Path, Path]:
+    """Returns (model_path, scaler_path, model_dir) from settings at call time."""
+    model_path = Path(settings.SVM_MODEL_PATH)
+    return model_path, model_path.parent / "scaler.joblib", model_path.parent
+
 def generate_synthetic_unsw_data(n_samples: int = 2000) -> pd.DataFrame:
     """Generates synthetic network data mirroring the mapped UNSW-NB15 schema.
-    
+
     Used for testing, local execution fallback, and demonstrations.
     """
     logger.info("Generating representative synthetic traffic classification training data...")
     np.random.seed(42)
-    
+
     data = []
     for _ in range(n_samples):
         # Choose class label
         # 0 = Web Browsing, 1 = Streaming, 2 = File Transfer, 3 = Potentially Suspicious
         label = np.random.choice([0, 1, 2, 3], p=[0.40, 0.25, 0.20, 0.15])
-        
+
         if label == 0:  # Web Browsing
             packet_size = float(np.random.randint(200, 1500))
             protocol = 6.0  # TCP
@@ -70,46 +70,50 @@ def generate_synthetic_unsw_data(n_samples: int = 2000) -> pd.DataFrame:
             latency = float(np.random.uniform(0.100, 0.600))     # High latency spikes
             packet_rate = float(np.random.uniform(500.0, 2000.0)) # Massive attack rates
             conn_frequency = float(np.random.randint(80, 200))   # High service hit counts
-            
+
         data.append([packet_size, protocol, latency, packet_rate, conn_frequency, label])
-        
+
     df = pd.DataFrame(data, columns=FEATURE_COLUMNS + ["label"])
     return df
 
 def load_official_unsw_dataset(train_csv_path: str, test_csv_path: str) -> pd.DataFrame:
     """Loads and preprocesses official UNSW-NB15 CSV datasets from a local path.
-    
+
     Performs feature engineering and maps binary/attack classes to target application classes.
     """
     logger.info(f"Loading official UNSW-NB15 CSVs: {train_csv_path}, {test_csv_path}")
-    
+
     df_train = pd.read_csv(train_csv_path)
     df_test = pd.read_csv(test_csv_path)
     df_raw = pd.concat([df_train, df_test], ignore_index=True)
-    
+
     # Preprocessing feature mapping:
     # - packet_size = sbytes (source bytes)
     # - protocol = numeric mapping of proto (TCP=6, UDP=17, ICMP=1, others=0)
     # - latency = dur (duration) or rtt (if available)
     # - packet_rate = rate (packet rate)
     # - conn_frequency = ct_srv_src (connection frequency)
-    
+
     df = pd.DataFrame()
     df["packet_size"] = df_raw["sbytes"].astype(float)
-    
+
     # Protocol mapping
     def map_proto(p):
         p_lower = str(p).lower()
-        if "tcp" in p_lower: return 6.0
-        if "udp" in p_lower: return 17.0
-        if "icmp" in p_lower: return 1.0
+        if "tcp" in p_lower:
+            return 6.0
+        if "udp" in p_lower:
+            return 17.0
+        if "icmp" in p_lower:
+            return 1.0
         return 0.0
+
     df["protocol"] = df_raw["proto"].apply(map_proto)
-    
+
     df["latency"] = df_raw["dur"].astype(float)
     df["packet_rate"] = df_raw["rate"].astype(float)
     df["conn_frequency"] = df_raw["ct_srv_src"].astype(float)
-    
+
     # --- Class Label Mapping ---
     # Normal and Malicious split:
     # - If raw label == 1 (Attack) -> Mapped to 'Potentially Suspicious' (3)
@@ -119,7 +123,7 @@ def load_official_unsw_dataset(train_csv_path: str, test_csv_path: str) -> pd.Da
     raw_services = df_raw["service"].tolist()
     raw_rates = df_raw["rate"].tolist()
     raw_sizes = df_raw["sbytes"].tolist()
-    
+
     for idx in range(len(df_raw)):
         if raw_labels[idx] == 1:
             labels.append(3)  # Potentially Suspicious
@@ -133,17 +137,18 @@ def load_official_unsw_dataset(train_csv_path: str, test_csv_path: str) -> pd.Da
                 labels.append(1)  # Streaming
             else:
                 labels.append(0)  # Default normal is Web Browsing
-                
+
     df["label"] = labels
     return df
 
-def train_and_save_model(data_dir: str = None) -> dict:
+def train_and_save_model(data_dir: str | None = None) -> dict:
     """Trains the RBF Kernel SVM model and saves it along with the scaler."""
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    
+    model_path, scaler_path, model_dir = _model_paths()
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     train_file = None
     test_file = None
-    
+
     if data_dir:
         path = Path(data_dir)
         train_cand = path / "UNSW_NB15_training-set.csv"
@@ -151,7 +156,7 @@ def train_and_save_model(data_dir: str = None) -> dict:
         if train_cand.exists() and test_cand.exists():
             train_file = str(train_cand)
             test_file = str(test_cand)
-            
+
     if train_file and test_file:
         df = load_official_unsw_dataset(train_file, test_file)
     else:
@@ -188,9 +193,9 @@ def train_and_save_model(data_dir: str = None) -> dict:
     logger.info(f"Model trained. Validation Accuracy: {acc:.4f}")
 
     # Save to disk
-    joblib.dump(clf, str(MODEL_PATH))
-    joblib.dump(scaler, str(SCALER_PATH))
-    logger.info(f"Model and scaler saved to {MODEL_DIR}")
+    joblib.dump(clf, str(model_path))
+    joblib.dump(scaler, str(scaler_path))
+    logger.info(f"Model and scaler saved to {model_dir}")
 
     return {
         "accuracy": acc,

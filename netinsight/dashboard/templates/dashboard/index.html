@@ -256,7 +256,7 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const refreshInterval = 2000;  // Poll every 2 seconds
+    const refreshInterval = {{ refresh_interval }};  // Poll every N milliseconds (configurable)
     const maxDataPoints = 15;
     
     // Setup empty arrays for dynamic chart updates
@@ -341,15 +341,14 @@
                 // Update stats cards
                 const mbps = (data.throughput / 1e6).toFixed(2);
                 document.getElementById('card-throughput').innerHTML = `${mbps} <span class="fs-6 text-secondary fw-normal">Mbps</span>`;
-                document.getElementById('card-packet-rate').innerText = `${data.packet_rate.toFixed(1)} pps`;
+                document.getElementById('card-packet-rate').innerHTML = `${data.packet_rate.toFixed(1)} <span class="fs-6 text-secondary fw-normal">pps</span>`;
                 document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-secondary fw-normal">ms</span>`;
                 document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-secondary fw-normal">%</span>`;
-                
+
                 // Update Progress bar
                 document.getElementById('capacity-progress').style.width = `${data.bandwidth_util}%`;
-                
+
                 const state = data.network_state;
-                document.getElementById('card-state-text')?.innerText = state.toLowerCase();
                 const badge = document.getElementById('card-state-badge');
                 const pulse = document.getElementById('card-state-pulse');
                 const label = document.getElementById('card-state-label');
