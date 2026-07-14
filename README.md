@@ -3,7 +3,6 @@
 **NetInsight-X: An Intelligent Decision Support System for Network Monitoring, Traffic Analytics, Optimization, and Predictive Network Management**
 
 [![Live on Render](https://img.shields.io/badge/Render-Live%20Demo-blue?style=for-the-badge&logo=render)](https://netinsight-x.onrender.com/)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/raghuramch028/NetInsight-X)
 
 > **Live Application URL:** [https://netinsight-x.onrender.com/](https://netinsight-x.onrender.com/)
 
