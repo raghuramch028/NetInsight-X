@@ -7,7 +7,7 @@ This document outlines the setup, dependency installation, and running instructi
 ## 1. Prerequisites
 
 ### Windows System (Target Environment)
-1. **Python 3.10+** (Python 3.14 was verified during development).
+1. **Python 3.10+** (verified with Python 3.10.12).
 2. **Npcap** or **WinPcap**:
    * Scapy requires packet capturing libraries to interface with network adapters.
    * Download and install **[Npcap](https://npcap.com/)**.
@@ -29,11 +29,15 @@ This document outlines the setup, dependency installation, and running instructi
 
 2. **Initialize a Virtual Environment:**
    Run from the project root directory:
-   ```powershell
+   ```bash
    python -m venv venv
    ```
 
 3. **Activate the Virtual Environment:**
+   * **Linux / macOS:**
+     ```bash
+     source venv/bin/activate
+     ```
    * **PowerShell (Windows):**
      ```powershell
      .\venv\Scripts\Activate.ps1
@@ -44,8 +48,18 @@ This document outlines the setup, dependency installation, and running instructi
      ```
 
 4. **Install Dependencies:**
-   ```powershell
+   ```bash
    pip install -r requirements.txt
+   ```
+
+5. **(Optional) Regenerate the SVM model files:**
+   ```bash
+   python -m netinsight.classification.train
+   ```
+
+6. **Collect static files (required for `DEBUG=False`):**
+   ```bash
+   python manage.py collectstatic --noinput
    ```
 
 ---
@@ -67,14 +81,14 @@ A pre-trained SVM model is normally loaded by the classifier. To retrain the SVM
 
 ### Step 1: Initialize Database Migrations
 Configure SQLite databases for Django:
-```powershell
+```bash
 python manage.py migrate
 ```
 *(Note: NetInsight-X uses raw SQLite interfaces for background capture and Django ORM/raw SQL for rendering, using the same unified database file configured in `netinsight/config/settings.py`)*
 
 ### Step 2: Start the Django Server
-Run the command in your elevated terminal (Administrator):
-```powershell
+Run the command in your elevated terminal (Administrator on Windows, or `sudo`/capable user on Linux/macOS):
+```bash
 python manage.py runserver
 ```
 
@@ -83,5 +97,5 @@ Open your browser and navigate to:
 **[http://localhost:8000/](http://localhost:8000/)**
 
 The background thread starts lazily on the first request to poll packets and calculate metrics.
-To configure the sniff interface, link capacities, or prediction state thresholds, modify **[settings.py](file:///c:/Users/raghu/OneDrive/Desktop/MFC-3/netinsight/config/settings.py)**.
-To switch off simulated/replay traffic and sniff live local traffic, change `DEMO_MODE` to `False` in settings.
+To configure the sniff interface, link capacities, or prediction state thresholds, see **[Configuration.md](Configuration.md)**.  
+To switch off simulated/replay traffic and sniff live local traffic, set `NETINSIGHT_DEMO_MODE=False` in the environment or change `DEMO_MODE` to `False` in `netinsight/config/settings.py`.

@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -7,9 +8,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ==========================================
 # Django Specific Configurations
 # ==========================================
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-netinsightx-academic-project-secret")
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-netinsightx-academic-project-secret",
+)
+
+if not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project-secret":
+    logging.getLogger(__name__).warning(
+        "DJANGO_SECRET_KEY is not set. Using a hardcoded fallback key. "
+        "Set DJANGO_SECRET_KEY in production."
+    )
+
+DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+
+_allowed_hosts = os.environ.get("ALLOWED_HOSTS", "*")
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
+
+if not DEBUG and "*" in ALLOWED_HOSTS:
+    logging.getLogger(__name__).warning(
+        "ALLOWED_HOSTS contains '*' while DEBUG is False. This is insecure for production."
+    )
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -56,6 +74,12 @@ WSGI_APPLICATION = "netinsight.wsgi.application"
 # Database Configuration
 # ==========================================
 DB_PATH = os.environ.get("NETINSIGHT_DB_PATH", str(BASE_DIR / "database" / "netinsight.db"))
+
+# Allow DATABASE_URL to override the raw path for PaaS compatibility.
+# Only SQLite is supported; other schemes fall back to DB_PATH.
+_DATABASE_URL = os.environ.get("DATABASE_URL", "")
+if _DATABASE_URL.startswith("sqlite:///"):
+    DB_PATH = _DATABASE_URL.replace("sqlite:///", "", 1)
 
 DATABASES = {
     "default": {
@@ -133,3 +157,48 @@ SVM_MODEL_PATH = os.environ.get("NETINSIGHT_SVM_PATH", str(BASE_DIR / "classific
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
 QOS_MIN_BANDWIDTH = [5_000_000.0, 15_000_000.0, 2_000_000.0, 10_000_000.0]
 QOS_MAX_BANDWIDTH = [40_000_000.0, 60_000_000.0, 30_000_000.0, 50_000_000.0]
+
+# ==========================================
+# Logging
+# ==========================================
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("NETINSIGHT_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "netinsight": {
+            "handlers": ["console"],
+            "level": os.environ.get("NETINSIGHT_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "matplotlib": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}

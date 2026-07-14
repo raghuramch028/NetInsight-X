@@ -24,7 +24,7 @@
                     <i data-lucide="line-chart" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Throughput & Latency Correlation Matrix
                 </h5>
                 <div class="text-center p-3 rounded border border-secondary bg-dark bg-opacity-25" style="border-color: var(--border-subtle) !important;">
-                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow" style="max-height: 400px; filter: brightness(0.9) contrast(1.15);">
+                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow" style="max-height: 450px;">
                 </div>
                 <div class="mt-3 text-secondary small">
                     This dual-axis time-series visualization traces how passive handshake latency scales alongside overall throughput. Spikes in throughput typically correspond to latency jumps due to queueing delays.
@@ -39,7 +39,7 @@
                     <i data-lucide="bar-chart-2" class="d-inline-block me-2 text-warning" style="width:16px;height:16px;vertical-align:-2px;"></i>Operational State Occurrence
                 </h5>
                 <div class="text-center p-3 rounded border border-secondary bg-dark bg-opacity-25" style="border-color: var(--border-subtle) !important;">
-                    <img src="data:image/png;base64,{{ plots.states_distribution }}" alt="Operational States Count Plot" class="img-fluid rounded shadow" style="max-height: 300px; filter: brightness(0.9) contrast(1.15);">
+                    <img src="data:image/png;base64,{{ plots.states_distribution }}" alt="Operational States Count Plot" class="img-fluid rounded shadow" style="max-height: 400px;">
                 </div>
                 <div class="mt-3 text-secondary small">
                     Count distribution of classified operational states (NORMAL, BUSY, CONGESTED, FAILURE) logged in the database.

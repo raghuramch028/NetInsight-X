@@ -1,27 +1,27 @@
-import io
 import base64
-import time
+import io
 import logging
 import threading
-import pandas as pd
-import numpy as np
+from typing import Any
+
 import matplotlib
+import numpy as np
+import pandas as pd
+
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render
 
-from netinsight.config import settings
-from netinsight.capture.monitor import LiveMonitor
 from netinsight.analytics.engine import AnalyticsEngine
+from netinsight.capture.monitor import LiveMonitor
+from netinsight.classification.classifier import TrafficClassifier
+from netinsight.config import settings
+from netinsight.database import db_manager
 from netinsight.optimization.solver import BandwidthOptimizer
 from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
-from netinsight.classification.classifier import TrafficClassifier
-from netinsight.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ classifier = TrafficClassifier()
 
 def ensure_monitor_started():
     """Lazily initializes and starts the Scapy packet capture background thread.
-    
+
     Wrapped in a lock to prevent concurrent initialization race conditions.
     """
     global monitor
@@ -49,21 +49,40 @@ def ensure_monitor_started():
             logger.info("Restarting stopped LiveMonitor thread...")
             monitor.start()
 
+def _to_native_types(obj: Any) -> Any:
+    """Recursively converts numpy/pandas scalars to plain Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _to_native_types(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_native_types(v) for v in obj]
+    if isinstance(obj, (np.generic,)):
+        return obj.item()
+    return obj
+
+def _current_state(latest: dict) -> str:
+    """Derives the current network state from metrics, falling back to classifier heuristics."""
+    if latest.get("network_state"):
+        return str(latest["network_state"])
+    return predictor.classify_state(
+        latest["bandwidth_util"] / 100.0,
+        latest["packet_loss"] / 100.0,
+    )
+
 def index_view(request):
     """Renders the main dashboard page."""
     ensure_monitor_started()
-    
+
     # Get latest metrics
     latest = analytics_engine.get_latest_metrics()
-    
+
     # Scale throughput to Mbps and latency to ms for template display
     latest["throughput_mbps"] = latest["throughput"] / 1e6
     latest["latency_ms"] = latest["latency"] * 1000.0
-    
+
     # Run MDP recommendation based on current network state
-    state_name = latest.get("network_state") or predictor.classify_state(latest["bandwidth_util"]/100.0, latest["packet_loss"]/100.0)
+    state_name = _current_state(latest)
     mdp_rec = mdp_engine.get_recommendation(state_name)
-    
+
     context = {
         "refresh_interval": settings.DASHBOARD_REFRESH_INTERVAL,
         "latest_metrics": latest,
@@ -81,25 +100,25 @@ def index_view(request):
 def analytics_view(request):
     """Renders the traffic analytics dashboard page."""
     ensure_monitor_started()
-    
+
     # Fetch data
     summary = analytics_engine.get_general_summary(window_seconds=60)
     protocol_dist = analytics_engine.get_protocol_distribution(window_seconds=60)
     top_consumers = analytics_engine.get_top_consumers(limit=5, window_seconds=60)
-    
+
     # Pre-scale values to MB to avoid custom template filter tags
     if summary and "total_bytes" in summary and summary["total_bytes"]:
         summary["total_mb"] = summary["total_bytes"] / 1048576.0
     else:
         summary["total_mb"] = 0.0
-        
+
     # Format top consumers and protocols for display
     consumers_list = top_consumers.to_dict(orient="records") if not top_consumers.empty else []
     for client in consumers_list:
         client["total_mb"] = client["total_bytes"] / 1048576.0
-        
+
     protocols_list = protocol_dist.to_dict(orient="records") if not protocol_dist.empty else []
-    
+
     context = {
         "summary": summary,
         "consumers": consumers_list,
@@ -111,7 +130,7 @@ def analytics_view(request):
 def optimization_view(request):
     """Renders the bandwidth allocation optimization page."""
     ensure_monitor_started()
-    
+
     # Check if user submitted custom parameters via POST
     if request.method == "POST":
         try:
@@ -130,12 +149,12 @@ def optimization_view(request):
         min_bounds = settings.QOS_MIN_BANDWIDTH
         max_bounds = settings.QOS_MAX_BANDWIDTH
         capacity = settings.LINK_CAPACITY
-        
+
     classes = ["Web Browsing", "Streaming", "File Transfer", "Critical Services"]
-    
+
     # Solve LP
     result = optimizer.solve_allocation(priorities, min_bounds, max_bounds, capacity)
-    
+
     # Map allocations back to class labels for display (convert bps to Mbps)
     allocation_mbps = [x / 1e6 for x in result["allocations"]]
     mapped_allocations = []
@@ -147,7 +166,7 @@ def optimization_view(request):
             "max_lim": max_bounds[idx] / 1e6,
             "allocated": allocation_mbps[idx]
         })
-        
+
     context = {
         "status": result["status"],
         "utility": result["utility"] / 1e6,  # Normalized utility unit
@@ -163,18 +182,18 @@ def optimization_view(request):
 def prediction_view(request):
     """Renders the network state forecasting and MDP advisory recommendation page."""
     ensure_monitor_started()
-    
+
     # Get latest classified state
     latest = analytics_engine.get_latest_metrics()
-    curr_state = latest.get("network_state") or predictor.classify_state(latest["bandwidth_util"]/100.0, latest["packet_loss"]/100.0)
-    
+    curr_state = _current_state(latest)
+
     # Run Markov Chain Predictions
     prediction_1step = predictor.predict_state_distribution(curr_state, k_steps=1)
     prediction_3step = predictor.predict_state_distribution(curr_state, k_steps=3)
-    
+
     # Run MDP recommendation solver
     mdp_rec = mdp_engine.get_recommendation(curr_state)
-    
+
     # Format Markov Transition Matrix rows for clean HTML tables
     states = ["NORMAL", "BUSY", "CONGESTED", "FAILURE"]
     matrix_rows = []
@@ -183,7 +202,7 @@ def prediction_view(request):
         row_probs = {states[j]: f"{matrix_data[i][j]*100:.1f}%" for j in range(4)}
         row_probs["from"] = s_from
         matrix_rows.append(row_probs)
-        
+
     context = {
         "current_state": curr_state,
         "matrix_rows": matrix_rows,
@@ -197,12 +216,12 @@ def prediction_view(request):
 def classification_view(request):
     """Renders the trained SVM classifier model metrics and live predictions page."""
     ensure_monitor_started()
-    
+
     # Fetch recent captured packets from database to perform inference
     conn = db_manager.get_connection()
     try:
         df = pd.read_sql_query(
-            "SELECT * FROM packets ORDER BY timestamp DESC LIMIT 50", 
+            "SELECT * FROM packets ORDER BY timestamp DESC LIMIT 50",
             conn
         )
     except Exception as e:
@@ -210,7 +229,7 @@ def classification_view(request):
         df = pd.DataFrame()
     finally:
         conn.close()
-        
+
     packets_list = []
     if not df.empty:
         records = df.to_dict(orient="records")
@@ -219,11 +238,11 @@ def classification_view(request):
             predicted_class = classifier.classify_packet(rec)
             rec["classification"] = predicted_class
             packets_list.append(rec)
-            
+
     # Load model stats if trained (normally stored during Module 5 setup)
     # We can run train pipeline dynamically to get stats if missing, or use cached stats
     model_loaded = (classifier.clf is not None)
-    
+
     # Setup placeholder stats matching Module 5 validation runs if file is not physically found
     # (keeps UI premium and populated)
     stats = {
@@ -235,7 +254,7 @@ def classification_view(request):
         "kernel": "RBF Kernel",
         "features": "Packet Size, Protocol, Latency, Packet Rate, Connection Frequency"
     }
-    
+
     context = {
         "model_loaded": model_loaded,
         "stats": stats,
@@ -243,119 +262,143 @@ def classification_view(request):
     }
     return render(request, "dashboard/classification.html", context)
 
+def _plot_to_base64(fig) -> str:
+    """Renders a Matplotlib figure to a base64 PNG string and closes it."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", facecolor="#0d111c")
+    buf.seek(0)
+    encoded = base64.b64encode(buf.read()).decode("utf-8")
+    plt.close(fig)
+    return encoded
+
+def _generate_throughput_latency_plot(df_metrics: pd.DataFrame) -> str:
+    """Generates a dual-axis throughput/latency time-series plot."""
+    df = df_metrics.copy()
+    df["time_formatted"] = pd.to_datetime(df["timestamp"], unit="s").dt.strftime("%H:%M:%S")
+    df["throughput_mbps"] = df["throughput"] / 1e6
+    df["latency_ms"] = df["latency"] * 1000.0
+
+    fig, ax1 = plt.subplots(figsize=(10, 5), facecolor="#0d111c")
+    ax1.set_facecolor("#0d111c")
+    ax2 = ax1.twinx()
+    ax2.set_facecolor("#0d111c")
+
+    sns.lineplot(
+        data=df, x="time_formatted", y="throughput_mbps",
+        ax=ax1, color="#3b82f6", label="Throughput (Mbps)",
+        linewidth=2.5, legend=False
+    )
+    sns.lineplot(
+        data=df, x="time_formatted", y="latency_ms",
+        ax=ax2, color="#ef4444", label="Latency (ms)",
+        linewidth=2.0, linestyle="--", legend=False
+    )
+
+    ax1.set_xlabel("Time Stamp", fontsize=10, fontweight="bold", color="#94a3b8")
+    ax1.set_ylabel("Throughput (Mbps)", color="#3b82f6", fontsize=10, fontweight="bold")
+    ax2.set_ylabel("Estimated Latency (ms)", color="#ef4444", fontsize=10, fontweight="bold")
+
+    ax1.tick_params(axis="x", colors="#94a3b8", rotation=45)
+    ax1.tick_params(axis="y", colors="#3b82f6")
+    ax2.tick_params(axis="y", colors="#ef4444")
+    ax1.grid(color="#ffffff", alpha=0.05)
+    ax2.grid(False)
+
+    n_points = len(df)
+    n_ticks = min(10, n_points)
+    if n_points > 0:
+        tick_positions = np.linspace(0, n_points - 1, n_ticks, dtype=int)
+        ax1.set_xticks(tick_positions)
+        ax1.set_xticklabels([df["time_formatted"].iloc[i] for i in tick_positions], rotation=45)
+
+    fig.suptitle("Network Throughput & Passive Latency Correlation", fontsize=12, fontweight="bold", color="#f1f5f9")
+    fig.tight_layout()
+
+    return _plot_to_base64(fig)
+
+def _generate_states_distribution_plot(df_states: pd.DataFrame) -> str:
+    """Generates a count plot of classified operational states."""
+    colors = {"NORMAL": "#10b981", "BUSY": "#3b82f6", "CONGESTED": "#f59e0b", "FAILURE": "#ef4444"}
+    order = ["NORMAL", "BUSY", "CONGESTED", "FAILURE"]
+
+    fig, ax = plt.subplots(figsize=(6, 5), facecolor="#0d111c")
+    ax.set_facecolor("#0d111c")
+
+    sns.countplot(
+        data=df_states, x="network_state", order=order, hue="network_state",
+        palette=colors, legend=False, ax=ax
+    )
+    ax.set_xlabel("Classified Network States", fontsize=10, fontweight="bold", color="#94a3b8")
+    ax.set_ylabel("Occurrences in Last 200 Logs", fontsize=10, fontweight="bold", color="#94a3b8")
+    ax.tick_params(colors="#94a3b8")
+    ax.set_title("Distribution of Operational States", fontsize=11, fontweight="bold", color="#f1f5f9")
+    ax.grid(color="#ffffff", alpha=0.05, axis="y")
+    fig.tight_layout()
+
+    return _plot_to_base64(fig)
+
 def reports_view(request):
     """Generates and displays historical analytical Seaborn/Matplotlib plots in a report dashboard."""
     ensure_monitor_started()
-    
-    # Retrieve historical metrics (up to last 200 aggregates)
-    df_metrics = analytics_engine.get_historical_metrics(limit=200)
-    
+
     plots = {}
-    
+    df_metrics = analytics_engine.get_historical_metrics(limit=200)
+
     if not df_metrics.empty:
-        # Convert timestamp to human readable relative time or datetime
-        df_metrics["time_formatted"] = pd.to_datetime(df_metrics["timestamp"], unit="s").dt.strftime("%H:%M:%S")
-        
-        # --- Plot 1: Throughput and Latency Correlation ---
-        plt.figure(figsize=(9, 4))
-        sns.set_theme(style="darkgrid")
-        
-        # Dual axis plotting
-        ax1 = plt.gca()
-        ax2 = ax1.twinx()
-        
-        # Scale throughput to Mbps
-        throughput_mbps = df_metrics["throughput"] / 1e6
-        latency_ms = df_metrics["latency"] * 1000.0
-        
-        sns.lineplot(data=df_metrics, x="time_formatted", y=throughput_mbps, ax=ax1, color="#3b82f6", label="Throughput (Mbps)", linewidth=2.5)
-        sns.lineplot(data=df_metrics, x="time_formatted", y=latency_ms, ax=ax2, color="#ef4444", label="Latency (ms)", linewidth=2.0, linestyle="--")
-        
-        ax1.set_xlabel("Time Stamp", fontsize=10, fontweight="bold")
-        ax1.set_ylabel("Throughput (Mbps)", color="#3b82f6", fontsize=10, fontweight="bold")
-        ax2.set_ylabel("Estimated Latency (ms)", color="#ef4444", fontsize=10, fontweight="bold")
-        
-        # Rotate x labels to prevent overlaps
-        n_ticks = 10
-        ticks = np.linspace(0, len(df_metrics) - 1, n_ticks, dtype=int)
-        ax1.set_xticks(ticks)
-        ax1.set_xticklabels([df_metrics["time_formatted"].iloc[i] for i in ticks], rotation=45)
-        
-        plt.title("Network Throughput & Passive Latency Correlation", fontsize=12, fontweight="bold", pad=15)
-        plt.tight_layout()
-        
-        # Save to buffer as base64 string
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png", dpi=150)
-        buf.seek(0)
-        plots["throughput_latency"] = base64.b64encode(buf.read()).decode("utf-8")
-        plt.close()
-        
-        # --- Plot 2: State History Distribution ---
+        try:
+            plots["throughput_latency"] = _generate_throughput_latency_plot(df_metrics)
+        except Exception as e:
+            logger.error(f"Error generating throughput/latency plot: {e}", exc_info=True)
+
         conn = db_manager.get_connection()
         try:
-            df_states = pd.read_sql_query("SELECT network_state FROM state_history ORDER BY timestamp DESC LIMIT 200", conn)
-        except Exception:
+            df_states = pd.read_sql_query(
+                "SELECT network_state FROM state_history ORDER BY timestamp DESC LIMIT 200", conn
+            )
+        except Exception as e:
+            logger.error(f"Error fetching state history: {e}", exc_info=True)
             df_states = pd.DataFrame()
         finally:
             conn.close()
-            
+
         if not df_states.empty:
-            plt.figure(figsize=(5, 4))
-            # Define color palettes
-            colors = {"NORMAL": "#10b981", "BUSY": "#3b82f6", "CONGESTED": "#f59e0b", "FAILURE": "#ef4444"}
-            
-            sns.countplot(data=df_states, x="network_state", order=["NORMAL", "BUSY", "CONGESTED", "FAILURE"], palette=colors)
-            plt.xlabel("Classified Network States", fontsize=10, fontweight="bold")
-            plt.ylabel("Occurrences in Last 200 Logs", fontsize=10, fontweight="bold")
-            plt.title("Distribution of Operational States", fontsize=11, fontweight="bold")
-            plt.tight_layout()
-            
-            buf = io.BytesIO()
-            plt.savefig(buf, format="png", dpi=150)
-            buf.seek(0)
-            plots["states_distribution"] = base64.b64encode(buf.read()).decode("utf-8")
-            plt.close()
+            try:
+                plots["states_distribution"] = _generate_states_distribution_plot(df_states)
+            except Exception as e:
+                logger.error(f"Error generating states distribution plot: {e}", exc_info=True)
 
     context = {
         "plots": plots,
-        "data_available": len(plots) > 0
+        "data_available": bool(plots),
     }
     return render(request, "dashboard/reports.html", context)
 
 def api_live_metrics(request):
     """API endpoint returning real-time metrics for Chart.js updates."""
-    latest = analytics_engine.get_latest_metrics()
-    
-    # Classify state
-    util = latest["bandwidth_util"] / 100.0
-    loss = latest["packet_loss"] / 100.0
-    state_name = latest.get("network_state") or predictor.classify_state(util, loss)
-    latest["network_state"] = state_name
-    
-    # Get active devices
-    latest["active_devices_count"] = analytics_engine.get_active_devices_count(window_seconds=60)
-    
-    # Get dynamic MDP solver recommendations based on current state
-    mdp_rec = mdp_engine.get_recommendation(state_name)
-    latest["mdp_recommendation"] = mdp_rec
-    
-    return JsonResponse(latest)
+    try:
+        latest = analytics_engine.get_latest_metrics()
+        latest["network_state"] = _current_state(latest)
+        latest["active_devices_count"] = analytics_engine.get_active_devices_count(window_seconds=60)
+        latest["mdp_recommendation"] = mdp_engine.get_recommendation(latest["network_state"])
+        return JsonResponse(_to_native_types(latest))
+    except Exception as e:
+        logger.error(f"API live metrics error: {e}", exc_info=True)
+        return JsonResponse({"error": "Unable to fetch live metrics"}, status=500)
 
 def api_live_packets(request):
     """API endpoint returning latest 20 packet records as JSON."""
     conn = db_manager.get_connection()
     try:
         df = pd.read_sql_query(
-            "SELECT * FROM packets ORDER BY id DESC LIMIT 20", 
+            "SELECT * FROM packets ORDER BY id DESC LIMIT 20",
             conn
         )
         if df.empty:
             return JsonResponse({"packets": []})
         records = df.to_dict(orient="records")
-        return JsonResponse({"packets": records})
+        return JsonResponse({"packets": _to_native_types(records)})
     except Exception as e:
-        logger.error(f"API packets error: {e}")
+        logger.error(f"API packets error: {e}", exc_info=True)
         return JsonResponse({"packets": [], "error": str(e)}, status=500)
     finally:
         conn.close()

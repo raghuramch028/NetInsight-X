@@ -16,6 +16,10 @@ __pycache__/
 *-journal
 netinsight/database/netinsight.db*
 
+# Generated static files
+netinsight/staticfiles/
+staticfiles/
+
 # OS files
 .DS_Store
 Thumbs.db

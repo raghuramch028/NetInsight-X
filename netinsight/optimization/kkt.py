@@ -1,29 +1,30 @@
-import numpy as np
 import logging
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 class KKTVerifier:
     """Verifies KKT optimality conditions for a solved Linear Programming problem.
-    
+
     LP standard form:
         minimize    c^T x
         subject to  G x <= h
     """
-    
+
     def __init__(self, tolerance: float = 1e-5):
         self.tolerance = tolerance
 
     def verify(self, c: np.ndarray, G: np.ndarray, h: np.ndarray, x: np.ndarray, z: np.ndarray) -> dict:
         """Verifies the four KKT conditions numerically.
-        
+
         Args:
             c: Objective cost coefficients vector (shape: N,)
             G: Inequality constraint matrix (shape: M, N)
             h: Inequality bounds vector (shape: M,)
             x: Primal optimal solution (shape: N,)
             z: Dual optimal solution (Lagrange multipliers for G x <= h, shape: M,)
-            
+
         Returns:
             dict: Verification results containing residuals and boolean indicators.
         """
@@ -33,7 +34,7 @@ class KKTVerifier:
         h = np.array(h, dtype=float).flatten()
         x = np.array(x, dtype=float).flatten()
         z = np.array(z, dtype=float).flatten()
-        
+
         # 1. Primal Feasibility: G * x <= h
         # Residual represents the maximum constraint violation (must be <= 0 + tolerance)
         primal_residuals = G @ x - h
@@ -75,7 +76,7 @@ class KKTVerifier:
                 "stationarity": stationarity_residual.tolist()
             }
         }
-        
+
         logger.info(
             f"KKT Verification: Optimal={optimal}, "
             f"PrimalViolation={max_primal_violation:.2e}, "

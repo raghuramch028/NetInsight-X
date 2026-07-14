@@ -1,16 +1,18 @@
-import sqlite3
 import logging
+import sqlite3
 from pathlib import Path
-from netinsight.config.settings import DB_PATH
+
+from netinsight.config import settings
 
 logger = logging.getLogger(__name__)
 
 def get_connection() -> sqlite3.Connection:
-    """Returns a standard sqlite3 Connection to the database path.
-    
-    Creates parent directories if necessary.
+    """Returns a standard sqlite3 Connection to the configured database path.
+
+    Creates parent directories if necessary. The path is read from
+    ``settings.DB_PATH`` at call time so tests can override it.
     """
-    db_file = Path(DB_PATH)
+    db_file = Path(settings.DB_PATH)
     db_file.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_file))
     conn.row_factory = sqlite3.Row
@@ -18,13 +20,13 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db() -> None:
     """Initializes the SQLite database schemas and indices.
-    
+
     Creates the tables: packets, metrics, active_devices, and state_history.
     """
     logger.info("Initializing SQLite Database Schema...")
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     try:
         # Packets table
         cursor.execute("""
@@ -40,7 +42,7 @@ def init_db() -> None:
                 ttl INTEGER
             )
         """)
-        
+
         # Metrics table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS metrics (
@@ -52,7 +54,7 @@ def init_db() -> None:
                 packet_loss REAL
             )
         """)
-        
+
         # Active devices table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS active_devices (
@@ -61,7 +63,7 @@ def init_db() -> None:
                 total_bytes INTEGER
             )
         """)
-        
+
         # State history table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS state_history (
@@ -72,12 +74,12 @@ def init_db() -> None:
                 latency REAL
             )
         """)
-        
+
         # Create indexes for optimized queries
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_packets_timestamp ON packets(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_state_history_timestamp ON state_history(timestamp)")
-        
+
         conn.commit()
         logger.info("Database initialized successfully.")
     except Exception as e:
@@ -89,12 +91,12 @@ def init_db() -> None:
 
 def save_packets_bulk(packets_list: list[dict]) -> None:
     """Saves a batch of packets to the packets table in a single transaction.
-    
+
     Each dict should contain: src_ip, dst_ip, src_port, dst_port, protocol, size, timestamp, ttl
     """
     if not packets_list:
         return
-        
+
     conn = get_connection()
     cursor = conn.cursor()
     try:

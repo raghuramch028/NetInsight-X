@@ -11,19 +11,19 @@
                 <i data-lucide="variable" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Linear Programming Model Formulation
             </h4>
             <p class="text-secondary small">
-                We formulate bandwidth allocation as a constrained Linear Program. The objective is to maximize the utility of allocated bandwidths $x_i$ weighted by traffic priorities $c_i$, subject to total link capacity $B$ and Class-of-Service QoS constraints:
+                We formulate bandwidth allocation as a constrained Linear Program. The objective is to maximize the utility of allocated bandwidths <em>x</em><sub>i</sub> weighted by traffic priorities <em>c</em><sub>i</sub>, subject to total link capacity <em>B</em> and Class-of-Service QoS constraints:
             </p>
             
             <div class="p-3 rounded mb-3 font-mono" style="background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle);">
-                <div class="text-primary font-bold">Maximize &nbsp; &sum; c_i * x_i</div>
+                <div class="text-primary font-bold">Maximize &nbsp; &sum; c<sub>i</sub> · x<sub>i</sub></div>
                 <div class="text-secondary mt-1">Subject to:</div>
-                <div class="ps-3 text-white">&sum; x_i &le; B &nbsp; (Total Link Capacity)</div>
-                <div class="ps-3 text-white">x_i &ge; m_i &nbsp; (Guaranteed Minimum Bandwidth)</div>
-                <div class="ps-3 text-white">x_i &le; M_i &nbsp; (Maximum Bandwidth Cap)</div>
+                <div class="ps-3 text-white">&sum; x<sub>i</sub> &le; B &nbsp; (Total Link Capacity)</div>
+                <div class="ps-3 text-white">x<sub>i</sub> &ge; m<sub>i</sub> &nbsp; (Guaranteed Minimum Bandwidth)</div>
+                <div class="ps-3 text-white">x<sub>i</sub> &le; M<sub>i</sub> &nbsp; (Maximum Bandwidth Cap)</div>
             </div>
             
             <p class="text-secondary small mb-0">
-                <strong>Convexity & Optimality:</strong> The objective function is linear (affine), and all constraints define a closed convex polytope. This LP is structurally convex, guaranteeing that the solution found by the CVXOPT interior-point solver is the globally optimal primal-dual pair.
+                <strong>Convexity &amp; Optimality:</strong> The objective function is linear (affine), and all constraints define a closed convex polytope. This LP is structurally convex, guaranteeing that the solution found by the CVXOPT interior-point solver is the globally optimal primal-dual pair.
             </p>
         </div>
     </div>
@@ -128,10 +128,11 @@
                                 <td class="font-mono text-center">{{ item.priority }}</td>
                                 <td class="font-mono">{{ item.min_req|floatformat:1 }} Mbps</td>
                                 <td class="font-mono text-info fw-bold">{{ item.allocated|floatformat:2 }} Mbps</td>
-                                <td>
-                                    <div class="progress" style="height: 4px; background-color: var(--bg-primary);">
+                                <td class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; background-color: var(--bg-primary);">
                                         <div class="progress-bar bg-info" role="progressbar" style="width: {% widthratio item.allocated total_capacity_mbps 100 %}%;"></div>
                                     </div>
+                                    <span class="font-mono small text-secondary" style="min-width: 36px;">{% widthratio item.allocated total_capacity_mbps 100 %}%</span>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -161,14 +162,14 @@
             </div>
             
             <p class="text-secondary small mb-4">
-                We perform KKT numerical verification to validate the solver outputs against convex optimization criteria ($\epsilon = 10^{-5}$):
+                We perform KKT numerical verification to validate the solver outputs against convex optimization criteria (&epsilon; = 10<sup>&minus;5</sup>):
             </p>
             
             <ul class="list-group list-group-flush bg-transparent">
                 <!-- Condition 1 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">1. Primal Feasibility ($G x^* - h \le 0$)</div>
+                        <div class="fw-semibold" style="font-size: 0.9rem;">1. Primal Feasibility <span class="font-mono text-info small">(G·x<sup>*</sup> &minus; h &le; 0)</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if constraints are satisfied within bounds</div>
                     </div>
                     <div class="text-end font-mono">
@@ -184,7 +185,7 @@
                 <!-- Condition 2 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">2. Dual Feasibility ($\lambda^* \ge 0$)</div>
+                        <div class="fw-semibold" style="font-size: 0.9rem;">2. Dual Feasibility <span class="font-mono text-info small">>(&lambda;<sup>*</sup> &ge; 0)</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrange multipliers are non-negative</div>
                     </div>
                     <div class="text-end font-mono">
@@ -200,7 +201,7 @@
                 <!-- Condition 3 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">3. Complementary Slackness ($\lambda^* \cdot (G x^* - h) = 0$)</div>
+                        <div class="fw-semibold" style="font-size: 0.9rem;">3. Complementary Slackness <span class="font-mono text-info small">>(&lambda;<sup>*</sup> · (G·x<sup>*</sup> &minus; h) = 0)</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if inactive constraints map to zero multipliers</div>
                     </div>
                     <div class="text-end font-mono">
@@ -216,7 +217,7 @@
                 <!-- Condition 4 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-0 text-white d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">4. Stationarity ($-c + G^T \lambda^* = 0$)</div>
+                        <div class="fw-semibold" style="font-size: 0.9rem;">4. Stationarity <span class="font-mono text-info small">>(&minus;c + G<sup>T</sup>&lambda;<sup>*</sup> = 0)</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrangian gradient vanishes at optimum</div>
                     </div>
                     <div class="text-end font-mono">
