@@ -75,6 +75,12 @@ WSGI_APPLICATION = "netinsight.wsgi.application"
 # ==========================================
 DB_PATH = os.environ.get("NETINSIGHT_DB_PATH", str(BASE_DIR / "database" / "netinsight.db"))
 
+# Allow DATABASE_URL to override the raw path for PaaS compatibility.
+# Only SQLite is supported; other schemes fall back to DB_PATH.
+_DATABASE_URL = os.environ.get("DATABASE_URL", "")
+if _DATABASE_URL.startswith("sqlite:///"):
+    DB_PATH = _DATABASE_URL.replace("sqlite:///", "", 1)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
