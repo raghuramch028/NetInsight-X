@@ -2,6 +2,11 @@
 
 **NetInsight-X: An Intelligent Decision Support System for Network Monitoring, Traffic Analytics, Optimization, and Predictive Network Management**
 
+[![Live on Render](https://img.shields.io/badge/Render-Live%20Demo-blue?style=for-the-badge&logo=render)](https://netinsight-x.onrender.com/)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/raghuramch028/NetInsight-X)
+
+> **Live Application URL:** [https://netinsight-x.onrender.com/](https://netinsight-x.onrender.com/)
+
 NetInsight-X is an academic interdisciplinary project integrating Python Programming, Computer Networks, and Mathematics for Computing III. The objective is to build an intelligent network management platform that captures live Local Area Network (LAN) traffic, performs traffic analytics, predicts future network states using Markov Chains, recommends advisory actions via a Markov Decision Process (MDP), optimizes bandwidth allocation using Linear Programming (LP) and CVXOPT, and classifies flows using a Support Vector Machine (SVM), presenting results through a responsive Django dashboard.
 
 ---
