@@ -2,6 +2,7 @@ import io
 import base64
 import time
 import logging
+import threading
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -24,8 +25,9 @@ from netinsight.database import db_manager
 
 logger = logging.getLogger(__name__)
 
-# Lazy singleton managers
+# Lazy singleton managers and locks
 monitor = None
+monitor_lock = threading.Lock()
 analytics_engine = AnalyticsEngine()
 optimizer = BandwidthOptimizer()
 predictor = MarkovPredictor()
@@ -33,15 +35,19 @@ mdp_engine = MDPRecommendationEngine()
 classifier = TrafficClassifier()
 
 def ensure_monitor_started():
-    """Lazily initializes and starts the Scapy packet capture background thread."""
+    """Lazily initializes and starts the Scapy packet capture background thread.
+    
+    Wrapped in a lock to prevent concurrent initialization race conditions.
+    """
     global monitor
-    if monitor is None:
-        logger.info("Initializing LiveMonitor singleton from views...")
-        monitor = LiveMonitor()
-        monitor.start()
-    elif not monitor.is_running:
-        logger.info("Restarting stopped LiveMonitor thread...")
-        monitor.start()
+    with monitor_lock:
+        if monitor is None:
+            logger.info("Initializing LiveMonitor singleton from views...")
+            monitor = LiveMonitor()
+            monitor.start()
+        elif not monitor.is_running:
+            logger.info("Restarting stopped LiveMonitor thread...")
+            monitor.start()
 
 def index_view(request):
     """Renders the main dashboard page."""
@@ -323,6 +329,10 @@ def api_live_metrics(request):
     
     # Get active devices
     latest["active_devices_count"] = analytics_engine.get_active_devices_count(window_seconds=60)
+    
+    # Get dynamic MDP solver recommendations based on current state
+    mdp_rec = mdp_engine.get_recommendation(state_name)
+    latest["mdp_recommendation"] = mdp_rec
     
     return JsonResponse(latest)
 

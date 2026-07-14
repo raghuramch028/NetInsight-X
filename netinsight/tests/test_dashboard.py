@@ -27,6 +27,10 @@ class TestDashboardViews(SimpleTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # Stop background monitor thread if it was started
+        from netinsight.dashboard import views
+        if views.monitor is not None:
+            views.monitor.stop()
         db_manager.clear_db()
         super().tearDownClass()
 

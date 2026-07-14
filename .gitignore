@@ -13,7 +13,8 @@ __pycache__/
 # Database files
 *.db
 *.sqlite3
-netinsight/database/netinsight.db
+*-journal
+netinsight/database/netinsight.db*
 
 # OS files
 .DS_Store

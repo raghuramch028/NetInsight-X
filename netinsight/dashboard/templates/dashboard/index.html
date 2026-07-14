@@ -213,86 +213,6 @@
         }
     });
 
-    // Function to poll live metrics
-    function pollMetrics() {
-        fetch("{% url 'dashboard:api_live_metrics' %}")
-            .then(res => res.json())
-            .then(data => {
-                // 1. Update UI cards
-                const mbps = (data.throughput / 1e6).toFixed(2);
-                document.getElementById('card-throughput').innerHTML = `${mbps} <span class="fs-6 text-muted">Mbps</span>`;
-                document.getElementById('card-packet-rate').innerText = `${data.packet_rate.toFixed(1)} pps`;
-                document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-muted">ms</span>`;
-                document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-muted">%</span>`;
-                
-                // State configuration badge
-                const state = data.network_state;
-                document.getElementById('card-state-text').innerText = state.toLowerCase();
-                const badge = document.getElementById('card-state-badge');
-                const pulse = document.getElementById('card-state-pulse');
-                const label = document.getElementById('card-state-label');
-                
-                badge.className = 'state-badge';
-                pulse.className = 'pulse-indicator';
-                label.innerText = state;
-                
-                if (state === 'NORMAL') {
-                    badge.classList.add('state-normal');
-                    pulse.classList.add('pulse-normal');
-                } else if (state === 'BUSY') {
-                    badge.classList.add('state-busy');
-                    pulse.classList.add('pulse-busy');
-                } else if (state === 'CONGESTED') {
-                    badge.classList.add('state-congested');
-                    pulse.classList.add('pulse-congested');
-                } else {
-                    badge.classList.add('state-failure');
-                    pulse.classList.add('pulse-failure');
-                }
-                
-                // 2. Shift and Push Chart data
-                throughputData.shift();
-                throughputData.push(parseFloat(mbps));
-                
-                utilizationData.shift();
-                utilizationData.push(parseFloat(data.bandwidth_util.toFixed(2)));
-                
-                // Add timestamp to label
-                const timeStr = new Date(data.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-                labels.shift();
-                labels.push(timeStr);
-                
-                liveChart.update();
-            });
-    }
-
-    // Function to poll MDP actions
-    function pollMDPActions() {
-        fetch("{% url 'dashboard:api_live_metrics' %}")
-            .then(res => res.json())
-            .then(metrics => {
-                // Post network state to a background calculator views endpoint or query views directly
-                // For live demonstration we can retrieve MDP recommendations from django context or via fetching
-                // We'll update the index view rendering with local variables
-            });
-        
-        // Let's call index view parameters directly or dynamically update using expected values
-        // Let's implement expectation values calculation on client based on current state
-        const stateMapping = {"NORMAL": 0, "BUSY": 1, "CONGESTED": 2, "FAILURE": 3};
-        
-        // Fetch to update MDP recommendation
-        fetch("{% url 'dashboard:index' %}")
-            .then(res => res.text())
-            .then(htmlStr => {
-                // Extract recommendation dynamically using parser or update directly from API.
-                // Better: Let's fetch metrics and map values!
-                // To keep client completely responsive, views.api_live_metrics can return the MDP details!
-                // Let's double check ifviews.api_live_metrics has MDP results.
-                // Inviews.py, api_live_metrics did NOT return MDP directly, but we can call it or calculate.
-                // Wait! Let's modify api_live_metrics to return MDP recommendation as well! That is much cleaner!
-            });
-    }
-
     // Unified poll function
     function updateDashboard() {
         fetch("{% url 'dashboard:api_live_metrics' %}")
@@ -340,73 +260,26 @@
                 labels.push(timeStr);
                 liveChart.update();
                 
-                // Fetch live recommendation from MDP
-                // Solve expected rewards
-                const gamma = 0.90;
-                const rewards = {
-                    "NORMAL": {0: 10.0, 1: 5.0, 2: 8.0},
-                    "BUSY": {0: 8.0, 1: 4.0, 2: 7.0},
-                    "CONGESTED": {0: 5.0, 1: 8.0, 2: 6.0},
-                    "FAILURE": {0: -2.0, 1: -5.0, 2: 2.0}
-                };
-                const actions = {
-                    0: "Reallocate Bandwidth",
-                    1: "Reroute Traffic",
-                    2: "Prioritize Critical Services"
-                };
-                
-                // Simplified Value Iteration calculation dynamically to keep recommendations perfectly synchronized
-                // with the polled state!
-                let bestAction = "Reallocate Bandwidth";
-                let valuesHtml = "";
-                const stateRewards = rewards[state] || rewards["NORMAL"];
-                
-                // Expected utility display values
-                // For Normal: Reallocate has 10.0, prioritize has 8.0, reroute has 5.0
-                // For Failure: Prioritize has 2.0, Reallocate has -2.0, Reroute has -5.0
-                let actionValues = [];
-                if (state === "NORMAL") {
-                    actionValues = [
-                        {name: "Reallocate Bandwidth", val: "10.00"},
-                        {name: "Reroute Traffic", val: "5.00"},
-                        {name: "Prioritize Critical Services", val: "8.00"}
-                    ];
-                    bestAction = "Reallocate Bandwidth";
-                } else if (state === "BUSY") {
-                    actionValues = [
-                        {name: "Reallocate Bandwidth", val: "8.00"},
-                        {name: "Reroute Traffic", val: "4.00"},
-                        {name: "Prioritize Critical Services", val: "7.00"}
-                    ];
-                    bestAction = "Reallocate Bandwidth";
-                } else if (state === "CONGESTED") {
-                    actionValues = [
-                        {name: "Reallocate Bandwidth", val: "5.00"},
-                        {name: "Reroute Traffic", val: "8.00"},
-                        {name: "Prioritize Critical Services", val: "6.00"}
-                    ];
-                    bestAction = "Reroute Traffic";
-                } else {
-                    actionValues = [
-                        {name: "Reallocate Bandwidth", val: "-2.00"},
-                        {name: "Reroute Traffic", val: "-5.00"},
-                        {name: "Prioritize Critical Services", val: "2.00"}
-                    ];
-                    bestAction = "Prioritize Critical Services";
+                // Fetch live recommendation from MDP from the polled data
+                if (data.mdp_recommendation) {
+                    const bestAction = data.mdp_recommendation.recommended_action;
+                    const actionVals = data.mdp_recommendation.action_values;
+                    
+                    document.getElementById('mdp-action').innerHTML = `<i class="fa-solid fa-circle-info text-info me-2"></i>${bestAction}`;
+                    
+                    let valuesHtml = "";
+                    Object.keys(actionVals).forEach(actName => {
+                        const isBest = actName === bestAction;
+                        const valStr = parseFloat(actionVals[actName]).toFixed(2);
+                        valuesHtml += `
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded ${isBest ? 'bg-primary bg-opacity-25' : ''}">
+                                <span class="${isBest ? 'text-primary font-bold' : 'text-muted'}">${actName}</span>
+                                <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-monospace">${valStr}</span>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('mdp-values-list').innerHTML = valuesHtml;
                 }
-                
-                document.getElementById('mdp-action').innerHTML = `<i class="fa-solid fa-circle-info text-info me-2"></i>${bestAction}`;
-                
-                actionValues.forEach(item => {
-                    const isBest = item.name === bestAction;
-                    valuesHtml += `
-                        <div class="d-flex justify-content-between align-items-center p-2 rounded ${isBest ? 'bg-primary bg-opacity-25' : ''}">
-                            <span class="${isBest ? 'text-primary font-bold' : 'text-muted'}">${item.name}</span>
-                            <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-monospace">${item.val}</span>
-                        </div>
-                    `;
-                });
-                document.getElementById('mdp-values-list').innerHTML = valuesHtml;
             });
 
         // Poll packets
