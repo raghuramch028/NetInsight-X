@@ -41,17 +41,10 @@ class MarkovPredictor:
             return "BUSY"
         return "NORMAL"
 
-    def estimate_transition_matrix(self) -> np.ndarray:
-        """Retrieves history from state_history table and computes the transition matrix.
-
-        Formula:
-            P_ij = N_ij / sum_k(N_ik)
-        Returns:
-            np.ndarray: A 4x4 row-stochastic matrix.
-        """
+    def _estimate_transition_matrix(self) -> tuple[np.ndarray, bool]:
+        """Internal implementation that also reports whether the default matrix was used."""
         conn = db_manager.get_connection()
         try:
-            # Retrieve states ordered chronologically
             df = pd.read_sql_query(
                 "SELECT network_state FROM state_history ORDER BY timestamp ASC",
                 conn
@@ -59,7 +52,7 @@ class MarkovPredictor:
 
             if len(df) < 2:
                 logger.info("Insufficient state history to estimate Markov transition matrix. Using default transitions.")
-                return self.default_transition_matrix
+                return self.default_transition_matrix, True
 
             states = df["network_state"].tolist()
 
@@ -84,13 +77,23 @@ class MarkovPredictor:
                     # Fallback to default transitions for states with no observed departures
                     transition_matrix[i] = self.default_transition_matrix[i]
 
-            return transition_matrix
+            return transition_matrix, False
 
         except Exception as e:
             logger.error(f"Error estimating Markov transition matrix: {e}", exc_info=True)
-            return self.default_transition_matrix
+            return self.default_transition_matrix, True
         finally:
             conn.close()
+
+    def estimate_transition_matrix(self) -> np.ndarray:
+        """Retrieves history from state_history table and computes the transition matrix.
+
+        Formula:
+            P_ij = N_ij / sum_k(N_ik)
+        Returns:
+            np.ndarray: A 4x4 row-stochastic matrix.
+        """
+        return self._estimate_transition_matrix()[0]
 
     def predict_state_distribution(self, current_state: str, k_steps: int = 1) -> dict:
         """Predicts the probability distribution of states k steps into the future.
@@ -105,7 +108,7 @@ class MarkovPredictor:
         s_t = np.zeros(4)
         s_t[self.STATE_INDEX[current_state]] = 1.0
 
-        P = self.estimate_transition_matrix()
+        P, using_default = self._estimate_transition_matrix()
 
         # P^k
         P_k = np.linalg.matrix_power(P, k_steps)
@@ -115,5 +118,6 @@ class MarkovPredictor:
         return {
             "matrix": P.tolist(),
             "prediction": {self.INDEX_STATE[i]: float(s_future[i]) for i in range(4)},
-            "most_likely": self.INDEX_STATE[int(np.argmax(s_future))]
+            "most_likely": self.INDEX_STATE[int(np.argmax(s_future))],
+            "using_default_matrix": using_default,
         }

@@ -37,6 +37,16 @@ class TestTrafficClassification(unittest.TestCase):
         # Verify model files are written on disk
         self.assertTrue(Path(settings.SVM_MODEL_PATH).exists())
         self.assertTrue((Path(settings.SVM_MODEL_PATH).parent / "scaler.joblib").exists())
+        self.assertTrue((Path(settings.SVM_MODEL_PATH).parent / "svm_model_metrics.json").exists())
+
+        # Verify real metrics are persisted and loadable
+        stats = self.classifier.get_model_stats()
+        self.assertIsNotNone(stats.get("accuracy"))
+        self.assertIsNotNone(stats.get("precision"))
+        self.assertIsNotNone(stats.get("recall"))
+        self.assertIsNotNone(stats.get("f1_score"))
+        self.assertIn("kernel", stats)
+        self.assertIn("features", stats)
 
         # Verify confusion matrix dimensions (4x4)
         cm = self.train_results["confusion_matrix"]

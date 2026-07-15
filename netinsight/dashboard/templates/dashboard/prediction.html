@@ -53,6 +53,12 @@
             <p class="text-secondary small mb-3">
                 Calculated dynamically from transitions between network states recorded in the <code>state_history</code> database table.
             </p>
+            {% if using_default_matrix %}
+            <div class="alert alert-warning border-0 small font-mono mb-3" style="background-color: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2) !important;">
+                <i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;" class="me-2"></i>
+                Not enough state transitions have been captured yet. The matrix below is the default prior and will be replaced by real transition probabilities as more data is collected.
+            </div>
+            {% endif %}
             <div class="table-responsive">
                 <table class="table custom-table text-center font-mono" style="font-size: 0.8rem;">
                     <thead>

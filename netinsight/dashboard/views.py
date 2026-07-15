@@ -83,6 +83,9 @@ def index_view(request):
     state_name = _current_state(latest)
     mdp_rec = mdp_engine.get_recommendation(state_name)
 
+    # Build a live network topology from recent active source devices
+    topology = analytics_engine.get_network_topology(window_seconds=300, max_hosts=8)
+
     context = {
         "refresh_interval": settings.DASHBOARD_REFRESH_INTERVAL,
         "latest_metrics": latest,
@@ -93,7 +96,8 @@ def index_view(request):
         "demo_mode": settings.DEMO_MODE,
         "svm_loaded": classifier.clf is not None,
         "interface": settings.CAPTURE_INTERFACE or "Default active interface",
-        "link_capacity_mbps": settings.LINK_CAPACITY / 1e6
+        "link_capacity_mbps": settings.LINK_CAPACITY / 1e6,
+        "topology": topology,
     }
     return render(request, "dashboard/index.html", context)
 
@@ -208,6 +212,7 @@ def prediction_view(request):
         "matrix_rows": matrix_rows,
         "pred_1step": {k: v * 100.0 for k, v in prediction_1step["prediction"].items()},
         "pred_3step": {k: v * 100.0 for k, v in prediction_3step["prediction"].items()},
+        "using_default_matrix": prediction_1step.get("using_default_matrix", True),
         "mdp": mdp_rec,
         "gamma": settings.MDP_DISCOUNT_FACTOR
     }
@@ -239,21 +244,10 @@ def classification_view(request):
             rec["classification"] = predicted_class
             packets_list.append(rec)
 
-    # Load model stats if trained (normally stored during Module 5 setup)
-    # We can run train pipeline dynamically to get stats if missing, or use cached stats
+    # Load real model stats persisted during training. If metrics are not yet
+    # available (model not trained), the classifier returns a safe placeholder.
     model_loaded = (classifier.clf is not None)
-
-    # Setup placeholder stats matching Module 5 validation runs if file is not physically found
-    # (keeps UI premium and populated)
-    stats = {
-        "accuracy": 94.2,
-        "precision": 93.8,
-        "recall": 94.0,
-        "f1_score": 93.9,
-        "model_path": str(settings.SVM_MODEL_PATH),
-        "kernel": "RBF Kernel",
-        "features": "Packet Size, Protocol, Latency, Packet Rate, Connection Frequency"
-    }
+    stats = classifier.get_model_stats()
 
     context = {
         "model_loaded": model_loaded,
