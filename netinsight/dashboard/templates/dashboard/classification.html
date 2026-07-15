@@ -25,15 +25,19 @@
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Kernel Model</span>
-                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">RBF SVC</span>
+                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">{{ stats.kernel|default:"RBF Kernel" }}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Accuracy Score</span>
-                    <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">{{ stats.accuracy|floatformat:1 }}%</span>
+                    <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">
+                        {% if stats.accuracy is not None %}{{ stats.accuracy|floatformat:1 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
+                    </span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">F1-Score Metrics</span>
-                    <span class="font-mono text-info fw-bold" style="font-size:0.8rem;">{{ stats.f1_score|floatformat:1 }}%</span>
+                    <span class="font-mono text-info fw-bold" style="font-size:0.8rem;">
+                        {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:1 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
+                    </span>
                 </li>
                 <li class="list-group-item bg-transparent border-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono">Inference Port</span>

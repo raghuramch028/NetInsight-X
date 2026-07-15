@@ -1,4 +1,6 @@
+import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -31,6 +33,11 @@ def _model_paths() -> tuple[Path, Path, Path]:
     """Returns (model_path, scaler_path, model_dir) from settings at call time."""
     model_path = Path(settings.SVM_MODEL_PATH)
     return model_path, model_path.parent / "scaler.joblib", model_path.parent
+
+
+def _metrics_path() -> Path:
+    """Returns the path to the JSON file that stores SVM evaluation metrics."""
+    return Path(settings.SVM_MODEL_PATH).parent / "svm_model_metrics.json"
 
 def generate_synthetic_unsw_data(n_samples: int = 2000) -> pd.DataFrame:
     """Generates synthetic network data mirroring the mapped UNSW-NB15 schema.
@@ -192,16 +199,32 @@ def train_and_save_model(data_dir: str | None = None) -> dict:
 
     logger.info(f"Model trained. Validation Accuracy: {acc:.4f}")
 
-    # Save to disk
+    # Persist model artifacts
     joblib.dump(clf, str(model_path))
     joblib.dump(scaler, str(scaler_path))
-    logger.info(f"Model and scaler saved to {model_dir}")
 
-    return {
-        "accuracy": acc,
+    # Persist evaluation metrics so the dashboard can display real model statistics
+    metrics = {
+        "accuracy": float(acc) * 100.0,
+        "precision": float(report["macro avg"]["precision"]) * 100.0,
+        "recall": float(report["macro avg"]["recall"]) * 100.0,
+        "f1_score": float(report["macro avg"]["f1-score"]) * 100.0,
+        "kernel": f"{clf.kernel.upper()} Kernel",
+        "features": ", ".join(FEATURE_COLUMNS),
+        "training_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "dataset_info": "UNSW-NB15" if train_file else "synthetic_unsw",
         "confusion_matrix": cm.tolist(),
-        "report": report
+        "report": report,
     }
+    metrics_path = _metrics_path()
+    try:
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            json.dump(metrics, f, indent=2)
+        logger.info(f"Model metrics saved to {metrics_path}")
+    except Exception as e:
+        logger.error(f"Failed to save model metrics: {e}", exc_info=True)
+
+    return metrics
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

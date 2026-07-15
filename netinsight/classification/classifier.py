@@ -1,3 +1,5 @@
+import contextlib
+import json
 import logging
 import threading
 from pathlib import Path
@@ -29,6 +31,7 @@ class TrafficClassifier:
 
         self.clf = None
         self.scaler = None
+        self.model_stats: dict = {}
         self.load_model()
 
         # State cache for live feature extraction:
@@ -36,6 +39,45 @@ class TrafficClassifier:
         self.ip_history = {}
         self.cache_lock = threading.Lock()
         self.window_duration = window_duration
+
+    def _load_model_stats(self) -> None:
+        """Loads persisted model evaluation metrics from the metrics JSON file."""
+        stats_path = self.model_path.parent / "svm_model_metrics.json"
+        if not stats_path.exists():
+            self.model_stats = {}
+            return
+        try:
+            with open(stats_path, encoding="utf-8") as f:
+                self.model_stats = json.load(f)
+            logger.info(f"Loaded SVM model metrics from {stats_path}")
+        except Exception as e:
+            logger.error(f"Error loading model metrics: {e}", exc_info=True)
+            self.model_stats = {}
+
+    def get_model_stats(self) -> dict:
+        """Returns the persisted model metrics, or a safe placeholder if unavailable.
+
+        Metrics are re-read from disk on each call so training updates are reflected
+        without restarting the server.
+        """
+        self._load_model_stats()
+        if self.model_stats:
+            return self.model_stats
+        kernel_name = "RBF Kernel"
+        if self.clf is not None:
+            with contextlib.suppress(Exception):
+                kernel_name = f"{self.clf.kernel.upper()} Kernel"
+        return {
+            "accuracy": None,
+            "precision": None,
+            "recall": None,
+            "f1_score": None,
+            "kernel": kernel_name,
+            "features": "Packet Size, Protocol, Latency, Packet Rate, Connection Frequency",
+            "training_timestamp": None,
+            "dataset_info": None,
+            "model_path": str(self.model_path),
+        }
 
     def load_model(self) -> bool:
         """Attempts to load the SVM model and scaler from joblib files.
@@ -47,6 +89,7 @@ class TrafficClassifier:
             try:
                 self.clf = joblib.load(str(self.model_path))
                 self.scaler = joblib.load(str(self.scaler_path))
+                self._load_model_stats()
                 logger.info("Successfully loaded SVM classifier and scaler.")
                 return True
             except Exception as e:
@@ -55,6 +98,7 @@ class TrafficClassifier:
         logger.warning("SVM model or scaler not found on disk. Falling back to heuristic classifier.")
         self.clf = None
         self.scaler = None
+        self.model_stats = {}
         return False
 
     def update_ip_cache(self, src_ip: str, dst_ip: str, size: int, timestamp: float) -> tuple[float, float]:

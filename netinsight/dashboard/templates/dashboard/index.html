@@ -124,7 +124,8 @@
             <h4 class="mb-4 text-white font-bold h6"><i data-lucide="git-branch" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
             
             <div class="d-flex justify-content-center align-items-center" style="height: 240px;">
-                <svg viewBox="0 0 320 200" width="100%" height="100%" class="font-mono">
+                {% if topology.hosts %}
+                <svg viewBox="0 0 320 220" width="100%" height="100%" class="font-mono">
                     <style>
                         .flow-line {
                             stroke: #3b82f6;
@@ -162,45 +163,39 @@
                             100% { transform: scale(1.8); opacity: 0; }
                         }
                     </style>
-                    
-                    <!-- Connection Paths -->
-                    <line x1="60" y1="130" x2="160" y2="90" class="flow-line" />
-                    <line x1="110" y1="150" x2="160" y2="90" class="flow-line" />
-                    <line x1="210" y1="150" x2="160" y2="90" class="flow-line" />
-                    <line x1="260" y1="130" x2="160" y2="90" class="flow-line" />
-                    <line x1="160" y1="90" x2="160" y2="35" class="flow-line" style="stroke: #10b981; animation-duration: 4s;" />
+
+                    <!-- Router <-> Internet Gateway -->
+                    <line x1="{{ topology.wan.x }}" y1="{{ topology.wan.y }}" x2="{{ topology.router.x }}" y2="{{ topology.router.y }}" class="flow-line" style="stroke: #10b981; animation-duration: 4s;" />
+
+                    <!-- Router <-> Active Hosts -->
+                    {% for host in topology.hosts %}
+                    <line x1="{{ host.x }}" y1="{{ host.y }}" x2="{{ topology.router.x }}" y2="{{ topology.router.y }}" class="flow-line" />
+                    {% endfor %}
 
                     <!-- Internet Gateway -->
-                    <circle cx="160" cy="35" r="16" class="node-circle" style="stroke: #10b981;" />
-                    <text x="160" y="38" fill="#10b981" font-size="8px" text-anchor="middle" font-weight="bold">WAN</text>
-                    <text x="160" y="15" class="node-text">Gateway</text>
+                    <circle cx="{{ topology.wan.x }}" cy="{{ topology.wan.y }}" r="16" class="node-circle" style="stroke: #10b981;" />
+                    <text x="{{ topology.wan.x }}" y="{{ topology.wan.y|add:3 }}" fill="#10b981" font-size="8px" text-anchor="middle" font-weight="bold">WAN</text>
+                    <text x="{{ topology.wan.x }}" y="{{ topology.wan.y|add:25 }}" class="node-text">Gateway</text>
 
                     <!-- Central DSS Monitor Router -->
-                    <circle cx="160" cy="90" r="18" class="node-circle" style="stroke: #3b82f6;" />
-                    <text x="160" y="93" fill="#3b82f6" font-size="8px" text-anchor="middle" font-weight="bold">DSS</text>
-                    <text x="160" y="68" class="node-text" style="fill:#fff;">Router Monitor</text>
+                    <circle cx="{{ topology.router.x }}" cy="{{ topology.router.y }}" r="18" class="node-circle" style="stroke: #3b82f6;" />
+                    <text x="{{ topology.router.x }}" y="{{ topology.router.y|add:3 }}" fill="#3b82f6" font-size="8px" text-anchor="middle" font-weight="bold">DSS</text>
+                    <text x="{{ topology.router.x }}" y="{{ topology.router.y|add:25 }}" class="node-text" style="fill:#fff;">Router Monitor</text>
 
-                    <!-- Host Nodes -->
-                    <!-- Host 1 -->
-                    <circle cx="60" cy="130" r="12" class="node-circle" />
-                    <text x="60" y="133" fill="#94a3b8" font-size="7px" text-anchor="middle">.1</text>
-                    <text x="60" y="150" class="node-text">LocalHost.1</text>
-
-                    <!-- Host 2 -->
-                    <circle cx="110" cy="150" r="12" class="node-circle" />
-                    <text x="110" y="153" fill="#94a3b8" font-size="7px" text-anchor="middle">.15</text>
-                    <text x="110" y="170" class="node-text">LocalHost.15</text>
-
-                    <!-- Host 3 -->
-                    <circle cx="210" cy="150" r="12" class="node-circle" />
-                    <text x="210" y="153" fill="#94a3b8" font-size="7px" text-anchor="middle">.22</text>
-                    <text x="210" y="170" class="node-text">LocalHost.22</text>
-
-                    <!-- Host 4 -->
-                    <circle cx="260" cy="130" r="12" class="node-circle" />
-                    <text x="260" y="133" fill="#94a3b8" font-size="7px" text-anchor="middle">.33</text>
-                    <text x="260" y="150" class="node-text">LocalHost.33</text>
+                    <!-- Active Host Nodes -->
+                    {% for host in topology.hosts %}
+                    <circle cx="{{ host.x }}" cy="{{ host.y }}" r="{{ host.radius }}" class="node-circle" />
+                    <text x="{{ host.x }}" y="{{ host.y|add:3 }}" fill="#94a3b8" font-size="7px" text-anchor="middle">{{ host.short_label }}</text>
+                    <text x="{{ host.x }}" y="{{ host.y|add:20 }}" class="node-text">{{ host.ip }}</text>
+                    <title>{{ host.ip }} - {{ host.total_mb|floatformat:2 }} MB ({{ host.percentage|floatformat:1 }}%)</title>
+                    {% endfor %}
                 </svg>
+                {% else %}
+                <div class="text-center text-secondary">
+                    <i data-lucide="radio" style="width:32px;height:32px;" class="mb-2"></i>
+                    <div class="small font-mono">No active hosts detected in the last 5 minutes.</div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

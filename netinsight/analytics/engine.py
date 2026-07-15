@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 
 import pandas as pd
@@ -187,3 +188,46 @@ class AnalyticsEngine:
             }
         finally:
             conn.close()
+
+    def get_network_topology(self, window_seconds: float = 300.0, max_hosts: int = 8) -> dict:
+        """Builds a dynamic network topology from active source hosts in the recent window.
+
+        The central node is the DSS monitoring router, the top node is the WAN/Internet
+        gateway, and host nodes are the most active source IPs by byte volume.
+        """
+        center_x, center_y = 160, 100
+        radius = 80
+        topology = {
+            "router": {"label": "DSS Router Monitor", "x": center_x, "y": center_y},
+            "wan": {"label": "Internet Gateway", "x": center_x, "y": 20},
+            "hosts": [],
+        }
+
+        top_consumers = self.get_top_consumers(limit=max_hosts, window_seconds=window_seconds)
+        if top_consumers.empty:
+            return topology
+
+        total_bytes = max(1, int(top_consumers["total_bytes"].sum()))
+        hosts = []
+        for _, row in top_consumers.iterrows():
+            ip = str(row["src_ip"])
+            short_label = ip.split(".")[-1] if "." in ip else ip[-4:]
+            percentage = float(row["total_bytes"]) * 100.0 / total_bytes
+            hosts.append({
+                "ip": ip,
+                "short_label": short_label,
+                "total_bytes": int(row["total_bytes"]),
+                "total_mb": float(row["total_bytes"]) / 1048576.0,
+                "packet_count": int(row.get("packet_count", 0)),
+                "percentage": percentage,
+                "radius": max(10, min(16, int(10 + percentage / 25.0))),
+            })
+
+        n = len(hosts)
+        for idx, host in enumerate(hosts):
+            angle = math.pi / 2 if n == 1 else (idx * math.pi) / (n - 1)
+            host["x"] = int(center_x + radius * math.cos(angle))
+            host["y"] = int(center_y + radius * math.sin(angle))
+
+        topology["hosts"] = hosts
+        return topology

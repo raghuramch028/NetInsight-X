@@ -1,0 +1,75 @@
+{
+  "accuracy": 99.5,
+  "precision": 99.51907061958694,
+  "recall": 99.51907061958694,
+  "f1_score": 99.51907061958694,
+  "kernel": "RBF Kernel",
+  "features": "packet_size, protocol, latency, packet_rate, conn_frequency",
+  "training_timestamp": "2026-07-15T16:34:01Z",
+  "dataset_info": "synthetic_unsw",
+  "confusion_matrix": [
+    [
+      151,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      106,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      78,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      63
+    ]
+  ],
+  "report": {
+    "Web Browsing": {
+      "precision": 0.993421052631579,
+      "recall": 0.993421052631579,
+      "f1-score": 0.993421052631579,
+      "support": 152.0
+    },
+    "Streaming": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 106.0
+    },
+    "File Transfer": {
+      "precision": 0.9873417721518988,
+      "recall": 0.9873417721518988,
+      "f1-score": 0.9873417721518988,
+      "support": 79.0
+    },
+    "Potentially Suspicious": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 63.0
+    },
+    "accuracy": 0.995,
+    "macro avg": {
+      "precision": 0.9951907061958695,
+      "recall": 0.9951907061958695,
+      "f1-score": 0.9951907061958695,
+      "support": 400.0
+    },
+    "weighted avg": {
+      "precision": 0.995,
+      "recall": 0.995,
+      "f1-score": 0.995,
+      "support": 400.0
+    }
+  }
+}
