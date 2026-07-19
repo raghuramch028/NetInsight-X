@@ -19,6 +19,7 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.db.models import Sum, Count, Avg
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -213,6 +214,7 @@ def analytics_view(request):
     }
     return render(request, "dashboard/analytics.html", context)
 
+@xframe_options_exempt
 def api_topology_graph(request):
     """Serves the interactive PyVis graph HTML directly for iframe inclusion."""
     html_graph = generate_topology_pyvis()
