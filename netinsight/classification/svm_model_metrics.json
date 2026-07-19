@@ -1,75 +1,132 @@
 {
-  "accuracy": 99.5,
-  "precision": 99.51907061958694,
-  "recall": 99.51907061958694,
-  "f1_score": 99.51907061958694,
+  "accuracy": 78.8992537313433,
+  "precision": 33.58099859634461,
+  "recall": 34.02184174886035,
+  "f1_score": 33.21338567880301,
   "kernel": "RBF Kernel",
   "features": "packet_size, protocol, latency, packet_rate, conn_frequency",
-  "training_timestamp": "2026-07-15T16:34:01Z",
-  "dataset_info": "synthetic_unsw",
+  "training_timestamp": "2026-07-19T08:17:53Z",
+  "dataset_info": "CICIDS2017 Real Sample Subset",
   "confusion_matrix": [
     [
-      151,
+      3508,
       0,
-      1,
+      0,
+      39,
+      0,
+      0,
+      98
+    ],
+    [
+      378,
+      0,
+      0,
+      15,
+      0,
+      0,
       0
     ],
     [
+      16,
       0,
-      106,
       0,
-      0
+      0,
+      0,
+      0,
+      3
     ],
     [
-      1,
+      188,
       0,
-      78,
-      0
+      0,
+      360,
+      0,
+      0,
+      61
     ],
     [
+      6,
       0,
       0,
       0,
-      63
+      0,
+      0,
+      1
+    ],
+    [
+      250,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      75,
+      0,
+      0,
+      0,
+      0,
+      0,
+      361
     ]
   ],
   "report": {
-    "Web Browsing": {
-      "precision": 0.993421052631579,
-      "recall": 0.993421052631579,
-      "f1-score": 0.993421052631579,
-      "support": 152.0
+    "Normal": {
+      "precision": 0.7934856367337706,
+      "recall": 0.9624142661179699,
+      "f1-score": 0.8698239523927598,
+      "support": 3645.0
     },
-    "Streaming": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 106.0
+    "DoS": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 393.0
     },
-    "File Transfer": {
-      "precision": 0.9873417721518988,
-      "recall": 0.9873417721518988,
-      "f1-score": 0.9873417721518988,
-      "support": 79.0
+    "DDoS": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 19.0
     },
-    "Potentially Suspicious": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 63.0
+    "Brute Force": {
+      "precision": 0.8695652173913043,
+      "recall": 0.5911330049261084,
+      "f1-score": 0.7038123167155426,
+      "support": 609.0
     },
-    "accuracy": 0.995,
+    "Reconnaissance": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 7.0
+    },
+    "Mirai": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 251.0
+    },
+    "Other Attacks": {
+      "precision": 0.6876190476190476,
+      "recall": 0.8279816513761468,
+      "f1-score": 0.7513007284079084,
+      "support": 436.0
+    },
+    "accuracy": 0.7889925373134329,
     "macro avg": {
-      "precision": 0.9951907061958695,
-      "recall": 0.9951907061958695,
-      "f1-score": 0.9951907061958695,
-      "support": 400.0
+      "precision": 0.3358099859634461,
+      "recall": 0.34021841748860354,
+      "f1-score": 0.3321338567880301,
+      "support": 5360.0
     },
     "weighted avg": {
-      "precision": 0.995,
-      "recall": 0.995,
-      "f1-score": 0.995,
-      "support": 400.0
+      "precision": 0.6943325126954856,
+      "recall": 0.7889925373134329,
+      "f1-score": 0.7325927471897804,
+      "support": 5360.0
     }
   }
 }

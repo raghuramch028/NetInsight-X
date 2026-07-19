@@ -34,3 +34,9 @@ Thumbs.db
 # We can allow svm_model.joblib and scaler.joblib since they can be trained dynamically
 # data/ contains the large datasets
 data/
+
+# Environment secrets
+.env
+agent/agent.log
+netinsight/database/*.db
+netinsight/database/*.sqlite3

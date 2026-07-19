@@ -3,6 +3,20 @@
 {% block page_title %}Real-Time Network Telemetry{% endblock %}
 
 {% block content %}
+<!-- DSE Alerts Container -->
+<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-2">
+    {% for alert in dse_alerts %}
+        <div class="alert {% if alert.severity == 'Critical' %}alert-danger bg-danger bg-opacity-10 border-danger text-danger{% elif alert.severity == 'Warning' %}alert-warning bg-warning bg-opacity-10 border-warning text-warning{% else %}alert-info bg-info bg-opacity-10 border-info text-info{% endif %} d-flex align-items-start p-3 m-0 rounded border" role="alert" style="border-color: rgba(255,255,255,0.05) !important;">
+            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0" style="width:20px;height:20px;"></i>
+            <div>
+                <strong class="d-block" style="font-size:1.0rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
+                <span class="d-block small mt-1" style="color:var(--text-secondary);">{{ alert.message }}</span>
+                <span class="d-block small mt-2 font-bold text-white"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
@@ -120,82 +134,12 @@
 
     <!-- Interactive Network Topology -->
     <div class="col-lg-5">
-        <div class="saas-card h-100">
-            <h4 class="mb-4 text-white font-bold h6"><i data-lucide="git-branch" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
-            
-            <div class="d-flex justify-content-center align-items-center" style="height: 240px;">
-                {% if topology.hosts %}
-                <svg viewBox="0 0 320 220" width="100%" height="100%" class="font-mono">
-                    <style>
-                        .flow-line {
-                            stroke: #3b82f6;
-                            stroke-width: 1.5;
-                            stroke-dasharray: 6, 6;
-                            animation: flowAnimation 8s linear infinite;
-                        }
-                        @keyframes flowAnimation {
-                            from { stroke-dashoffset: 60; }
-                            to { stroke-dashoffset: 0; }
-                        }
-                        .node-circle {
-                            fill: #0d111c;
-                            stroke: #475569;
-                            stroke-width: 1.5;
-                            transition: var(--transition-fast);
-                        }
-                        .node-circle:hover {
-                            stroke: #3b82f6;
-                            fill: #131929;
-                        }
-                        .node-text {
-                            fill: #94a3b8;
-                            font-size: 8px;
-                            text-anchor: middle;
-                        }
-                        .active-pulse {
-                            fill: #10b981;
-                            opacity: 0.15;
-                            animation: pulseRing 3s infinite ease-out;
-                            transform-origin: center;
-                        }
-                        @keyframes pulseRing {
-                            0% { transform: scale(1); opacity: 0.4; }
-                            100% { transform: scale(1.8); opacity: 0; }
-                        }
-                    </style>
-
-                    <!-- Router <-> Internet Gateway -->
-                    <line x1="{{ topology.wan.x }}" y1="{{ topology.wan.y }}" x2="{{ topology.router.x }}" y2="{{ topology.router.y }}" class="flow-line" style="stroke: #10b981; animation-duration: 4s;" />
-
-                    <!-- Router <-> Active Hosts -->
-                    {% for host in topology.hosts %}
-                    <line x1="{{ host.x }}" y1="{{ host.y }}" x2="{{ topology.router.x }}" y2="{{ topology.router.y }}" class="flow-line" />
-                    {% endfor %}
-
-                    <!-- Internet Gateway -->
-                    <circle cx="{{ topology.wan.x }}" cy="{{ topology.wan.y }}" r="16" class="node-circle" style="stroke: #10b981;" />
-                    <text x="{{ topology.wan.x }}" y="{{ topology.wan.y|add:3 }}" fill="#10b981" font-size="8px" text-anchor="middle" font-weight="bold">WAN</text>
-                    <text x="{{ topology.wan.x }}" y="{{ topology.wan.y|add:25 }}" class="node-text">Gateway</text>
-
-                    <!-- Central DSS Monitor Router -->
-                    <circle cx="{{ topology.router.x }}" cy="{{ topology.router.y }}" r="18" class="node-circle" style="stroke: #3b82f6;" />
-                    <text x="{{ topology.router.x }}" y="{{ topology.router.y|add:3 }}" fill="#3b82f6" font-size="8px" text-anchor="middle" font-weight="bold">DSS</text>
-                    <text x="{{ topology.router.x }}" y="{{ topology.router.y|add:25 }}" class="node-text" style="fill:#fff;">Router Monitor</text>
-
-                    <!-- Active Host Nodes -->
-                    {% for host in topology.hosts %}
-                    <circle cx="{{ host.x }}" cy="{{ host.y }}" r="{{ host.radius }}" class="node-circle" />
-                    <text x="{{ host.x }}" y="{{ host.y|add:3 }}" fill="#94a3b8" font-size="7px" text-anchor="middle">{{ host.short_label }}</text>
-                    <text x="{{ host.x }}" y="{{ host.y|add:20 }}" class="node-text">{{ host.ip }}</text>
-                    <title>{{ host.ip }} - {{ host.total_mb|floatformat:2 }} MB ({{ host.percentage|floatformat:1 }}%)</title>
-                    {% endfor %}
-                </svg>
-                {% else %}
-                <div class="text-center text-secondary">
-                    <i data-lucide="radio" style="width:32px;height:32px;" class="mb-2"></i>
-                    <div class="small font-mono">No active hosts detected in the last 5 minutes.</div>
-                </div>
-                {% endif %}
+        <div class="saas-card h-100 p-0 overflow-hidden d-flex flex-column" style="min-height:340px;">
+            <div class="p-4 pb-0">
+                <h4 class="m-0 text-white font-bold h6"><i data-lucide="git-branch" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
+            </div>
+            <div class="flex-grow-1 mt-2">
+                <iframe src="{% url 'dashboard:api_topology_graph' %}" width="100%" height="340px" style="border:none;" scrolling="no"></iframe>
             </div>
         </div>
     </div>
@@ -397,6 +341,37 @@
                     });
                     document.getElementById('mdp-values-list').innerHTML = valuesHtml;
                     lucide.createIcons(); // Refresh icons inside modified dynamic list
+                }
+
+                // Update DSE Alerts
+                if (data.dse_alerts) {
+                    let alertsHtml = "";
+                    data.dse_alerts.forEach(alert => {
+                        let alertClass = "";
+                        let iconName = "";
+                        if (alert.severity === 'Critical') {
+                            alertClass = "alert-danger bg-danger bg-opacity-10 border-danger text-danger";
+                            iconName = "shield-alert";
+                        } else if (alert.severity === 'Warning') {
+                            alertClass = "alert-warning bg-warning bg-opacity-10 border-warning text-warning";
+                            iconName = "alert-triangle";
+                        } else {
+                            alertClass = "alert-info bg-info bg-opacity-10 border-info text-info";
+                            iconName = "info";
+                        }
+                        alertsHtml += `
+                            <div class="alert ${alertClass} d-flex align-items-start p-3 m-0 rounded border" role="alert" style="border-color: rgba(255,255,255,0.05) !important;">
+                                <i data-lucide="${iconName}" class="me-3 mt-1 flex-shrink-0" style="width:20px;height:20px;"></i>
+                                <div>
+                                    <strong class="d-block" style="font-size:1.0rem;">[${alert.severity}] ${alert.title} (${alert.module})</strong>
+                                    <span class="d-block small mt-1" style="color:var(--text-secondary);">${alert.message}</span>
+                                    <span class="d-block small mt-2 font-bold text-white"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: ${alert.action}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('dse-alerts-container').innerHTML = alertsHtml;
+                    lucide.createIcons();
                 }
             });
 

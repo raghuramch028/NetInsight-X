@@ -19,7 +19,7 @@
             </div>
             
             <p class="text-secondary small mb-4">
-                The classification module is built using a Support Vector Machine trained on the benchmark UNSW-NB15 dataset.
+                The classification module is built using a Support Vector Machine trained on the real benchmark CICIDS2017 / CICIoT2023 datasets.
             </p>
 
             <ul class="list-group list-group-flush bg-transparent">
@@ -28,15 +28,15 @@
                     <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">{{ stats.kernel|default:"RBF Kernel" }}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
-                    <span class="text-secondary small font-mono">Accuracy Score</span>
+                    <span class="text-secondary small font-mono">Validation Accuracy</span>
                     <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">
-                        {% if stats.accuracy is not None %}{{ stats.accuracy|floatformat:1 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
+                        {% if stats.accuracy is not None %}{{ stats.accuracy|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
                     </span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">F1-Score Metrics</span>
                     <span class="font-mono text-info fw-bold" style="font-size:0.8rem;">
-                        {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:1 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
+                        {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
                     </span>
                 </li>
                 <li class="list-group-item bg-transparent border-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
@@ -54,32 +54,32 @@
                 <i data-lucide="git-merge" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Feature Mapping Methodology
             </h4>
             <p class="text-secondary small mb-4">
-                <strong>Benchmark Dataset Mapping:</strong> Official UNSW-NB15 records classify traffic into Normal and attack flows. Since standard security sets do not map application classes directly, we engineered groupings:
+                <strong>Benchmark Dataset Mapping:</strong> Official CICIoT2023 records classify traffic into Normal and attack flows. Since standard security sets do not map application classes directly, we engineered groupings:
             </p>
             
             <div class="row g-2 mb-3">
                 <div class="col-6">
                     <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
-                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Web Browsing</span>
-                        Mapped from HTTP, SSL, and DNS services with standard small-to-medium payload sizes.
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Normal</span>
+                        Standard background TCP/UDP web browsing, SSH control sessions, and idle telemetry flows.
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
-                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Streaming</span>
-                        Mapped from high-rate UDP streams with continuous payload transmission sizes.
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">DoS / DDoS</span>
+                        Volumetric flooding attacks designed to exhaust resources (TCP SYN Flood, UDP Flood, etc.).
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
-                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">File Transfer</span>
-                        Mapped from FTP/SFTP services or massive TCP segment transfer packet sizes.
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Brute Force / Recon</span>
+                        SSH password guessing, vulnerability scans, and port discovery scans.
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="p-2 rounded bg-dark bg-opacity-25 border border-secondary small" style="border-color: var(--border-subtle) !important;">
-                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Potentially Suspicious</span>
-                        Mapped from raw attack categories (DoS, Backdoor, Fuzzers, etc.).
+                        <span class="font-bold text-white d-block mb-1" style="font-size:0.85rem;">Mirai Botnet</span>
+                        IoT botnet telnet scanner loops and coordinated IoT-device command floods.
                     </div>
                 </div>
             </div>
@@ -127,14 +127,12 @@
                         <td class="font-mono">{{ pkt.size }} Bytes</td>
                         <td class="font-mono">{{ pkt.ttl }}</td>
                         <td>
-                            {% if pkt.classification == 'Web Browsing' %}
-                                <span class="saas-badge badge-busy font-mono" style="font-size:0.7rem;"><i data-lucide="globe" style="width:11px;height:11px;vertical-align:-1px;"></i>Web Browsing</span>
-                            {% elif pkt.classification == 'Streaming' %}
-                                <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;"><i data-lucide="play" style="width:11px;height:11px;vertical-align:-1px;"></i>Streaming</span>
-                            {% elif pkt.classification == 'File Transfer' %}
-                                <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem; color: #a855f7; border-color: rgba(168,85,247,0.2); background-color: rgba(168,85,247,0.05);"><i data-lucide="file-down" style="width:11px;height:11px;vertical-align:-1px;"></i>File Transfer</span>
+                            {% if pkt.classification == 'Normal' %}
+                                <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:-1px;"></i>Normal</span>
+                            {% elif pkt.classification == 'DoS' or pkt.classification == 'DDoS' or pkt.classification == 'Mirai' %}
+                                <span class="saas-badge badge-failure font-mono" style="font-size:0.7rem;"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;"></i>{{ pkt.classification }}</span>
                             {% else %}
-                                <span class="saas-badge badge-failure font-mono" style="font-size:0.7rem;"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i>Suspicious</span>
+                                <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i>{{ pkt.classification }}</span>
                             {% endif %}
                         </td>
                     </tr>

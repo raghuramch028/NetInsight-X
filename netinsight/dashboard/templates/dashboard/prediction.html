@@ -11,16 +11,16 @@
                 <i data-lucide="line-chart" class="d-inline-block me-2 text-info" style="width:16px;height:16px;vertical-align:-2px;"></i>Multi-Step Ahead State Forecasting
             </h4>
             <p class="text-secondary small mb-4">
-                We classify the network state into four zones: NORMAL, BUSY, CONGESTED, and FAILURE. Below are the predicted state probability distributions calculated <em>k</em> steps ahead using the estimated transition matrix (s<sup>(t+k)</sup> = s<sup>(t)</sup> P<sup>k</sup>):
+                We classify the network state into five zones: Normal, Busy, Congested, Under Attack, and Recovering. Below are the predicted state probability distributions calculated <em>k</em> steps ahead using the estimated transition matrix (s<sup>(t+k)</sup> = s<sup>(t)</sup> P<sup>k</sup>):
             </p>
             
             <div class="mb-4">
                 <div class="text-secondary small font-mono mb-2">1-Step Ahead Forecast (10s window):</div>
                 <div class="row g-2">
                     {% for name, prob in pred_1step.items %}
-                        <div class="col-3">
-                            <div class="p-2 rounded text-center" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle);">
-                                <div class="small text-secondary font-mono" style="font-size: 0.65rem;">{{ name }}</div>
+                        <div class="col">
+                            <div class="p-2 rounded text-center" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle); min-width: 80px;">
+                                <div class="small text-secondary font-mono text-truncate" style="font-size: 0.65rem;" title="{{ name }}">{{ name }}</div>
                                 <div class="font-mono text-info fw-bold mt-1" style="font-size: 0.95rem;">{{ prob|floatformat:1 }}%</div>
                             </div>
                         </div>
@@ -32,9 +32,9 @@
                 <div class="text-secondary small font-mono mb-2">3-Step Ahead Forecast (30s window):</div>
                 <div class="row g-2">
                     {% for name, prob in pred_3step.items %}
-                        <div class="col-3">
-                            <div class="p-2 rounded text-center" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle);">
-                                <div class="small text-secondary font-mono" style="font-size: 0.65rem;">{{ name }}</div>
+                        <div class="col">
+                            <div class="p-2 rounded text-center" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle); min-width: 80px;">
+                                <div class="small text-secondary font-mono text-truncate" style="font-size: 0.65rem;" title="{{ name }}">{{ name }}</div>
                                 <div class="font-mono text-info fw-bold mt-1" style="font-size: 0.95rem;">{{ prob|floatformat:1 }}%</div>
                             </div>
                         </div>
@@ -64,20 +64,22 @@
                     <thead>
                         <tr>
                             <th class="text-start">From \ To</th>
-                            <th>NORMAL</th>
-                            <th>BUSY</th>
-                            <th>CONGESTED</th>
-                            <th>FAILURE</th>
+                            <th>Normal</th>
+                            <th>Busy</th>
+                            <th>Congested</th>
+                            <th>Under Attack</th>
+                            <th>Recovering</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in matrix_rows %}
                             <tr>
                                 <td class="fw-bold text-start text-secondary font-sans" style="font-size: 0.8rem;">{{ row.from }}</td>
-                                <td>{{ row.NORMAL }}</td>
-                                <td>{{ row.BUSY }}</td>
-                                <td>{{ row.CONGESTED }}</td>
-                                <td>{{ row.FAILURE }}</td>
+                                <td>{{ row.Normal }}</td>
+                                <td>{{ row.Busy }}</td>
+                                <td>{{ row.Congested }}</td>
+                                <td>{{ row.Under_Attack }}</td>
+                                <td>{{ row.Recovering }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -102,15 +104,16 @@
 
     <div class="row g-3">
         {% for state_name, action_name in mdp.optimal_policy.items %}
-            <div class="col-md-3">
+            <div class="col" style="min-width: 180px;">
                 <div class="p-3 rounded h-100 d-flex flex-column justify-content-between" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle);">
                     <div>
                         <div class="small text-secondary font-mono mb-2" style="font-size: 0.7rem;">State:</div>
                         <span class="saas-badge 
-                            {% if state_name == 'NORMAL' %}badge-normal
-                            {% elif state_name == 'BUSY' %}badge-busy
-                            {% elif state_name == 'CONGESTED' %}badge-congested
-                            {% else %}badge-failure{% endif %}
+                            {% if state_name == 'Normal' %}badge-normal
+                            {% elif state_name == 'Busy' %}badge-busy
+                            {% elif state_name == 'Congested' %}badge-congested
+                            {% elif state_name == 'Under Attack' %}badge-failure
+                            {% elif state_name == 'Recovering' %}badge-normal" style="color:#a855f7; border-color:rgba(168,85,247,0.2); background-color:rgba(168,85,247,0.05);{% else %}badge-normal{% endif %}
                             mb-3">
                             {{ state_name }}
                         </span>

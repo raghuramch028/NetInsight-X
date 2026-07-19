@@ -396,6 +396,12 @@
                         <span>Analytical Reports</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{% url 'dashboard:settings' %}" class="nav-item-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                        <i data-lucide="settings"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
             </ul>
         </div>
         

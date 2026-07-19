@@ -5,6 +5,20 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+def load_dotenv():
+    env_path = BASE_DIR.parent / ".env"
+    if env_path.exists():
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    # Strip quotes if present
+                    value = value.strip('"').strip("'")
+                    os.environ.setdefault(key.strip(), value.strip())
+
+load_dotenv()
+
 # ==========================================
 # Django Specific Configurations
 # ==========================================
@@ -35,6 +49,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",        # Django REST Framework
     "netinsight.dashboard",  # Dashboard App
 ]
 
@@ -73,20 +88,53 @@ WSGI_APPLICATION = "netinsight.wsgi.application"
 # ==========================================
 # Database Configuration
 # ==========================================
+import dj_database_url
+
 DB_PATH = os.environ.get("NETINSIGHT_DB_PATH", str(BASE_DIR / "database" / "netinsight.db"))
-
-# Allow DATABASE_URL to override the raw path for PaaS compatibility.
-# Only SQLite is supported; other schemes fall back to DB_PATH.
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
-if _DATABASE_URL.startswith("sqlite:///"):
-    DB_PATH = _DATABASE_URL.replace("sqlite:///", "", 1)
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": DB_PATH,
+if _DATABASE_URL:
+    try:
+        import psycopg2
+        # Parse connection params to check reachability
+        db_config = dj_database_url.parse(_DATABASE_URL)
+        # Test connection with a short 3-second timeout
+        conn = psycopg2.connect(
+            database=db_config['NAME'],
+            user=db_config['USER'],
+            password=db_config['PASSWORD'],
+            host=db_config['HOST'],
+            port=db_config.get('PORT', 5432),
+            connect_timeout=3
+        )
+        conn.close()
+        DATABASES = {
+            "default": dj_database_url.config(
+                default=_DATABASE_URL,
+                conn_max_age=600,
+                ssl_require=True
+            )
+        }
+        logging.getLogger("netinsight").info("Successfully connected to Neon PostgreSQL database.")
+    except Exception as e:
+        logging.getLogger("netinsight").warning(
+            f"Could not connect to Neon PostgreSQL ({e}). "
+            "Falling back to local SQLite database for development."
+        )
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": DB_PATH,
+            }
+        }
+else:
+    # Fallback to local SQLite if DATABASE_URL is not set
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": DB_PATH,
+        }
     }
-}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
