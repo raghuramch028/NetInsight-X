@@ -1,7 +1,9 @@
+import os
 import logging
 from datetime import timedelta
 import networkx as nx
 from pyvis.network import Network
+import pyvis
 from django.utils import timezone
 from netinsight.dashboard.models import Agent
 
@@ -11,7 +13,7 @@ def generate_topology_pyvis() -> str:
     """Generates an interactive HTML graph representing the network topology of connected agents.
 
     Returns:
-        str: PyVis-generated HTML snippet containing vis.js visualization.
+        str: PyVis-generated HTML snippet containing vis.js visualization with inlined utils.js.
     """
     try:
         G = nx.Graph()
@@ -42,7 +44,6 @@ def generate_topology_pyvis() -> str:
         active_threshold = timedelta(seconds=15)
 
         for agent in agents:
-            # Determine online status dynamically
             is_online = (now - agent.last_seen) < active_threshold
             color = "#ef4444" if is_online else "#64748b"
             status_text = "Online" if is_online else "Offline"
@@ -66,7 +67,6 @@ def generate_topology_pyvis() -> str:
                 shape="dot",
                 size=16
             )
-            # Edge connects agent to router
             G.add_edge("router", agent.mac_address, color="#475569", width=1.5)
 
         # Build PyVis Network
@@ -96,6 +96,23 @@ def generate_topology_pyvis() -> str:
 
         # Generate HTML content
         html_content = net.generate_html(notebook=False)
+
+        # Inline local utils.js script to prevent relative path 404 loading errors
+        try:
+            pyvis_dir = os.path.dirname(pyvis.__file__)
+            utils_js_path = os.path.join(pyvis_dir, "templates", "lib", "bindings", "utils.js")
+            if not os.path.exists(utils_js_path):
+                utils_js_path = os.path.join(pyvis_dir, "lib", "bindings", "utils.js")
+
+            with open(utils_js_path, "r", encoding="utf-8") as f:
+                utils_js_content = f.read()
+
+            relative_tag = '<script src="lib/bindings/utils.js"></script>'
+            inlined_tag = f'<script type="text/javascript">{utils_js_content}</script>'
+            html_content = html_content.replace(relative_tag, inlined_tag)
+        except Exception as js_err:
+            logger.warning(f"Could not inline pyvis utils.js: {js_err}. Falling back to default.")
+
         return html_content
 
     except Exception as e:
