@@ -70,10 +70,11 @@ class NetInsightAgent:
             new_packets = self.sniffer.get_and_clear_packets()
             packets_to_send = self.failed_packets_queue + new_packets
 
-            # Bounded limit for transmission safety
-            if len(packets_to_send) > self.max_failed_packets:
-                logger.warning(f"Failed packet queue exceeded maximum limit ({self.max_failed_packets}). Dropping oldest packets.")
-                packets_to_send = packets_to_send[-self.max_failed_packets:]
+            # Bounded limit for transmission safety (send at most 30 recent packets to prevent server timeouts)
+            max_send = 30
+            if len(packets_to_send) > max_send:
+                logger.info(f"Packet batch size ({len(packets_to_send)}) exceeds transmission safety cap ({max_send}). Sampling the latest {max_send} packets.")
+                packets_to_send = packets_to_send[-max_send:]
 
             # Try uploading
             success = self.sender.send_telemetry(stats, packets_to_send)
@@ -83,8 +84,10 @@ class NetInsightAgent:
                 self.failed_packets_queue.clear()
                 backoff = config.TELEMETRY_INTERVAL  # Reset backoff on success
             else:
-                # Save queue on failure
+                # Save queue on failure (cap at 60 to prevent large retry batches)
                 self.failed_packets_queue = packets_to_send
+                if len(self.failed_packets_queue) > 60:
+                    self.failed_packets_queue = self.failed_packets_queue[-60:]
                 logger.warning(f"Telemetry upload failed. Queued {len(self.failed_packets_queue)} packets for next attempt.")
                 
                 # Apply exponential backoff delay for the next loop run
