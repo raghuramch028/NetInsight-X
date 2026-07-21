@@ -23,7 +23,7 @@ These variables are read at runtime from the process environment. Render, Heroku
 ```bash
 DJANGO_SECRET_KEY=your-production-secret-key-here
 DEBUG=False
-ALLOWED_HOSTS=netinsight-x.onrender.com,localhost
+ALLOWED_HOSTS=netinsight-gnt6.onrender.com,localhost
 NETINSIGHT_DB_PATH=/opt/netinsight/data/netinsight.db
 NETINSIGHT_SVM_PATH=/opt/netinsight/models/svm_model.joblib
 NETINSIGHT_DEMO_MODE=False
