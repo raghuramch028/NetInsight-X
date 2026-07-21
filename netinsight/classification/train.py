@@ -194,9 +194,8 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # 3. Train RBF Kernel SVM
     logger.info("Training RBF Kernel Support Vector Machine on real intrusion traffic data...")
-    clf = SVC(kernel="rbf", C=2.0, gamma="scale", random_state=42, probability=True)
+    clf = SVC(kernel="rbf", C=2.0, class_weight="balanced", gamma="scale", random_state=42)
     clf.fit(X_train_scaled, y_train)
 
     # 4. Evaluate Performance
