@@ -1,8 +1,8 @@
 import os
 import shutil
 import tempfile
-import unittest
 from pathlib import Path
+from django.test import TestCase
 
 from netinsight.config import settings
 from netinsight.database import db_manager
@@ -10,7 +10,7 @@ from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
 
 
-class TestPredictionModule(unittest.TestCase):
+class TestPredictionModule(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -99,8 +99,8 @@ class TestPredictionModule(unittest.TestCase):
         """Verifies that the MDP Value Iteration algorithm converges and generates a policy."""
         V, policy = self.mdp_engine.solve_value_iteration()
 
-        self.assertEqual(len(V), 4)
-        self.assertEqual(len(policy), 4)
+        self.assertEqual(len(V), 5)
+        self.assertEqual(len(policy), 5)
 
         # Test recommendations dictionaries
         rec_normal = self.mdp_engine.get_recommendation("NORMAL")

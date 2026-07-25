@@ -3,6 +3,22 @@
 {% block page_title %}Network Traffic Analytics Summary{% endblock %}
 
 {% block content %}
+{% if summary.total_packets == 0 %}
+<div class="saas-card text-center py-5 mb-4" style="background-color: rgba(59,130,246,0.03); border: 1px dashed rgba(59,130,246,0.25) !important;">
+    <div class="d-inline-block p-4 rounded-circle bg-dark bg-opacity-25 border border-secondary mb-3" style="border-color: var(--border-subtle) !important;">
+        <i data-lucide="info" class="text-primary" style="width:32px;height:32px;"></i>
+    </div>
+    <h3 class="h5 text-white font-bold">Waiting for Network Traffic Telemetry...</h3>
+    <p class="text-secondary small mx-auto mb-4" style="max-width: 500px; line-height: 1.6;">
+        No active edge agents are currently streaming traffic packet logs to this central server. 
+        Start the monitoring agent on a local device using the following command to populate live traffic charts:
+    </p>
+    <div class="d-inline-block p-2 px-3 rounded font-mono text-white bg-dark bg-opacity-50 border border-secondary small">
+        python -m agent.main
+    </div>
+</div>
+{% endif %}
+
 <div class="row g-4 mb-4">
     <!-- Total Packets Card -->
     <div class="col-md-4">

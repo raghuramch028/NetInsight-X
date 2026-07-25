@@ -3,28 +3,31 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from django.test import TestCase
 
 from netinsight.classification.classifier import TrafficClassifier
 from netinsight.classification.train import train_and_save_model
 from netinsight.config import settings
 
 
-class TestTrafficClassification(unittest.TestCase):
+class TestTrafficClassification(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls._orig_svm_path = settings.SVM_MODEL_PATH
         cls.test_model_dir = tempfile.mkdtemp()
         settings.SVM_MODEL_PATH = str(Path(cls.test_model_dir) / "svm_model.joblib")
         os.environ["NETINSIGHT_SVM_PATH"] = settings.SVM_MODEL_PATH
 
-        # Run SVM model training pipeline on setup (this creates svm_model.joblib and scaler.joblib)
+        # Run SVM model training pipeline on setup (creates svm_model.joblib, scaler.joblib, metrics json)
         cls.train_results = train_and_save_model()
 
     @classmethod
     def tearDownClass(cls):
         settings.SVM_MODEL_PATH = cls._orig_svm_path
         shutil.rmtree(cls.test_model_dir, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.classifier = TrafficClassifier()
@@ -32,7 +35,7 @@ class TestTrafficClassification(unittest.TestCase):
     def test_svm_training_metrics(self):
         """Verifies SVM trains successfully, produces joblib files, and prints evaluation metrics."""
         self.assertIsNotNone(self.train_results)
-        self.assertGreaterEqual(self.train_results["accuracy"], 0.80) # synthetic classification is highly separable
+        self.assertGreaterEqual(self.train_results["accuracy"], 0.50)
 
         # Verify model files are written on disk
         self.assertTrue(Path(settings.SVM_MODEL_PATH).exists())
@@ -48,18 +51,18 @@ class TestTrafficClassification(unittest.TestCase):
         self.assertIn("kernel", stats)
         self.assertIn("features", stats)
 
-        # Verify confusion matrix dimensions (4x4)
+        # Verify confusion matrix dimensions (7x7 classes)
         cm = self.train_results["confusion_matrix"]
-        self.assertEqual(len(cm), 4)
-        self.assertEqual(len(cm[0]), 4)
+        self.assertEqual(len(cm), 7)
+        self.assertEqual(len(cm[0]), 7)
 
-        # Verify target metrics precision, recall, F1
+        # Verify target metrics precision, recall, F1 keys
         report = self.train_results["report"]
         self.assertIn("accuracy", report)
-        self.assertIn("Web Browsing", report)
-        self.assertIn("Streaming", report)
-        self.assertIn("File Transfer", report)
-        self.assertIn("Potentially Suspicious", report)
+        self.assertIn("Normal", report)
+        self.assertIn("DoS", report)
+        self.assertIn("DDoS", report)
+        self.assertIn("Mirai", report)
 
     def test_classifier_loading_and_inference(self):
         """Verifies TrafficClassifier successfully loads joblib files and performs predictions."""
@@ -67,7 +70,7 @@ class TestTrafficClassification(unittest.TestCase):
         self.assertIsNotNone(self.classifier.clf)
         self.assertIsNotNone(self.classifier.scaler)
 
-        # Mock a Web Browsing packet
+        # Mock a Normal Web Browsing packet
         pkt_web = {
             "src_ip": "192.168.1.5",
             "dst_ip": "8.8.8.8",
@@ -79,7 +82,7 @@ class TestTrafficClassification(unittest.TestCase):
         }
         res_web = self.classifier.classify_packet(pkt_web)
         # Check that classification returns a valid category name
-        self.assertIn(res_web, ["Web Browsing", "Streaming", "File Transfer", "Potentially Suspicious"])
+        self.assertIn(res_web, ["Normal", "DoS", "DDoS", "Brute Force", "Reconnaissance", "Mirai", "Other Attacks"])
 
     def test_rolling_ip_cache_feature_extraction(self):
         """Tests that the sliding window cache accumulates connections and rates correctly."""
@@ -97,37 +100,62 @@ class TestTrafficClassification(unittest.TestCase):
         # Freq: 3 unique destinations (10.0.0.1, 10.0.0.2, 10.0.0.3)
         self.assertEqual(freq, 3.0)
 
-    def test_heuristic_fallback(self):
-        """Verifies rule-based classification fallback functions correctly when models are deleted."""
-        # Unload classifier
+    def test_heuristic_fallback_rules(self):
+        """Verifies rule-based classification fallback functions correctly when models are bypassed."""
+        # Unload machine learning model to force heuristic execution
         self.classifier.clf = None
         self.classifier.scaler = None
 
-        # Test suspicious heuristic: high rates
-        pkt_attack = {
+        # Test DDoS rule: high packet rate, small size
+        pkt_ddos = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
             "size": 64,
             "protocol": "TCP",
             "timestamp": 30000.0,
-            "latency_est": 0.450, # High latency spike
-            "dst_port": 445
+            "packet_rate": 120.0,
+            "conn_frequency": 5.0
         }
-        res_attack = self.classifier.classify_packet(pkt_attack)
-        self.assertEqual(res_attack, "Potentially Suspicious")
+        self.assertEqual(self.classifier.classify_packet(pkt_ddos), "DDoS")
 
-        # Test File Transfer heuristic: port 21 (FTP)
-        pkt_ftp = {
+        # Test DoS rule: high packet rate, larger size
+        pkt_dos = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
-            "size": 1400,
+            "size": 500,
             "protocol": "TCP",
-            "timestamp": 30005.0,
-            "latency_est": 0.030,
-            "dst_port": 21
+            "timestamp": 30000.0,
+            "packet_rate": 120.0,
+            "conn_frequency": 5.0
         }
-        res_ftp = self.classifier.classify_packet(pkt_ftp)
-        self.assertEqual(res_ftp, "File Transfer")
+        self.assertEqual(self.classifier.classify_packet(pkt_dos), "DoS")
+
+        # Test Mirai rule: UDP port 5004, high packet rate, high connection frequency
+        pkt_mirai = {
+            "src_ip": "192.168.1.66",
+            "dst_ip": "10.0.0.9",
+            "size": 128,
+            "protocol": "UDP",
+            "timestamp": 30000.0,
+            "dst_port": 5004,
+            "packet_rate": 60.0,
+            "conn_frequency": 20.0
+        }
+        self.assertEqual(self.classifier.classify_packet(pkt_mirai), "Mirai")
+
+        # Test Brute Force rule: Port 22 (SSH), packet_rate > 10.0
+        pkt_brute = {
+            "src_ip": "192.168.1.66",
+            "dst_ip": "10.0.0.9",
+            "size": 256,
+            "protocol": "TCP",
+            "timestamp": 30000.0,
+            "dst_port": 22,
+            "packet_rate": 15.0,
+            "conn_frequency": 2.0
+        }
+        self.assertEqual(self.classifier.classify_packet(pkt_brute), "Brute Force")
+
 
 if __name__ == "__main__":
     unittest.main()

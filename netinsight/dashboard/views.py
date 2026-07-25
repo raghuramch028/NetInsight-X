@@ -268,6 +268,11 @@ def optimization_view(request):
             "allocated": allocation_mbps[idx]
         })
 
+    # Check online agents count
+    now = timezone.now()
+    active_threshold = timedelta(seconds=15)
+    online_agents_count = Agent.objects.filter(last_seen__gte=now - active_threshold).count()
+
     context = {
         "status": result["status"],
         "utility": result["utility"] / 1e6,
@@ -276,7 +281,8 @@ def optimization_view(request):
         "total_capacity_mbps": capacity / 1e6,
         "input_priorities": priorities,
         "input_min_bounds": [x / 1e6 for x in min_bounds],
-        "input_max_bounds": [x / 1e6 for x in max_bounds]
+        "input_max_bounds": [x / 1e6 for x in max_bounds],
+        "online_agents_count": online_agents_count
     }
     return render(request, "dashboard/optimization.html", context)
 
@@ -310,7 +316,8 @@ def prediction_view(request):
         "pred_1step": {k: v * 100.0 for k, v in hmm_1step["forecast"].items()},
         "pred_3step": {k: v * 100.0 for k, v in hmm_3step["forecast"].items()},
         "mdp": mdp_rec,
-        "gamma": settings.MDP_DISCOUNT_FACTOR
+        "gamma": settings.MDP_DISCOUNT_FACTOR,
+        "using_default_matrix": (StateHistory.objects.count() < 2)
     }
     return render(request, "dashboard/prediction.html", context)
 

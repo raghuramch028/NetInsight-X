@@ -3,6 +3,34 @@
 {% block page_title %}Real-Time Network Telemetry{% endblock %}
 
 {% block content %}
+<!-- Welcome & Empty Agent Connections Banner -->
+{% if agents_count == 0 %}
+<div class="saas-card text-center py-5 mb-4" style="background-color: rgba(59,130,246,0.03); border: 1px dashed rgba(59,130,246,0.25) !important;">
+    <div class="d-inline-block p-4 rounded-circle bg-dark bg-opacity-25 border border-secondary mb-3" style="border-color: var(--border-subtle) !important;">
+        <i data-lucide="loader" class="text-primary" style="width:32px;height:32px;animation: spin 2s linear infinite;"></i>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    </div>
+    <h3 class="h5 text-white font-bold">Waiting for Edge Agent Connections...</h3>
+    <p class="text-secondary small mx-auto mb-4" style="max-width: 550px; line-height: 1.6;">
+        No active distributed monitoring agents have connected to this central server yet.
+        Start the telemetry collector on your client device using the following commands to begin monitoring live traffic:
+    </p>
+    <div class="d-flex flex-column align-items-center gap-2 mx-auto" style="max-width: 480px;">
+        <div class="w-100 p-3 rounded font-mono text-start text-white bg-dark bg-opacity-50 border border-secondary" style="border-color: var(--border-subtle) !important; font-size: 0.8rem; overflow-x: auto;">
+            <span class="text-secondary"># 1. Install dependencies on client</span><br>
+            pip install psutil scapy requests<br><br>
+            <span class="text-secondary"># 2. Run the agent client script</span><br>
+            python -m agent.main
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- DSE Alerts Container -->
 <div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-2">
     {% for alert in dse_alerts %}

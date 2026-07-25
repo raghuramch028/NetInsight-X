@@ -3,8 +3,8 @@ import os
 import shutil
 import tempfile
 import time
-import unittest
 from pathlib import Path
+from django.test import TestCase
 
 from scapy.all import IP, TCP
 
@@ -16,22 +16,18 @@ from netinsight.database import db_manager
 logger = logging.getLogger(__name__)
 
 
-class TestPacketCapture(unittest.TestCase):
+class TestPacketCapture(TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls._orig_db_path = settings.DB_PATH
-        cls._orig_demo_mode = settings.DEMO_MODE
         cls.test_db_dir = tempfile.mkdtemp()
         settings.DB_PATH = str(Path(cls.test_db_dir) / "test_netinsight.db")
         os.environ["NETINSIGHT_DB_PATH"] = settings.DB_PATH
-        settings.DEMO_MODE = True
-        os.environ["NETINSIGHT_DEMO_MODE"] = "True"
 
     @classmethod
     def tearDownClass(cls):
         settings.DB_PATH = cls._orig_db_path
-        settings.DEMO_MODE = cls._orig_demo_mode
         shutil.rmtree(cls.test_db_dir, ignore_errors=True)
 
     def setUp(self):
@@ -45,7 +41,6 @@ class TestPacketCapture(unittest.TestCase):
     def test_settings_load(self):
         """Verifies configuration constants load properly."""
         self.assertEqual(settings.LINK_CAPACITY, 100_000_000.0)
-        self.assertTrue(settings.DEMO_MODE)
         self.assertIn("NORMAL", settings.STATE_THRESHOLDS)
 
     def test_tcp_packet_parsing(self):
@@ -102,36 +97,6 @@ class TestPacketCapture(unittest.TestCase):
         self.assertTrue(parsed2["is_retransmission"])
         self.assertAlmostEqual(self.parser.get_estimated_loss_rate(), 50.0, places=1)
 
-    def test_live_monitor_demo_run(self):
-        """Starts and stops LiveMonitor in DEMO_MODE, verifying packets flow to SQL."""
-        monitor = LiveMonitor()
-        try:
-            monitor.start()
-
-            # Let it run for 2.5 seconds to accumulate packets and write metrics to SQL
-            time.sleep(2.5)
-
-            # Check that packets were inserted into the DB
-            conn = db_manager.get_connection()
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT COUNT(*) FROM packets")
-            packet_count = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM metrics")
-            metrics_count = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM state_history")
-            history_count = cursor.fetchone()[0]
-
-            conn.close()
-
-            self.assertGreater(packet_count, 0, "Packets table should have entries in Demo Mode.")
-            self.assertGreater(metrics_count, 0, "Metrics table should have entries in Demo Mode.")
-            self.assertGreaterEqual(history_count, 0)
-            logger.info(f"Test Run Summary: Captured {packet_count} packets and generated {metrics_count} metric logs.")
-        finally:
-            monitor.stop()
-
 if __name__ == "__main__":
+    import unittest
     unittest.main()

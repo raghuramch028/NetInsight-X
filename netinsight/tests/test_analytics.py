@@ -2,15 +2,15 @@ import os
 import shutil
 import tempfile
 import time
-import unittest
 from pathlib import Path
+from django.test import TestCase
 
 from netinsight.analytics.engine import AnalyticsEngine
 from netinsight.config import settings
 from netinsight.database import db_manager
 
 
-class TestAnalyticsEngine(unittest.TestCase):
+class TestAnalyticsEngine(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -58,21 +58,29 @@ class TestAnalyticsEngine(unittest.TestCase):
     def test_analytics_calculations(self):
         """Saves known packets to SQLite and verifies Pandas metrics aggregation calculations."""
         now = time.time()
+        from netinsight.dashboard.models import Agent, PacketRecord
+        from django.utils import timezone
+
+        # Create active Agent database records first
+        agent1 = Agent.objects.create(mac_address="00:11:22:33:44:55", hostname="Agent 1", ip_address="192.168.1.5", last_seen=timezone.now())
+        agent2 = Agent.objects.create(mac_address="00:11:22:33:44:66", hostname="Agent 2", ip_address="192.168.1.10", last_seen=timezone.now())
+        agent3 = Agent.objects.create(mac_address="00:11:22:33:44:77", hostname="Agent 3", ip_address="192.168.1.15", last_seen=timezone.now())
 
         # Save a set of mock packets
         mock_packets = [
             # 3 TCP packets from IP 192.168.1.5 (total size: 2500 bytes)
-            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5000, "dst_port": 80, "protocol": "TCP", "size": 1000, "timestamp": now - 5, "ttl": 64},
-            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5000, "dst_port": 80, "protocol": "TCP", "size": 1000, "timestamp": now - 4, "ttl": 64},
-            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5001, "dst_port": 80, "protocol": "TCP", "size": 500, "timestamp": now - 3, "ttl": 64},
+            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5000, "dst_port": 80, "protocol": "TCP", "size": 1000, "timestamp": now - 5, "ttl": 64, "agent": agent1},
+            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5000, "dst_port": 80, "protocol": "TCP", "size": 1000, "timestamp": now - 4, "ttl": 64, "agent": agent1},
+            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5001, "dst_port": 80, "protocol": "TCP", "size": 500, "timestamp": now - 3, "ttl": 64, "agent": agent1},
             # 2 UDP packets from IP 192.168.1.10 (total size: 600 bytes)
-            {"src_ip": "192.168.1.10", "dst_ip": "1.1.1.1", "src_port": 6000, "dst_port": 53, "protocol": "UDP", "size": 300, "timestamp": now - 2, "ttl": 64},
-            {"src_ip": "192.168.1.10", "dst_ip": "1.1.1.1", "src_port": 6000, "dst_port": 53, "protocol": "UDP", "size": 300, "timestamp": now - 1, "ttl": 64},
+            {"src_ip": "192.168.1.10", "dst_ip": "1.1.1.1", "src_port": 6000, "dst_port": 53, "protocol": "UDP", "size": 300, "timestamp": now - 2, "ttl": 64, "agent": agent2},
+            {"src_ip": "192.168.1.10", "dst_ip": "1.1.1.1", "src_port": 6000, "dst_port": 53, "protocol": "UDP", "size": 300, "timestamp": now - 1, "ttl": 64, "agent": agent2},
             # 1 ICMP packet from IP 192.168.1.15 (total size: 100 bytes)
-            {"src_ip": "192.168.1.15", "dst_ip": "192.168.1.1", "src_port": 0, "dst_port": 0, "protocol": "ICMP", "size": 100, "timestamp": now, "ttl": 128}
+            {"src_ip": "192.168.1.15", "dst_ip": "192.168.1.1", "src_port": 0, "dst_port": 0, "protocol": "ICMP", "size": 100, "timestamp": now, "ttl": 128, "agent": agent3}
         ]
 
-        db_manager.save_packets_bulk(mock_packets)
+        db_packets = [PacketRecord(**p) for p in mock_packets]
+        PacketRecord.objects.bulk_create(db_packets)
 
         # Test active device count
         active_count = self.engine.get_active_devices_count(window_seconds=10)
@@ -109,38 +117,13 @@ class TestAnalyticsEngine(unittest.TestCase):
         self.assertEqual(summary["total_bytes"], 3200)
         self.assertAlmostEqual(summary["avg_packet_size"], 3200.0 / 6, places=2)
 
-    def test_network_topology_from_active_hosts(self):
-        """Verifies that the topology graph is built from real captured source IPs."""
-        now = time.time()
-        mock_packets = [
-            {"src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "src_port": 5000, "dst_port": 80, "protocol": "TCP", "size": 1000, "timestamp": now - 2, "ttl": 64},
-            {"src_ip": "192.168.1.10", "dst_ip": "1.1.1.1", "src_port": 6000, "dst_port": 53, "protocol": "UDP", "size": 500, "timestamp": now - 1, "ttl": 64},
-        ]
-        db_manager.save_packets_bulk(mock_packets)
-
-        topology = self.engine.get_network_topology(window_seconds=10, max_hosts=8)
-
-        # Router and WAN nodes are always present
-        self.assertIn("router", topology)
-        self.assertIn("wan", topology)
-        self.assertEqual(len(topology["hosts"]), 2)
-
-        host_ips = {h["ip"] for h in topology["hosts"]}
-        self.assertIn("192.168.1.5", host_ips)
-        self.assertIn("192.168.1.10", host_ips)
-
-        for host in topology["hosts"]:
-            self.assertIn("x", host)
-            self.assertIn("y", host)
-            self.assertIn("radius", host)
-            self.assertIn("percentage", host)
-
-    def test_network_topology_empty(self):
-        """Verifies that an empty topology still contains fixed nodes when no hosts are active."""
-        topology = self.engine.get_network_topology(window_seconds=10)
-        self.assertEqual(topology["hosts"], [])
-        self.assertIn("router", topology)
-        self.assertIn("wan", topology)
+    def test_network_topology_generation(self):
+        """Verifies that the PyVis network topology generates HTML output."""
+        from netinsight.analytics.topology import generate_topology_pyvis
+        html = generate_topology_pyvis()
+        self.assertIsNotNone(html)
+        self.assertIn("vis.js", html)
+        self.assertIn("DSS Router", html)
 
 if __name__ == "__main__":
     unittest.main()

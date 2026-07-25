@@ -163,7 +163,7 @@ LINK_CAPACITY = float(os.environ.get("NETINSIGHT_LINK_CAPACITY", 100_000_000.0))
 DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 2000)) # in milliseconds
 
 # Demonstration / Replay Mode
-DEMO_MODE = os.environ.get("NETINSIGHT_DEMO_MODE", "True").lower() in ("true", "1", "yes")
+DEMO_MODE = False
 
 # Configurable thresholds for network states (based on bandwidth utilization and packet loss)
 STATE_THRESHOLDS = {

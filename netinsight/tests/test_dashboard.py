@@ -1,46 +1,38 @@
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
-
-from django.test import Client, SimpleTestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "netinsight.config.settings")
 
 import django
-
 django.setup()
 
 from netinsight.config import settings
 from netinsight.database import db_manager
+from netinsight.dashboard.models import MetricRecord, StateHistory
 
 
-class TestDashboardViews(SimpleTestCase):
+class TestDashboardViews(TestCase):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls._orig_db_path = settings.DB_PATH
-        cls._orig_demo_mode = settings.DEMO_MODE
         cls.test_db_dir = tempfile.mkdtemp()
         settings.DB_PATH = str(Path(cls.test_db_dir) / "test_netinsight_dashboard.db")
         os.environ["NETINSIGHT_DB_PATH"] = settings.DB_PATH
-        settings.DEMO_MODE = True
-        os.environ["NETINSIGHT_DEMO_MODE"] = "True"
         db_manager.init_db()
         db_manager.clear_db()
         cls.client = Client()
 
     @classmethod
     def tearDownClass(cls):
-        # Stop background monitor thread if it was started
-        from netinsight.dashboard import views
-        if views.monitor is not None:
-            views.monitor.stop()
         db_manager.clear_db()
         settings.DB_PATH = cls._orig_db_path
-        settings.DEMO_MODE = cls._orig_demo_mode
         shutil.rmtree(cls.test_db_dir, ignore_errors=True)
         super().tearDownClass()
 
@@ -75,7 +67,7 @@ class TestDashboardViews(SimpleTestCase):
         self.assertIn("packet_loss", data)
         self.assertIn("network_state", data)
         self.assertIsInstance(data["bandwidth_util"], (int, float))
-        self.assertIn(data["network_state"], ["NORMAL", "BUSY", "CONGESTED", "FAILURE"])
+        self.assertIn(data["network_state"], ["Normal", "Busy", "Congested", "Under Attack", "Recovering"])
 
         # Test Live Packets API
         url_packets = reverse("dashboard:api_live_packets")
@@ -87,9 +79,12 @@ class TestDashboardViews(SimpleTestCase):
 
     def test_reports_with_data(self):
         """Verifies the reports page can generate telemetry charts."""
-        # Seed a couple of metrics/state rows so the plots are generated
-        db_manager.save_metric(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-        db_manager.save_state_history(0.0, "NORMAL", 0.0, 0.0, 0.0)
+        # Seed a couple of metrics/state rows via Django ORM so the plots are generated
+        from django.utils import timezone
+        MetricRecord.objects.create(timestamp=time.time() - 10, throughput=1.0, packet_rate=1.0, bandwidth_util=1.0, latency=0.015, packet_loss=0.0)
+        MetricRecord.objects.create(timestamp=time.time() - 5, throughput=2.0, packet_rate=2.0, bandwidth_util=2.0, latency=0.015, packet_loss=0.0)
+        MetricRecord.objects.create(timestamp=time.time(), throughput=3.0, packet_rate=3.0, bandwidth_util=3.0, latency=0.015, packet_loss=0.0)
+        StateHistory.objects.create(timestamp=time.time(), network_state="Normal", bandwidth_utilization=1.0, packet_loss=0.0, latency=0.015)
 
         url_reports = reverse("dashboard:reports")
         response = self.client.get(url_reports)

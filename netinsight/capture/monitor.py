@@ -71,102 +71,7 @@ class LiveMonitor:
             logger.error(f"Error in Scapy live sniffer: {e}", exc_info=True)
             self.is_running = False
 
-    def run_demo_replay(self) -> None:
-        """Simulates live packet arrivals for testing and project presentations (Demonstration Mode)."""
-        logger.info("Starting NetInsight-X Demonstration Replay Mode...")
 
-        ips = [
-            "192.168.1.1", "192.168.1.15", "192.168.1.22", "192.168.1.33",
-            "10.0.0.4", "10.0.0.8", "8.8.8.8", "1.1.1.1", "142.250.190.46"
-        ]
-
-        protocols = ["TCP", "UDP", "ICMP"]
-
-        # Simulate active state cycles (Normal, Busy, Congested, Failure)
-        # to generate realistic data patterns for Markov/MDP validation
-        state_cycle = ["NORMAL", "NORMAL", "BUSY", "CONGESTED", "FAILURE", "CONGESTED", "BUSY"]
-        cycle_idx = 0
-        cycle_duration = DEFAULT_DEMO_CYCLE_SECONDS
-        last_cycle_change = time.time()
-
-        while self.is_running:
-            now = time.time()
-            if now - last_cycle_change > cycle_duration:
-                cycle_idx = (cycle_idx + 1) % len(state_cycle)
-                last_cycle_change = now
-                logger.info(f"Replay mode state pattern changed to: {state_cycle[cycle_idx]}")
-
-            current_pattern = state_cycle[cycle_idx]
-
-            # Determine packet generation rate based on simulated network state
-            if current_pattern == "NORMAL":
-                pkt_count = random.randint(5, 15)
-                delay = 0.1
-            elif current_pattern == "BUSY":
-                pkt_count = random.randint(30, 80)
-                delay = 0.05
-            elif current_pattern == "CONGESTED":
-                pkt_count = random.randint(150, 250)
-                delay = 0.02
-            else:  # FAILURE (either high loss or saturated)
-                pkt_count = random.randint(200, 300)
-                delay = 0.01
-
-            for _ in range(pkt_count):
-                src = random.choice(ips[:4])  # LAN src IPs
-                dst = random.choice(ips[4:])  # WAN dst IPs
-                proto = random.choice(protocols)
-                size = random.randint(64, 1500)
-
-                # Assign ports
-                src_port = random.randint(1024, 65535)
-                if proto == "TCP":
-                    dst_port = random.choice([80, 443, 21, 22, 445])
-                elif proto == "UDP":
-                    dst_port = random.choice([53, 5004, 123])
-                else:
-                    dst_port = 0
-
-                # Introduce packet loss (retransmissions) or latency spikes based on state
-                latency_est = None
-                is_retransmission = False
-
-                if current_pattern == "NORMAL":
-                    latency_est = random.uniform(0.005, 0.020) # 5-20ms
-                    is_retransmission = (random.random() < 0.01)
-                elif current_pattern == "BUSY":
-                    latency_est = random.uniform(0.020, 0.050) # 20-50ms
-                    is_retransmission = (random.random() < 0.03)
-                elif current_pattern == "CONGESTED":
-                    latency_est = random.uniform(0.080, 0.180) # 80-180ms
-                    is_retransmission = (random.random() < 0.08)
-                else:  # FAILURE
-                    latency_est = random.uniform(0.200, 0.500) # 200-500ms
-                    is_retransmission = (random.random() < 0.15) # 15% retransmissions
-
-                # Queue the mock packet
-                mock_pkt = {
-                    "src_ip": src,
-                    "dst_ip": dst,
-                    "src_port": src_port,
-                    "dst_port": dst_port,
-                    "protocol": proto,
-                    "size": size,
-                    "timestamp": now,
-                    "ttl": random.choice([64, 128]),
-                    "latency_est": latency_est if random.random() < 0.3 else None,
-                    "is_retransmission": is_retransmission
-                }
-
-                try:
-                    self.packet_queue.put_nowait(mock_pkt)
-                    with self._counter_lock:
-                        self.total_captured_packets += 1
-                except queue.Full:
-                    with self._counter_lock:
-                        self.total_dropped_packets += 1
-
-            time.sleep(delay)
 
     def classify_state_by_metrics(self, util: float, loss: float) -> str:
         """Classifies network state using configurable thresholds from settings.py."""
@@ -296,10 +201,7 @@ class LiveMonitor:
         self.writer_thread.start()
 
         # Start packet sniffer/replay producer
-        if settings.DEMO_MODE:
-            self.sniffer_thread = threading.Thread(target=self.run_demo_replay, name="DemoReplay")
-        else:
-            self.sniffer_thread = threading.Thread(target=self.run_live_sniffer, name="LiveSniffer")
+        self.sniffer_thread = threading.Thread(target=self.run_live_sniffer, name="LiveSniffer")
 
         self.sniffer_thread.daemon = True
         self.sniffer_thread.start()
