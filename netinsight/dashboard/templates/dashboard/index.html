@@ -32,14 +32,14 @@
 {% endif %}
 
 <!-- DSE Alerts Container -->
-<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-2">
+<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-3">
     {% for alert in dse_alerts %}
-        <div class="alert {% if alert.severity == 'Critical' %}alert-danger bg-danger bg-opacity-10 border-danger text-danger{% elif alert.severity == 'Warning' %}alert-warning bg-warning bg-opacity-10 border-warning text-warning{% else %}alert-info bg-info bg-opacity-10 border-info text-info{% endif %} d-flex align-items-start p-3 m-0 rounded border" role="alert" style="border-color: rgba(255,255,255,0.05) !important;">
-            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0" style="width:20px;height:20px;"></i>
+        <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card {% if alert.severity == 'Critical' %}severity-critical{% elif alert.severity == 'Warning' %}severity-warning{% else %}severity-info{% endif %}" role="alert">
+            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0 {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="width:20px;height:20px;"></i>
             <div>
-                <strong class="d-block" style="font-size:1.0rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
-                <span class="d-block small mt-1" style="color:var(--text-secondary);">{{ alert.message }}</span>
-                <span class="d-block small mt-2 font-bold text-white"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
+                <strong class="d-block {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="font-size:0.95rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
+                <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">{{ alert.message }}</span>
+                <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
             </div>
         </div>
     {% endfor %}
@@ -200,6 +200,7 @@
             <thead>
                 <tr>
                     <th>Protocol</th>
+                    <th>Device</th>
                     <th>Source IP</th>
                     <th>Destination IP</th>
                     <th>Source Port</th>
@@ -211,7 +212,7 @@
             </thead>
             <tbody id="packet-tbody">
                 <tr>
-                    <td colspan="8" class="text-center text-secondary py-4">Listening for incoming packet flows...</td>
+                    <td colspan="9" class="text-center text-secondary py-4">Listening for incoming packet flows...</td>
                 </tr>
             </tbody>
         </table>
@@ -329,15 +330,19 @@
                 pulse.className = 'pulse-indicator';
                 label.innerText = state;
                 
-                if (state === 'NORMAL') {
+                const stateLower = state.toLowerCase();
+                if (stateLower === 'normal') {
                     badge.classList.add('badge-normal');
                     pulse.classList.add('pulse-normal');
-                } else if (state === 'BUSY') {
+                } else if (stateLower === 'busy') {
                     badge.classList.add('badge-busy');
                     pulse.classList.add('pulse-busy');
-                } else if (state === 'CONGESTED') {
+                } else if (stateLower === 'congested') {
                     badge.classList.add('badge-congested');
                     pulse.classList.add('pulse-congested');
+                } else if (stateLower === 'recovering') {
+                    badge.classList.add('badge-busy');
+                    pulse.classList.add('pulse-busy');
                 } else {
                     badge.classList.add('badge-failure');
                     pulse.classList.add('pulse-failure');
@@ -380,25 +385,29 @@
                 if (data.dse_alerts) {
                     let alertsHtml = "";
                     data.dse_alerts.forEach(alert => {
-                        let alertClass = "";
+                        let severityClass = "";
+                        let iconClass = "";
                         let iconName = "";
                         if (alert.severity === 'Critical') {
-                            alertClass = "alert-danger bg-danger bg-opacity-10 border-danger text-danger";
+                            severityClass = "severity-critical";
+                            iconClass = "text-danger";
                             iconName = "shield-alert";
                         } else if (alert.severity === 'Warning') {
-                            alertClass = "alert-warning bg-warning bg-opacity-10 border-warning text-warning";
+                            severityClass = "severity-warning";
+                            iconClass = "text-warning";
                             iconName = "alert-triangle";
                         } else {
-                            alertClass = "alert-info bg-info bg-opacity-10 border-info text-info";
+                            severityClass = "severity-info";
+                            iconClass = "text-info";
                             iconName = "info";
                         }
                         alertsHtml += `
-                            <div class="alert ${alertClass} d-flex align-items-start p-3 m-0 rounded border" role="alert" style="border-color: rgba(255,255,255,0.05) !important;">
-                                <i data-lucide="${iconName}" class="me-3 mt-1 flex-shrink-0" style="width:20px;height:20px;"></i>
+                            <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card ${severityClass}" role="alert">
+                                <i data-lucide="${iconName}" class="me-3 mt-1 flex-shrink-0 ${iconClass}" style="width:20px;height:20px;"></i>
                                 <div>
-                                    <strong class="d-block" style="font-size:1.0rem;">[${alert.severity}] ${alert.title} (${alert.module})</strong>
-                                    <span class="d-block small mt-1" style="color:var(--text-secondary);">${alert.message}</span>
-                                    <span class="d-block small mt-2 font-bold text-white"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: ${alert.action}</span>
+                                    <strong class="d-block ${iconClass}" style="font-size:0.95rem;">[${alert.severity}] ${alert.title} (${alert.module})</strong>
+                                    <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">${alert.message}</span>
+                                    <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: ${alert.action}</span>
                                 </div>
                             </div>
                         `;
@@ -416,7 +425,7 @@
                 const badge = document.getElementById('packet-count-badge');
                 
                 if (data.packets.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-secondary py-4">Listening for incoming packet flows...</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-secondary py-4">Listening for incoming packet flows...</td></tr>`;
                     badge.innerText = 0;
                     return;
                 }
@@ -440,6 +449,7 @@
                     html += `
                         <tr>
                             <td>${protoBadge}</td>
+                            <td class="font-bold text-white small" style="font-size:0.8rem;">${pkt.agent_hostname}</td>
                             <td class="font-mono">${pkt.src_ip}</td>
                             <td class="font-mono">${pkt.dst_ip}</td>
                             <td class="font-mono">${pkt.src_port}</td>

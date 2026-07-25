@@ -152,25 +152,25 @@
             transform: translateY(-2px);
         }
 
-        /* Jira-style left-accent borders on Alert cards */
-        .alert {
-            border: 1px solid var(--border-subtle) !important;
-            background-color: rgba(13, 17, 28, 0.5) !important;
-            backdrop-filter: blur(8px);
-            border-radius: 8px;
-            transition: var(--transition-fast);
+        /* Premium Jira-style left-accent borders on Alert cards */
+        .dse-alert-card {
+            background: linear-gradient(135deg, rgba(13, 17, 28, 0.6) 0%, rgba(20, 27, 45, 0.6) 100%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            backdrop-filter: blur(12px);
+            border-radius: 10px;
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 100%;
         }
-        .alert-danger {
+        .dse-alert-card.severity-critical {
             border-left: 4px solid var(--accent-red) !important;
-            color: #f87171 !important;
         }
-        .alert-warning {
+        .dse-alert-card.severity-warning {
             border-left: 4px solid var(--accent-yellow) !important;
-            color: #fbbf24 !important;
         }
-        .alert-info {
+        .dse-alert-card.severity-info {
             border-left: 4px solid var(--accent-blue) !important;
-            color: #60a5fa !important;
         }
 
         /* Global Form and Inputs Styling */
