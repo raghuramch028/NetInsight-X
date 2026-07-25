@@ -14,24 +14,24 @@
 
     <style>
         :root {
-            --bg-primary: #07090e;      /* Deep space dark */
-            --bg-secondary: #0d111c;    /* Elevated panel bg */
-            --bg-tertiary: #131929;     /* Dropdowns, controls */
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --border-hover: rgba(255, 255, 255, 0.1);
-            --text-main: #f1f5f9;       /* Slate 100 */
-            --text-secondary: #94a3b8;  /* Slate 400 */
-            --text-muted: #475569;      /* Slate 600 */
-            --accent-blue: #3b82f6;     /* SaaS Blue */
-            --accent-green: #10b981;    /* Success */
-            --accent-yellow: #f59e0b;   /* Warning */
-            --accent-red: #ef4444;      /* Danger */
-            --accent-purple: #8b5cf6;   /* Predictive/ML */
+            --bg-primary: #030712;      /* Extremely deep modern dark slate */
+            --bg-secondary: #0b0f19;    /* Clean card dark background */
+            --bg-tertiary: #111827;     /* Control elements, inputs, dropdowns */
+            --border-subtle: rgba(255, 255, 255, 0.04);
+            --border-hover: rgba(255, 255, 255, 0.09);
+            --text-main: #f8fafc;       /* Bright slate text */
+            --text-secondary: #94a3b8;  /* Dimmer description text */
+            --text-muted: #64748b;      /* Muted text */
+            --accent-blue: #3b82f6;     /* SaaS theme neon blue */
+            --accent-green: #10b981;    /* Success green */
+            --accent-yellow: #f59e0b;   /* Warning orange */
+            --accent-red: #ef4444;      /* Threat red */
+            --accent-purple: #a855f7;   /* ML predictive purple */
             --font-mono: 'JetBrains Mono', monospace;
-            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-premium: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Bootstrap utility overrides for consistent dark theme */
+        /* Bootstrap overrides for consistent premium dark mode */
         .text-secondary { color: var(--text-secondary) !important; }
         .text-muted { color: var(--text-muted) !important; }
         .bg-secondary { background-color: var(--bg-secondary) !important; }
@@ -44,17 +44,19 @@
             min-height: 100vh;
             overflow-x: hidden;
             display: flex;
+            background-image: radial-gradient(circle at 80% 10%, rgba(59, 130, 246, 0.02) 0%, transparent 50%);
         }
 
         h1, h2, h3, h4, h5, h6, .display-font {
             font-family: 'Outfit', sans-serif;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.025em;
             color: var(--text-main);
+            font-weight: 700;
         }
 
-        /* SaaS Layout Container */
+        /* SaaS Sidebar Layout Container */
         .sidebar {
-            width: 250px;
+            width: 260px;
             background-color: var(--bg-secondary);
             border-right: 1px solid var(--border-subtle);
             height: 100vh;
@@ -62,29 +64,30 @@
             top: 0;
             left: 0;
             z-index: 1000;
-            padding: 24px 16px;
+            padding: 28px 18px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
         }
 
         .sidebar-brand {
-            font-size: 1.15rem;
-            font-weight: 700;
+            font-size: 1.25rem;
+            font-weight: 800;
             color: var(--text-main);
             text-decoration: none;
-            margin-bottom: 28px;
-            padding-left: 8px;
+            margin-bottom: 32px;
+            padding-left: 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            letter-spacing: -0.03em;
+            gap: 12px;
+            letter-spacing: -0.04em;
         }
 
         .sidebar-brand i, .sidebar-brand svg {
             color: var(--accent-blue);
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
+            filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
         }
 
         .nav-menu {
@@ -93,42 +96,44 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
         .nav-item-link {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             color: var(--text-secondary);
             text-decoration: none;
-            padding: 10px 12px;
-            border-radius: 8px;
+            padding: 11px 14px;
+            border-radius: 9px;
             font-weight: 500;
-            font-size: 0.9rem;
-            transition: var(--transition-fast);
+            font-size: 0.88rem;
+            transition: var(--transition-premium);
             border: 1px solid transparent;
         }
 
         .nav-item-link:hover {
-            color: var(--text-main);
+            color: #ffffff;
             background-color: rgba(255, 255, 255, 0.02);
             border-color: var(--border-subtle);
         }
 
         .nav-item-link.active {
-            color: var(--text-main);
+            color: #ffffff;
             background-color: rgba(59, 130, 246, 0.08);
-            border-color: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.18);
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.05);
         }
 
         .nav-item-link.active svg {
             color: var(--accent-blue);
+            filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.3));
         }
 
         .main-content {
-            margin-left: 250px;
-            padding: 32px 48px;
+            margin-left: 260px;
+            padding: 36px 52px;
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -137,25 +142,27 @@
 
         /* SaaS Telemetry Cards */
         .saas-card {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 24px;
-            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+            background: linear-gradient(135deg, rgba(11, 15, 25, 0.7) 0%, rgba(15, 22, 38, 0.7) 100%) !important;
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 14px;
+            padding: 26px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
         }
 
         .saas-card:hover {
-            border-color: rgba(59, 130, 246, 0.2) !important;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.05);
+            border-color: rgba(59, 130, 246, 0.18) !important;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 20px rgba(59, 130, 246, 0.05);
             transform: translateY(-2px);
         }
 
         /* Premium Jira-style left-accent borders on Alert cards */
         .dse-alert-card {
             background: linear-gradient(135deg, rgba(13, 17, 28, 0.6) 0%, rgba(20, 27, 45, 0.6) 100%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.04) !important;
             backdrop-filter: blur(12px);
             border-radius: 10px;
             padding: 16px 20px;
@@ -179,8 +186,8 @@
             border: 1px solid var(--border-subtle) !important;
             color: var(--text-main) !important;
             border-radius: 8px;
-            padding: 8px 12px;
-            transition: var(--transition-fast);
+            padding: 10px 14px;
+            transition: var(--transition-premium);
         }
         .form-control:focus {
             background-color: var(--bg-tertiary) !important;
@@ -194,14 +201,14 @@
             background-color: var(--accent-blue) !important;
             border: 1px solid transparent !important;
             border-radius: 8px;
-            padding: 8px 16px;
-            transition: var(--transition-fast);
+            padding: 10px 20px;
+            transition: var(--transition-premium);
             font-weight: 600;
         }
         .btn-primary:hover {
             background-color: #2563eb !important;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
         }
 
         /* Header navigation top bar */
@@ -209,30 +216,30 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 32px;
-            padding-bottom: 16px;
+            margin-bottom: 36px;
+            padding-bottom: 18px;
             border-bottom: 1px solid var(--border-subtle);
         }
 
         .breadcrumb-label {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.09em;
             color: var(--text-secondary);
             font-weight: 600;
         }
 
         /* Status Pills */
         .saas-badge {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 600;
-            padding: 4px 10px;
+            padding: 5px 11px;
             border-radius: 6px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
         }
 
         .badge-normal {
@@ -263,41 +270,42 @@
         .custom-table {
             color: var(--text-main) !important;
             margin: 0;
+            width: 100%;
         }
 
         .custom-table th {
-            background-color: rgba(255, 255, 255, 0.01) !important;
+            background-color: rgba(255, 255, 255, 0.015) !important;
             color: var(--text-secondary) !important;
-            font-size: 0.8rem;
+            font-size: 0.76rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 12px 16px !important;
+            letter-spacing: 0.06em;
+            padding: 14px 18px !important;
             border-bottom: 1px solid var(--border-subtle) !important;
         }
 
         .custom-table td {
             background-color: transparent !important;
-            padding: 12px 16px !important;
-            font-size: 0.85rem;
+            padding: 14px 18px !important;
+            font-size: 0.84rem;
             border-bottom: 1px solid var(--border-subtle) !important;
             color: var(--text-main) !important;
         }
 
         .custom-table tr:hover td {
-            background-color: rgba(255, 255, 255, 0.015) !important;
+            background-color: rgba(255, 255, 255, 0.01) !important;
         }
 
         /* Monospace Styling */
         .font-mono {
             font-family: var(--font-mono) !important;
-            font-size: 0.85rem;
+            font-size: 0.84rem;
         }
 
         /* Live Pulse Indicators */
         .pulse-indicator {
-            width: 10px;
-            height: 10px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             display: inline-block;
         }
@@ -338,20 +346,20 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
 
-        /* Scrollbars */
+        /* Custom Sleek Scrollbars */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
         }
         ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
+            background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: var(--bg-tertiary);
-            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-blue);
+            background: rgba(255, 255, 255, 0.16);
         }
 
         /* Responsive layout: stack sidebar above content on small screens */
