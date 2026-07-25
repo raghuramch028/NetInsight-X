@@ -42,12 +42,12 @@ def generate_topology_pyvis() -> str:
 
             agent_label = f"{agent.hostname}\n({agent.ip_address})"
             agent_title = (
-                f"Hostname: {agent.hostname}<br>"
-                f"IP: {agent.ip_address}<br>"
-                f"MAC: {agent.mac_address}<br>"
-                f"Status: {status_text}<br>"
-                f"CPU: {agent.cpu_usage}%<br>"
-                f"RAM: {agent.memory_usage}%<br>"
+                f"Hostname: {agent.hostname}\n"
+                f"IP: {agent.ip_address}\n"
+                f"MAC: {agent.mac_address}\n"
+                f"Status: {status_text}\n"
+                f"CPU: {agent.cpu_usage}%\n"
+                f"RAM: {agent.memory_usage}%\n"
                 f"Active Connections: {agent.active_connections}"
             )
 
