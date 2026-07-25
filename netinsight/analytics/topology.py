@@ -63,7 +63,7 @@ def generate_topology_pyvis() -> str:
 
         # Build PyVis Network
         net = Network(
-            height="400px",
+            height="450px",
             width="100%",
             bgcolor="#0d111c",
             font_color="#f1f5f9"
@@ -75,11 +75,11 @@ def generate_topology_pyvis() -> str:
         var options = {
           "physics": {
             "barnesHut": {
-              "gravitationalConstant": -12000,
-              "centralGravity": 0.4,
-              "springLength": 95,
-              "springConstant": 0.04,
-              "damping": 0.09
+              "gravitationalConstant": -2000,
+              "centralGravity": 0.6,
+              "springLength": 85,
+              "springConstant": 0.05,
+              "damping": 0.12
             },
             "minVelocity": 0.75
           }
