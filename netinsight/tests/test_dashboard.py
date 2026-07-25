@@ -13,7 +13,7 @@ django.setup()
 
 from netinsight.config import settings
 from netinsight.database import db_manager
-from netinsight.dashboard.models import MetricRecord, StateHistory
+from netinsight.dashboard.models import MetricRecord, StateHistory, Agent
 
 
 class TestDashboardViews(TestCase):
@@ -54,6 +54,10 @@ class TestDashboardViews(TestCase):
 
     def test_json_api_endpoints(self):
         """Verifies the JSON APIs for Chart.js and packet logs return expected structures."""
+        # Create an active agent so the metrics logic runs
+        from django.utils import timezone
+        Agent.objects.create(mac_address="00:11:22:33:44:55", hostname="Agent 1", ip_address="192.168.1.5", last_seen=timezone.now())
+
         # Test Live Metrics API
         url_metrics = reverse("dashboard:api_live_metrics")
         response = self.client.get(url_metrics)

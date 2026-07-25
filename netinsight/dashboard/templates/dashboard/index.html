@@ -237,6 +237,11 @@
     const gridColor = 'rgba(255, 255, 255, 0.04)';
     const textColor = '#94a3b8';
 
+    // Create dynamic visual gradient for throughput line fill
+    const throughputGradient = ctx.createLinearGradient(0, 0, 0, 250);
+    throughputGradient.addColorStop(0, 'rgba(59, 130, 246, 0.22)');
+    throughputGradient.addColorStop(1, 'rgba(59, 130, 246, 0.00)');
+
     const liveChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -246,7 +251,7 @@
                     label: 'Throughput (Mbps)',
                     data: throughputData,
                     borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    backgroundColor: throughputGradient,
                     borderWidth: 2.5,
                     fill: true,
                     tension: 0.3,
@@ -275,7 +280,7 @@
             },
             scales: {
                 x: {
-                    grid: { color: gridColor },
+                    grid: { display: false },
                     ticks: { color: textColor, font: { size: 10, family: 'JetBrains Mono' } }
                 },
                 y: {

@@ -45,7 +45,7 @@ def generate_topology_pyvis() -> str:
 
         for agent in agents:
             is_online = (now - agent.last_seen) < active_threshold
-            color = "#ef4444" if is_online else "#64748b"
+            color = "#3b82f6" if is_online else "#64748b"
             status_text = "Online" if is_online else "Offline"
 
             agent_label = f"{agent.hostname}\n({agent.ip_address})"

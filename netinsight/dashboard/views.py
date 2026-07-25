@@ -77,6 +77,9 @@ def api_register_agent(request):
         if not mac_address:
             return Response({"error": "MAC Address is required for registration"}, status=400)
 
+        # Clean up any other registered agents with the same hostname to avoid duplicates in topology view
+        Agent.objects.filter(hostname=hostname).exclude(mac_address=mac_address).delete()
+
         # Check if already registered
         agent, created = Agent.objects.get_or_create(
             mac_address=mac_address,
@@ -166,14 +169,25 @@ def index_view(request):
             "last_seen": agent.last_seen
         })
 
+    online_agents_count = sum(1 for a in active_agents if a["is_online"])
+
     # Get latest calculated network-wide metrics
     latest = analytics_engine.get_latest_metrics()
+    
+    # If no agents are online, force metrics to 0
+    if online_agents_count == 0:
+        latest["throughput"] = 0.0
+        latest["packet_rate"] = 0.0
+        latest["bandwidth_util"] = 0.0
+        latest["latency"] = 0.0
+        latest["packet_loss"] = 0.0
+
     latest["throughput_mbps"] = latest["throughput"] / 1e6
     latest["latency_ms"] = latest["latency"] * 1000.0
 
     # Retrieve current network state
     state_record = StateHistory.objects.all().order_by("-timestamp").first()
-    state_name = state_record.network_state if state_record else "Normal"
+    state_name = state_record.network_state if state_record and online_agents_count > 0 else "Normal"
 
     # Solve MDP Recommendation Engine
     mdp_rec = mdp_engine.get_recommendation(state_name)
@@ -692,16 +706,25 @@ def api_live_metrics(request):
     try:
         latest = analytics_engine.get_latest_metrics()
         
-        # Determine network state dynamically
-        state_record = StateHistory.objects.all().order_by("-timestamp").first()
-        state_name = state_record.network_state if state_record else "Normal"
-        latest["network_state"] = state_name
-
-        # Calculate online count
+        # Calculate online count first
         from datetime import timedelta
         now = timezone.now()
         active_cutoff = now - timedelta(seconds=15)
-        latest["active_devices_count"] = Agent.objects.filter(last_seen__gte=active_cutoff).count()
+        active_devices_count = Agent.objects.filter(last_seen__gte=active_cutoff).count()
+        latest["active_devices_count"] = active_devices_count
+
+        # If no agents are online, override metrics to 0
+        if active_devices_count == 0:
+            latest["throughput"] = 0.0
+            latest["packet_rate"] = 0.0
+            latest["bandwidth_util"] = 0.0
+            latest["latency"] = 0.0
+            latest["packet_loss"] = 0.0
+
+        # Determine network state dynamically
+        state_record = StateHistory.objects.all().order_by("-timestamp").first()
+        state_name = state_record.network_state if state_record and active_devices_count > 0 else "Normal"
+        latest["network_state"] = state_name
 
         # Generate MDP recommendations
         latest["mdp_recommendation"] = mdp_engine.get_recommendation(state_name)
@@ -717,6 +740,14 @@ def api_live_metrics(request):
 def api_live_packets(request):
     """API endpoint returning latest 20 packet records as JSON."""
     try:
+        # If no agents are currently online, clear the live packet log
+        from datetime import timedelta
+        now = timezone.now()
+        active_cutoff = now - timedelta(seconds=15)
+        active_agents_count = Agent.objects.filter(last_seen__gte=active_cutoff).count()
+        if active_agents_count == 0:
+            return JsonResponse({"packets": []})
+
         packets_qs = PacketRecord.objects.all().order_by("-id")[:20]
         records = [
             {

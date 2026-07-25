@@ -141,13 +141,67 @@
             border: 1px solid var(--border-subtle);
             border-radius: 12px;
             padding: 24px;
-            transition: var(--transition-fast);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
             position: relative;
             overflow: hidden;
         }
 
         .saas-card:hover {
-            border-color: var(--border-hover);
+            border-color: rgba(59, 130, 246, 0.2) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.05);
+            transform: translateY(-2px);
+        }
+
+        /* Jira-style left-accent borders on Alert cards */
+        .alert {
+            border: 1px solid var(--border-subtle) !important;
+            background-color: rgba(13, 17, 28, 0.5) !important;
+            backdrop-filter: blur(8px);
+            border-radius: 8px;
+            transition: var(--transition-fast);
+        }
+        .alert-danger {
+            border-left: 4px solid var(--accent-red) !important;
+            color: #f87171 !important;
+        }
+        .alert-warning {
+            border-left: 4px solid var(--accent-yellow) !important;
+            color: #fbbf24 !important;
+        }
+        .alert-info {
+            border-left: 4px solid var(--accent-blue) !important;
+            color: #60a5fa !important;
+        }
+
+        /* Global Form and Inputs Styling */
+        .form-control {
+            background-color: var(--bg-tertiary) !important;
+            border: 1px solid var(--border-subtle) !important;
+            color: var(--text-main) !important;
+            border-radius: 8px;
+            padding: 8px 12px;
+            transition: var(--transition-fast);
+        }
+        .form-control:focus {
+            background-color: var(--bg-tertiary) !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+            color: var(--text-main) !important;
+        }
+
+        /* Buttons styling */
+        .btn-primary {
+            background-color: var(--accent-blue) !important;
+            border: 1px solid transparent !important;
+            border-radius: 8px;
+            padding: 8px 16px;
+            transition: var(--transition-fast);
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
         }
 
         /* Header navigation top bar */
