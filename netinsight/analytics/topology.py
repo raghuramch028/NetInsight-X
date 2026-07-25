@@ -19,23 +19,15 @@ def generate_topology_pyvis() -> str:
         G = nx.Graph()
 
         # Add Core Network Nodes
+        # Add Central Mobile Hotspot Gateway node
         G.add_node(
-            "router",
-            label="DSS Router",
-            title="NetInsight-X Monitor Core Router",
-            color="#3b82f6",
-            shape="dot",
-            size=25
-        )
-        G.add_node(
-            "wan",
-            label="WAN Gateway",
-            title="External Internet Gateway",
+            "hotspot",
+            label="Phone Hotspot\n(Gateway)",
+            title="Mobile Hotspot & WAN Gateway Link",
             color="#10b981",
             shape="dot",
-            size=20
+            size=26
         )
-        G.add_edge("router", "wan", color="#64748b", width=2)
 
         # Get all registered agents
         agents = Agent.objects.all()
@@ -67,7 +59,7 @@ def generate_topology_pyvis() -> str:
                 shape="dot",
                 size=16
             )
-            G.add_edge("router", agent.mac_address, color="#475569", width=1.5)
+            G.add_edge("hotspot", agent.mac_address, color="#475569", width=1.5)
 
         # Build PyVis Network
         net = Network(

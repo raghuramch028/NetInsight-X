@@ -123,7 +123,7 @@ class TestAnalyticsEngine(TestCase):
         html = generate_topology_pyvis()
         self.assertIsNotNone(html)
         self.assertIn("vis.js", html)
-        self.assertIn("DSS Router", html)
+        self.assertIn("Phone Hotspot", html)
 
 if __name__ == "__main__":
     unittest.main()
