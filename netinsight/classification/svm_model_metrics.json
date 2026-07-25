@@ -5,7 +5,7 @@
   "f1_score": 44.68384547157895,
   "kernel": "RBF Kernel",
   "features": "packet_size, protocol, latency, packet_rate, conn_frequency",
-  "training_timestamp": "2026-07-21T18:00:17Z",
+  "training_timestamp": "2026-07-25T17:27:39Z",
   "dataset_info": "CICIDS2017 Real Sample Subset",
   "confusion_matrix": [
     [
