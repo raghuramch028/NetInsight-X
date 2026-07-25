@@ -63,6 +63,12 @@ class NetInsightAgent:
         while self.is_running:
             start_time = time.time()
 
+            # Self-healing registration check: re-register if server invalidated agent ID
+            if not self.sender.agent_id:
+                logger.warning("Agent ID missing or invalidated. Re-running registration sequence...")
+                mac_addr = get_mac_address()
+                self.sender.register(mac_addr, self.collector.hostname, self.collector.os_type, self.collector.vendor)
+
             # Gather host stats
             stats = self.collector.collect()
 

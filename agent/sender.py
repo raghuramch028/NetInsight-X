@@ -84,6 +84,15 @@ class TelemetrySender:
             if response.status_code == 200:
                 logger.info(f"Successfully uploaded telemetry (packets: {len(packets)}).")
                 return True
+            elif response.status_code == 404:
+                logger.error("Server reported agent is not registered (Status 404). Clearing invalid local agent ID.")
+                if os.path.exists(config.AGENT_ID_FILE):
+                    try:
+                        os.remove(config.AGENT_ID_FILE)
+                    except Exception as e:
+                        logger.error(f"Failed to delete invalid agent ID file: {e}")
+                self.agent_id = None
+                return False
             else:
                 logger.error(f"Server rejected telemetry payload (Status {response.status_code}): {response.text}")
                 return False
