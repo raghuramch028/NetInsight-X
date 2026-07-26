@@ -31,20 +31,6 @@
 </div>
 {% endif %}
 
-<!-- DSE Alerts Container -->
-<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-3">
-    {% for alert in dse_alerts %}
-        <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card {% if alert.severity == 'Critical' %}severity-critical{% elif alert.severity == 'Warning' %}severity-warning{% else %}severity-info{% endif %}" role="alert">
-            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0 {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="width:20px;height:20px;"></i>
-            <div>
-                <strong class="d-block {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="font-size:0.95rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
-                <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">{{ alert.message }}</span>
-                <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
-            </div>
-        </div>
-    {% endfor %}
-</div>
-
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
@@ -71,18 +57,6 @@
                 </div>
             </div>
 
-            <!-- Dynamic MDP Advisory Action (Coming Soon Placeholder) -->
-            <div class="p-3 rounded mb-4" style="background-color: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="small text-secondary font-mono d-block">Decision Advisory Policy</span>
-                        <span class="font-bold text-white fs-6 mt-1 d-inline-block" style="opacity: 0.6;">
-                            <i data-lucide="info" class="text-secondary me-2 align-text-top" style="width:16px;height:16px;"></i>COMING SOON
-                        </span>
-                    </div>
-                    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem; opacity: 0.5;">INACTIVE</span>
-                </div>
-            </div>
 
             <!-- Throughput Metric and link capacity progress bar -->
             <div>
@@ -173,14 +147,6 @@
     </div>
 </div>
 
-<!-- Advanced Optimization & ML coming soon card -->
-<div class="saas-card mb-4 text-center py-4">
-    <h4 class="text-white font-bold h6 mb-3">
-        <i data-lucide="brain-circuit" class="d-inline-block me-2 text-primary" style="width:18px;height:18px;vertical-align:-3px;"></i>Advanced Mathematical Optimization & ML Engine
-    </h4>
-    <p class="text-secondary small mb-2">Support Vector Machine (SVM) Classifier • Hidden Markov Model (HMM) State Forecast • MDP Bellman Optimization</p>
-    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem; letter-spacing: 0.05em; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.08) !important;">COMING SOON (PHASE 2 REVIEW)</span>
-</div>
 
 <!-- Live Packet Log Table -->
 <div class="saas-card mb-4">
@@ -368,40 +334,7 @@
                 
                 // MDP advisory action updates are disabled for Phase 1 review.
 
-                // Update DSE Alerts
-                if (data.dse_alerts) {
-                    let alertsHtml = "";
-                    data.dse_alerts.forEach(alert => {
-                        let severityClass = "";
-                        let iconClass = "";
-                        let iconName = "";
-                        if (alert.severity === 'Critical') {
-                            severityClass = "severity-critical";
-                            iconClass = "text-danger";
-                            iconName = "shield-alert";
-                        } else if (alert.severity === 'Warning') {
-                            severityClass = "severity-warning";
-                            iconClass = "text-warning";
-                            iconName = "alert-triangle";
-                        } else {
-                            severityClass = "severity-info";
-                            iconClass = "text-info";
-                            iconName = "info";
-                        }
-                        alertsHtml += `
-                            <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card ${severityClass}" role="alert">
-                                <i data-lucide="${iconName}" class="me-3 mt-1 flex-shrink-0 ${iconClass}" style="width:20px;height:20px;"></i>
-                                <div>
-                                    <strong class="d-block ${iconClass}" style="font-size:0.95rem;">[${alert.severity}] ${alert.title} (${alert.module})</strong>
-                                    <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">${alert.message}</span>
-                                    <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: ${alert.action}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    document.getElementById('dse-alerts-container').innerHTML = alertsHtml;
-                    lucide.createIcons();
-                }
+                // DSE Alerts updates are disabled for review.
             });
 
         // Poll packets
