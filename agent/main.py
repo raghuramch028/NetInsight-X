@@ -5,7 +5,7 @@ from agent.logger import logger
 from agent.collector import TelemetryCollector
 from agent.sniffer import PacketSniffer
 from agent.sender import TelemetrySender
-from agent.utils import get_mac_address
+from agent.utils import get_mac_address, get_current_ssid
 from agent import config
 
 class NetInsightAgent:
@@ -37,7 +37,13 @@ class NetInsightAgent:
         signal.signal(signal.SIGINT, self.handle_shutdown)
         signal.signal(signal.SIGTERM, self.handle_shutdown)
 
-        logger.info("Starting NetInsight-X Telemetry Agent...")
+        # Check SSID restriction if configured
+        if config.HOTSPOT_SSID:
+            current_ssid = get_current_ssid()
+            while current_ssid != config.HOTSPOT_SSID:
+                logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Waiting to connect to hotspot...")
+                time.sleep(5)
+                current_ssid = get_current_ssid()
 
         # 1. Device Registration Sequence
         mac_addr = get_mac_address()
@@ -61,6 +67,16 @@ class NetInsightAgent:
         max_backoff = 60.0
 
         while self.is_running:
+            # Check SSID restriction if configured
+            if config.HOTSPOT_SSID:
+                current_ssid = get_current_ssid()
+                if current_ssid != config.HOTSPOT_SSID:
+                    logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Skipping telemetry upload...")
+                    # Clear sniffer packets so they don't pile up in memory
+                    self.sniffer.get_and_clear_packets()
+                    time.sleep(config.TELEMETRY_INTERVAL)
+                    continue
+
             start_time = time.time()
 
             # Self-healing registration check: re-register if server invalidated agent ID

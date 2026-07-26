@@ -26,3 +26,22 @@ def get_mac_address() -> str:
     except Exception as e:
         logger.error(f"Fallback getnode MAC discovery failed: {e}")
         return "00:00:00:00:00:00"
+
+
+def get_current_ssid() -> str:
+    """Queries netsh on Windows to find the current active Wi-Fi SSID."""
+    import subprocess
+    try:
+        output = subprocess.check_output(
+            ["netsh", "wlan", "show", "interfaces"],
+            shell=True,
+            stderr=subprocess.DEVNULL
+        ).decode("utf-8", errors="ignore")
+        for line in output.split("\n"):
+            if "SSID" in line and "BSSID" not in line:
+                parts = line.split(":")
+                if len(parts) > 1:
+                    return parts[1].strip()
+    except Exception:
+        pass
+    return None
