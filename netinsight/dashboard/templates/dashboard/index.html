@@ -37,23 +37,8 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
-                    <span class="text-secondary small font-mono">QoS Status Profile</span>
-                    <h3 class="font-bold h5 mt-1 mb-0">System Operational Health</h3>
-                </div>
-                <div class="d-flex gap-2 align-items-center">
-                    <span id="card-state-badge" class="saas-badge 
-                        {% if current_state == 'NORMAL' %}badge-normal
-                        {% elif current_state == 'BUSY' %}badge-busy
-                        {% elif current_state == 'CONGESTED' %}badge-congested
-                        {% else %}badge-failure{% endif %}">
-                        <span id="card-state-pulse" class="pulse-indicator 
-                            {% if current_state == 'NORMAL' %}pulse-normal
-                            {% elif current_state == 'BUSY' %}pulse-busy
-                            {% elif current_state == 'CONGESTED' %}pulse-congested
-                            {% else %}pulse-failure{% endif %}">
-                        </span>
-                        <span id="card-state-label">{{ current_state }}</span>
-                    </span>
+                    <span class="text-secondary small font-mono">Telemetry Monitor</span>
+                    <h3 class="font-bold h5 mt-1 mb-0">Throughput Analysis</h3>
                 </div>
             </div>
 
@@ -341,32 +326,7 @@
                 // Update Progress bar
                 document.getElementById('capacity-progress').style.width = `${data.bandwidth_util}%`;
 
-                const state = data.network_state;
-                const badge = document.getElementById('card-state-badge');
-                const pulse = document.getElementById('card-state-pulse');
-                const label = document.getElementById('card-state-label');
-                
-                badge.className = 'saas-badge';
-                pulse.className = 'pulse-indicator';
-                label.innerText = state;
-                
-                const stateLower = state.toLowerCase();
-                if (stateLower === 'normal') {
-                    badge.classList.add('badge-normal');
-                    pulse.classList.add('pulse-normal');
-                } else if (stateLower === 'busy') {
-                    badge.classList.add('badge-busy');
-                    pulse.classList.add('pulse-busy');
-                } else if (stateLower === 'congested') {
-                    badge.classList.add('badge-congested');
-                    pulse.classList.add('pulse-congested');
-                } else if (stateLower === 'recovering') {
-                    badge.classList.add('badge-busy');
-                    pulse.classList.add('pulse-busy');
-                } else {
-                    badge.classList.add('badge-failure');
-                    pulse.classList.add('pulse-failure');
-                }
+                // Network state badge updates are disabled for review.
                 
                 // Update chart
                 throughputData.shift();
