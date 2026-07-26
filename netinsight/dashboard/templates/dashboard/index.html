@@ -167,7 +167,7 @@
                 <h4 class="m-0 text-white font-bold h6"><i data-lucide="network" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
             </div>
             <div class="flex-grow-1 mt-2">
-                <iframe src="{% url 'dashboard:api_topology_graph' %}" width="100%" height="450px" style="border:none;" scrolling="no"></iframe>
+                <iframe id="topology-iframe" src="{% url 'dashboard:api_topology_graph' %}" width="100%" height="450px" style="border:none;" scrolling="no"></iframe>
             </div>
         </div>
     </div>
@@ -306,8 +306,19 @@
         }
     });
 
+    let lastTopologyRefresh = 0;
+
     // Unified poll function
     function updateDashboard() {
+        const now = Date.now();
+        if (now - lastTopologyRefresh > 15000) {
+            const iframe = document.getElementById('topology-iframe');
+            if (iframe) {
+                iframe.src = iframe.src;
+            }
+            lastTopologyRefresh = now;
+        }
+
         fetch("{% url 'dashboard:api_live_metrics' %}")
             .then(res => res.json())
             .then(data => {
