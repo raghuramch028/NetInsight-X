@@ -26,7 +26,10 @@ def generate_topology_pyvis() -> str:
             title="Mobile Hotspot & WAN Gateway Link",
             color="#10b981",
             shape="dot",
-            size=26
+            size=26,
+            x=0,
+            y=0,
+            fixed=True
         )
 
         # Get all registered agents
@@ -35,20 +38,23 @@ def generate_topology_pyvis() -> str:
         now = timezone.now()
         active_threshold = timedelta(seconds=15)
 
-        for agent in agents:
-            is_online = (now - agent.last_seen) < active_threshold
-            if not is_online:
-                continue # Skip offline agents to keep map clean and relevant!
+        # Filter online agents only to keep map clean and relevant!
+        online_agents = [a for a in agents if (now - a.last_seen) < active_threshold]
 
-            color = "#3b82f6"
-            status_text = "Online"
+        import math
+        num_agents = len(online_agents)
+        for idx, agent in enumerate(online_agents):
+            angle = (2 * math.pi * idx) / num_agents if num_agents > 0 else 0
+            radius = 120
+            ax = int(radius * math.cos(angle))
+            ay = int(radius * math.sin(angle))
 
             agent_label = f"{agent.hostname}\n({agent.ip_address})"
             agent_title = (
                 f"Hostname: {agent.hostname}\n"
                 f"IP: {agent.ip_address}\n"
                 f"MAC: {agent.mac_address}\n"
-                f"Status: {status_text}\n"
+                f"Status: Online\n"
                 f"CPU: {agent.cpu_usage}%\n"
                 f"RAM: {agent.memory_usage}%\n"
                 f"Active Connections: {agent.active_connections}"
@@ -58,9 +64,12 @@ def generate_topology_pyvis() -> str:
                 agent.mac_address,
                 label=agent_label,
                 title=agent_title,
-                color=color,
+                color="#3b82f6",
                 shape="dot",
-                size=16
+                size=16,
+                x=ax,
+                y=ay,
+                fixed=True
             )
             G.add_edge("hotspot", agent.mac_address, color="#475569", width=1.5)
 
@@ -77,14 +86,7 @@ def generate_topology_pyvis() -> str:
         net.set_options("""
         var options = {
           "physics": {
-            "barnesHut": {
-              "gravitationalConstant": -2000,
-              "centralGravity": 0.6,
-              "springLength": 85,
-              "springConstant": 0.05,
-              "damping": 0.12
-            },
-            "minVelocity": 0.75
+            "enabled": false
           }
         }
         """)

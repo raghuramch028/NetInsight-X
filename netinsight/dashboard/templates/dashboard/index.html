@@ -71,16 +71,16 @@
                 </div>
             </div>
 
-            <!-- Dynamic MDP Advisory Action -->
-            <div class="p-3 rounded mb-4" style="background-color: rgba(59,130,246,0.04); border: 1px dashed rgba(59,130,246,0.2);">
+            <!-- Dynamic MDP Advisory Action (Coming Soon Placeholder) -->
+            <div class="p-3 rounded mb-4" style="background-color: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="small text-secondary font-mono d-block">MDP Decision Advisory Policy</span>
-                        <span id="mdp-action" class="font-bold text-white fs-6 mt-1 d-inline-block">
-                            <i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>{{ mdp_rec.recommended_action }}
+                        <span class="small text-secondary font-mono d-block">Decision Advisory Policy</span>
+                        <span class="font-bold text-white fs-6 mt-1 d-inline-block" style="opacity: 0.6;">
+                            <i data-lucide="info" class="text-secondary me-2 align-text-top" style="width:16px;height:16px;"></i>Under Review (Phase 2)
                         </span>
                     </div>
-                    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem;">SOLVER ACTIVE</span>
+                    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem; opacity: 0.5;">INACTIVE</span>
                 </div>
             </div>
 
@@ -173,17 +173,13 @@
     </div>
 </div>
 
-<!-- Expected MDP Values List -->
-<div class="saas-card mb-4">
-    <h4 class="mb-4 text-white font-bold h6"><i data-lucide="line-chart" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Expected State-Action Utility (Bellman Updates)</h4>
-    <div id="mdp-values-list" class="d-flex flex-column gap-2">
-        {% for name, val in mdp_rec.action_values.items %}
-            <div class="d-flex justify-content-between align-items-center p-2 rounded {% if name == mdp_rec.recommended_action %}bg-primary bg-opacity-25{% endif %}">
-                <span class="{% if name == mdp_rec.recommended_action %}text-primary font-bold{% else %}text-secondary{% endif %}" style="font-size:0.9rem;">{{ name }}</span>
-                <span class="badge {% if name == mdp_rec.recommended_action %}bg-primary{% else %}bg-secondary{% endif %} font-mono">{{ val|floatformat:2 }}</span>
-            </div>
-        {% endfor %}
-    </div>
+<!-- Advanced Optimization & ML coming soon card -->
+<div class="saas-card mb-4 text-center py-4">
+    <h4 class="text-white font-bold h6 mb-3">
+        <i data-lucide="brain-circuit" class="d-inline-block me-2 text-primary" style="width:18px;height:18px;vertical-align:-3px;"></i>Advanced Mathematical Optimization & ML Engine
+    </h4>
+    <p class="text-secondary small mb-2">Support Vector Machine (SVM) Classifier • Hidden Markov Model (HMM) State Forecast • MDP Bellman Optimization</p>
+    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem; letter-spacing: 0.05em; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.08) !important;">COMING SOON (PHASE 2 REVIEW)</span>
 </div>
 
 <!-- Live Packet Log Table -->
@@ -370,27 +366,7 @@
                 labels.push(timeStr);
                 liveChart.update();
                 
-                // Fetch live recommendation from MDP from the polled data
-                if (data.mdp_recommendation) {
-                    const bestAction = data.mdp_recommendation.recommended_action;
-                    const actionVals = data.mdp_recommendation.action_values;
-                    
-                    document.getElementById('mdp-action').innerHTML = `<i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>${bestAction}`;
-                    
-                    let valuesHtml = "";
-                    Object.keys(actionVals).forEach(actName => {
-                        const isBest = actName === bestAction;
-                        const valStr = parseFloat(actionVals[actName]).toFixed(2);
-                        valuesHtml += `
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded ${isBest ? 'bg-primary bg-opacity-25' : ''}">
-                                <span class="${isBest ? 'text-primary font-bold' : 'text-secondary'}" style="font-size:0.9rem;">${actName}</span>
-                                <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-mono">${valStr}</span>
-                            </div>
-                        `;
-                    });
-                    document.getElementById('mdp-values-list').innerHTML = valuesHtml;
-                    lucide.createIcons(); // Refresh icons inside modified dynamic list
-                }
+                // MDP advisory action updates are disabled for Phase 1 review.
 
                 // Update DSE Alerts
                 if (data.dse_alerts) {

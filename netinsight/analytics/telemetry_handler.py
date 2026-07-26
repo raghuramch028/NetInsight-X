@@ -1,6 +1,8 @@
 import time
 import logging
+import threading
 from django.utils import timezone
+from django.db import close_old_connections
 from django.db.models import Sum, Count, Avg
 from netinsight.dashboard.models import Agent, PacketRecord, FlowRecord, MetricRecord, StateHistory, ThreatHistory
 from netinsight.analytics.flow_builder import process_incoming_packet
@@ -12,9 +14,7 @@ hmm_model = HiddenMarkovModel()
 def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: list[dict]) -> None:
     """Orchestrates system telemetry ingestion, metrics aggregation, and HMM predictions."""
     try:
-        now_ts = time.time()
-
-        # 1. Update Agent stats
+        # 1. Update Agent stats synchronously (marks the device online instantly)
         agent.cpu_usage = float(stats_data.get("cpu_usage", 0.0))
         agent.memory_usage = float(stats_data.get("memory_usage", 0.0))
         agent.disk_usage = float(stats_data.get("disk_usage", 0.0))
@@ -24,11 +24,29 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         agent.last_seen = timezone.now()
         agent.save()
 
-        # 2. Process and Classify all incoming packets
+        # 2. Spin off heavy queries and analysis to a background thread to prevent client timeouts
+        threading.Thread(
+            target=_async_telemetry_worker,
+            args=(agent.id, stats_data, packets_list),
+            daemon=True
+        ).start()
+
+    except Exception as e:
+        logger.error(f"Error handling telemetry payload: {e}", exc_info=True)
+
+
+def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[dict]) -> None:
+    """Handles heavy processing tasks asynchronously without blocking client uploads."""
+    close_old_connections()
+    try:
+        agent = Agent.objects.get(id=agent_id)
+        now_ts = time.time()
+
+        # A. Process and Classify all incoming packets
         for pkt in packets_list:
             process_incoming_packet(agent, pkt)
 
-        # 3. Calculate Server-Side Network-Wide Metrics (window: last 10 seconds)
+        # B. Calculate Server-Side Network-Wide Metrics (window: last 10 seconds)
         window_start = now_ts - 10.0
         active_packets = PacketRecord.objects.filter(timestamp__gte=window_start)
         
@@ -45,23 +63,19 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         link_capacity = getattr(settings, "LINK_CAPACITY", 100_000_000.0)
         bandwidth_util = (throughput / link_capacity) * 100.0
 
-        # Latency approximation (average RTT on server, default 0.015)
-        # For simplicity, calculate average time differences between matching ports/IPs
+        # Latency approximation
         latency = 0.015
 
-        # Packet Loss approximation (TCP retransmission heuristics on server)
-        # Retransmission count / total packets
+        # Packet Loss approximation
         total_tcp = active_packets.filter(protocol="TCP").count()
-        # Find flows with duplicate packet sequences (heuristics proxy)
         retrans_count = 0
         if total_tcp > 0:
-            # Aggregate flows in the window
             flows_active = FlowRecord.objects.filter(end_time__gte=window_start)
             for flow in flows_active:
                 if flow.threat_label in ["DoS", "DDoS", "Mirai"]:
-                    retrans_count += int(flow.packet_count * 0.08) # simulate loss rates on attacks
+                    retrans_count += int(flow.packet_count * 0.08)
                 elif flow.packet_count > 50:
-                    retrans_count += 1 # standard noise
+                    retrans_count += 1
 
             packet_loss = (float(retrans_count) / max(1, total_tcp)) * 100.0
         else:
@@ -77,28 +91,16 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
             packet_loss=packet_loss
         )
 
-        # 4. Gather HMM Observation Vector
-        # Features: Utilization, Latency, Loss, Threat Label, Packet Arrival Rate, Sockets
+        # C. Gather HMM Observation Vector
         latest_threat = ThreatHistory.objects.all().order_by("-timestamp").first()
         threat_label = latest_threat.threat_type if latest_threat else "Normal"
         
-        # Sockets = sum of active connections of all online agents
         from datetime import timedelta
         online_cutoff = timezone.now() - timedelta(seconds=15)
         online_agents = Agent.objects.filter(last_seen__gte=online_cutoff)
         total_sockets = online_agents.aggregate(total_sockets=Sum("active_connections"))["total_sockets"] or 0
 
-        observation = {
-            "util": bandwidth_util,
-            "latency": latency,
-            "loss": packet_loss,
-            "threat_label": threat_label,
-            "packet_rate": packet_rate,
-            "sockets": float(total_sockets)
-        }
-
-        # 5. Decode Hidden State Sequence (run Viterbi DP over last 5 observation records)
-        # Build history of observations
+        # D. Decode Hidden State Sequence
         recent_metrics = MetricRecord.objects.all().order_by("-timestamp")[:5]
         observations_history = []
         
@@ -107,13 +109,20 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
                 "util": metric.bandwidth_util,
                 "latency": metric.latency,
                 "loss": metric.packet_loss,
-                "threat_label": threat_label, # propagate latest
+                "threat_label": threat_label,
                 "packet_rate": metric.packet_rate,
                 "sockets": float(total_sockets)
             })
 
         if not observations_history:
-            observations_history.append(observation)
+            observations_history.append({
+                "util": bandwidth_util,
+                "latency": latency,
+                "loss": packet_loss,
+                "threat_label": threat_label,
+                "packet_rate": packet_rate,
+                "sockets": float(total_sockets)
+            })
 
         decoded_states = hmm_model.decode_states(observations_history)
         current_state = decoded_states[-1] if decoded_states else "Normal"
@@ -127,9 +136,11 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
             latency=latency
         )
 
-        # 6. Database Pruner (Milestone 3): Delete raw PacketRecord entries older than 10 minutes (600s)
+        # E. Database Pruner: Delete raw PacketRecord entries older than 10 minutes (600s)
         prune_cutoff = now_ts - 600.0
         PacketRecord.objects.filter(timestamp__lt=prune_cutoff).delete()
 
     except Exception as e:
-        logger.error(f"Error handling telemetry payload: {e}", exc_info=True)
+        logger.error(f"Error in async telemetry worker thread: {e}", exc_info=True)
+    finally:
+        close_old_connections()
