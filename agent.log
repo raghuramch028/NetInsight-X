@@ -26,3 +26,106 @@
 2026-07-26 20:49:30,735 [INFO] (MainThread) Registration failed. Retrying in 60.0 seconds...
 2026-07-26 20:50:28,067 [INFO] (MainThread) Shutdown signal received. Tearing down...
 2026-07-26 20:50:28,067 [INFO] (MainThread) Agent stopped.
+2026-07-26 20:52:10,759 [INFO] (MainThread) Local Host Details: MAC=00:15:5d:6c:ea:8c, Hostname=Raghuram, OS=Windows
+2026-07-26 20:52:10,761 [INFO] (MainThread) Attempting to register agent at https://netinsight-gnt6.onrender.com/api/v1/agents/register...
+2026-07-26 20:52:13,004 [INFO] (MainThread) Saved assigned Agent ID to disk: cf8574e0-22af-4b82-9295-b8f70072988f
+2026-07-26 20:52:13,011 [INFO] (MainThread) Agent registration successful.
+2026-07-26 20:52:13,014 [INFO] (MainThread) Initializing packet capture thread...
+2026-07-26 20:52:13,019 [INFO] (MainThread) Packet capture thread started successfully.
+2026-07-26 20:52:13,019 [INFO] (MainThread) Starting telemetry loop (Interval: 3.0s)...
+2026-07-26 20:52:15,187 [INFO] (MainThread) Successfully uploaded telemetry (packets: 2).
+2026-07-26 20:52:16,884 [INFO] (MainThread) Packet batch size (40) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:18,931 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:20,275 [INFO] (MainThread) Packet batch size (89) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:21,801 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:23,558 [INFO] (MainThread) Packet batch size (52) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:26,069 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:26,797 [INFO] (MainThread) Packet batch size (52) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:28,622 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:30,046 [INFO] (MainThread) Packet batch size (39) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:31,796 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:33,510 [INFO] (MainThread) Packet batch size (45) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:35,289 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:36,731 [INFO] (MainThread) Packet batch size (45) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:38,945 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:39,963 [INFO] (MainThread) Packet batch size (53) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:41,852 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:43,352 [INFO] (MainThread) Packet batch size (45) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:45,415 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:46,555 [INFO] (MainThread) Packet batch size (32) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:48,819 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:49,806 [INFO] (MainThread) Packet batch size (52) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:51,609 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:53,039 [INFO] (MainThread) Packet batch size (49) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:55,760 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:56,285 [INFO] (MainThread) Packet batch size (62) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:52:58,412 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:52:59,503 [INFO] (MainThread) Packet batch size (74) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:04,152 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:04,534 [INFO] (MainThread) Packet batch size (60) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:08,864 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:09,247 [INFO] (MainThread) Packet batch size (45) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:12,803 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:13,167 [INFO] (MainThread) Packet batch size (77) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:18,396 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:18,746 [INFO] (MainThread) Packet batch size (64) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:22,491 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:22,903 [INFO] (MainThread) Packet batch size (62) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:24,754 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:26,112 [INFO] (MainThread) Packet batch size (49) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:28,006 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:29,325 [INFO] (MainThread) Packet batch size (66) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:31,152 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:32,530 [INFO] (MainThread) Packet batch size (51) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:34,362 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:35,784 [INFO] (MainThread) Packet batch size (53) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:37,475 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:39,019 [INFO] (MainThread) Packet batch size (52) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:40,761 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:42,235 [INFO] (MainThread) Packet batch size (43) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:43,965 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:45,463 [INFO] (MainThread) Packet batch size (53) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:47,236 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:48,686 [INFO] (MainThread) Packet batch size (44) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:50,857 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:51,985 [INFO] (MainThread) Packet batch size (146) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:53,878 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:55,213 [INFO] (MainThread) Packet batch size (50) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:53:57,427 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:53:58,448 [INFO] (MainThread) Packet batch size (52) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:00,069 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:01,704 [INFO] (MainThread) Packet batch size (43) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:03,648 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:05,012 [INFO] (MainThread) Packet batch size (47) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:07,039 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:08,227 [INFO] (MainThread) Packet batch size (53) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:09,889 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:11,530 [INFO] (MainThread) Packet batch size (46) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:13,147 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:14,779 [INFO] (MainThread) Packet batch size (38) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:16,763 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:17,992 [INFO] (MainThread) Packet batch size (72) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:19,669 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:21,214 [INFO] (MainThread) Packet batch size (53) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:22,854 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:24,438 [INFO] (MainThread) Packet batch size (131) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:26,096 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:27,664 [INFO] (MainThread) Packet batch size (77) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:29,295 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:31,135 [INFO] (MainThread) Packet batch size (36) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:32,770 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:34,449 [INFO] (MainThread) Packet batch size (66) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:36,039 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:37,735 [INFO] (MainThread) Packet batch size (55) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:39,776 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:41,051 [INFO] (MainThread) Packet batch size (32) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:43,675 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:44,295 [INFO] (MainThread) Packet batch size (41) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:46,109 [INFO] (MainThread) Successfully uploaded telemetry (packets: 30).
+2026-07-26 20:54:49,753 [INFO] (MainThread) Successfully uploaded telemetry (packets: 29).
+2026-07-26 20:54:52,711 [INFO] (MainThread) Successfully uploaded telemetry (packets: 25).
+2026-07-26 20:54:54,057 [INFO] (MainThread) Packet batch size (77) exceeds transmission safety cap (30). Sampling the latest 30 packets.
+2026-07-26 20:54:55,659 [INFO] (MainThread) Shutdown signal received. Tearing down...
+2026-07-26 20:54:55,660 [INFO] (MainThread) Stopping packet capture thread...
+2026-07-26 20:54:55,695 [INFO] (MainThread) Packet capture thread stopped.
+2026-07-26 20:54:55,697 [INFO] (MainThread) Agent stopped.

@@ -1,7 +1,7 @@
 import os
 
 # Server address configuration
-SERVER_URL = os.environ.get("NETINSIGHT_SERVER_URL", "https://netinsight-gnt6.onrender.com")
+SERVER_URL = "https://netinsight-gnt6.onrender.com"
 
 # API Endpoints
 REGISTRATION_ENDPOINT = f"{SERVER_URL}/api/v1/agents/register"
@@ -18,4 +18,4 @@ AGENT_ID_FILE = "agent_id.txt"
 
 # SSID restriction setting (if set, agent will only upload telemetry when connected to this Wi-Fi network name)
 
-HOTSPOT_SSID = "MFC_PROJECT"
+HOTSPOT_SSID = "SEM3_PROJECT"
