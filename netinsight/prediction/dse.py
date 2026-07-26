@@ -47,42 +47,8 @@ class DecisionSupportEngine:
 
             # 2. Evaluate Severity Tiers and formulate rules
             
-            # RULE A: HMM 'Under Attack' state evaluation
-            if latest_state and latest_state.network_state == "Under Attack":
-                target_agent = "a registered device"
-                threat_type = "network attack"
-                if latest_threat and (timezone.now() - latest_threat.timestamp).total_seconds() < 30:
-                    target_agent = latest_threat.agent.hostname
-                    threat_type = latest_threat.threat_type
-
-                cards.append({
-                    "severity": "Critical",
-                    "module": "Security Threat Detection",
-                    "title": f"Active Cyber Attack Detected: {threat_type}",
-                    "message": f"SVM classifier and HMM state forecast confirm the network is Under Attack. Threat source: {target_agent}.",
-                    "action": f"Isolate {target_agent} immediately. Apply LP QoS rules to prioritize critical control systems."
-                })
-
-            # RULE B: SVM Security Alerts Check (even if HMM is still transitioning)
-            elif latest_threat and (timezone.now() - latest_threat.timestamp).total_seconds() < 30:
-                severity = latest_threat.severity
-                cards.append({
-                    "severity": severity,
-                    "module": "Security Threat Detection",
-                    "title": f"Suspicious Activity: {latest_threat.threat_type}",
-                    "message": f"SVM classified traffic anomalies on host {latest_threat.agent.hostname}.",
-                    "action": f"Inspect active connection ports on {latest_threat.agent.hostname}. Restrict non-SSL socket traffic."
-                })
-
-            # RULE C: HMM 'Congested' state evaluation
-            if latest_state and latest_state.network_state == "Congested":
-                cards.append({
-                    "severity": "Warning",
-                    "module": "Congestion Control",
-                    "title": "High Network Congestion Forecasted",
-                    "message": "Markovian prediction indicates imminent link saturation. Packet loss rates or queue delays are spiking.",
-                    "action": "Apply LP bandwidth throttling for Streaming and File Transfer classes."
-                })
+            # HMM and SVM threat rules are disabled for review (decisions engine is coming soon)
+            pass
 
             # RULE D: Telemetry Metrics Check (raw threshold alerts)
             if latest_metric:
