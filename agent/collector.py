@@ -67,7 +67,7 @@ class TelemetryCollector:
                 "ip_address": self.get_primary_ip(),
                 "device_type": f"{self.os_type} {platform.release()}",
                 "vendor": self.vendor,
-                "cpu_usage": float(psutil.cpu_percent(interval=None)),
+                "cpu_usage": float(psutil.cpu_percent(interval=0.1)),
                 "memory_usage": float(mem.percent),
                 "disk_usage": float(disk_usage),
                 "bytes_sent": int(net_io.bytes_sent),
