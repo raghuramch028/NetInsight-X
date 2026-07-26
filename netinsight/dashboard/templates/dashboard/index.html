@@ -140,8 +140,8 @@
             <div class="p-4 pb-0">
                 <h4 class="m-0 text-white font-bold h6"><i data-lucide="network" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Live Network Topology Map</h4>
             </div>
-            <div class="flex-grow-1 mt-2">
-                <iframe id="topology-iframe" src="{% url 'dashboard:api_topology_graph' %}" width="100%" height="450px" style="border:none;" scrolling="no"></iframe>
+            <div class="flex-grow-1 mt-2" style="position: relative;">
+                <div id="topology-container" style="width: 100%; height: 410px; background-color: #0d111c;"></div>
             </div>
         </div>
     </div>
@@ -185,7 +185,65 @@
 {% block extra_js %}
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Vis.js Standalone CDN -->
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <script>
+    // Setup Vis.js Network Topology
+    let network = null;
+    let nodesDataSet = new vis.DataSet();
+    let edgesDataSet = new vis.DataSet();
+
+    function initTopologyMap() {
+        const container = document.getElementById('topology-container');
+        if (!container) return;
+
+        // Add Central Hotspot Gateway Node initially
+        nodesDataSet.add({
+            id: 'hotspot',
+            label: "Phone Hotspot\n(Gateway)",
+            title: "Mobile Hotspot & WAN Gateway Link",
+            color: "#10b981",
+            shape: "dot",
+            size: 26,
+            x: 0,
+            y: 0,
+            fixed: true
+        });
+
+        const data = {
+            nodes: nodesDataSet,
+            edges: edgesDataSet
+        };
+
+        const options = {
+            physics: {
+                enabled: false
+            },
+            nodes: {
+                font: {
+                    color: '#f1f5f9',
+                    face: 'Inter, system-ui, sans-serif',
+                    size: 13
+                }
+            },
+            edges: {
+                width: 1.5,
+                color: "#475569"
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100
+            }
+        };
+
+        network = new vis.Network(container, data, options);
+    }
+
+    // Call init on page load
+    document.addEventListener("DOMContentLoaded", function() {
+        initTopologyMap();
+    });
+
     const refreshInterval = {{ refresh_interval }};  // Poll every N milliseconds (configurable)
     const maxDataPoints = 15;
     
@@ -268,19 +326,8 @@
         }
     });
 
-    let lastTopologyRefresh = 0;
-
     // Unified poll function
     function updateDashboard() {
-        const now = Date.now();
-        if (now - lastTopologyRefresh > 3000) {
-            const iframe = document.getElementById('topology-iframe');
-            if (iframe) {
-                iframe.src = iframe.src;
-            }
-            lastTopologyRefresh = now;
-        }
-
         fetch("{% url 'dashboard:api_live_metrics' %}")
             .then(res => res.json())
             .then(data => {
@@ -335,6 +382,72 @@
                 // MDP advisory action updates are disabled for Phase 1 review.
 
                 // DSE Alerts updates are disabled for review.
+
+                // Update Network Topology nodes and edges dynamically
+                if (data.agents) {
+                    const activeMacs = new Set();
+                    const numAgents = data.agents.length;
+
+                    data.agents.forEach((agent, idx) => {
+                        activeMacs.add(agent.mac_address);
+                        
+                        // Calculate static circular coordinates
+                        const angle = numAgents > 0 ? (2 * Math.PI * idx) / numAgents : 0;
+                        const radius = 120;
+                        const ax = Math.round(radius * Math.cos(angle));
+                        const ay = Math.round(radius * Math.sin(angle));
+
+                        const agentLabel = `${agent.hostname}\n(${agent.ip_address})`;
+                        const agentTitle = `Hostname: ${agent.hostname}\n` +
+                                           `IP: ${agent.ip_address}\n` +
+                                           `MAC: ${agent.mac_address}\n` +
+                                           `Status: Online\n` +
+                                           `CPU: ${agent.cpu_usage}%\n` +
+                                           `RAM: ${agent.memory_usage}%\n` +
+                                           `Active Connections: ${agent.active_connections}`;
+
+                        // Check if node already exists
+                        const existingNode = nodesDataSet.get(agent.mac_address);
+                        if (existingNode) {
+                            // Update label, title, position
+                            nodesDataSet.update({
+                                id: agent.mac_address,
+                                label: agentLabel,
+                                title: agentTitle,
+                                x: ax,
+                                y: ay
+                            });
+                        } else {
+                            // Add node
+                            nodesDataSet.add({
+                                id: agent.mac_address,
+                                label: agentLabel,
+                                title: agentTitle,
+                                color: "#3b82f6",
+                                shape: "dot",
+                                size: 16,
+                                x: ax,
+                                y: ay,
+                                fixed: true
+                            });
+                            // Add edge from hotspot to agent
+                            edgesDataSet.add({
+                                id: `edge-${agent.mac_address}`,
+                                from: "hotspot",
+                                to: agent.mac_address
+                            });
+                        }
+                    });
+
+                    // Remove offline agents from topology
+                    const allNodeIds = nodesDataSet.getIds();
+                    allNodeIds.forEach(id => {
+                        if (id !== 'hotspot' && !activeMacs.has(id)) {
+                            nodesDataSet.remove(id);
+                            edgesDataSet.remove(`edge-${id}`);
+                        }
+                    });
+                }
             });
 
         // Poll packets

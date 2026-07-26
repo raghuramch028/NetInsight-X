@@ -704,13 +704,24 @@ def api_live_metrics(request):
     """API endpoint returning active metrics, active agents online count, and DSE alerts."""
     try:
         latest = analytics_engine.get_latest_metrics()
-        
-        # Calculate online count first
         from datetime import timedelta
         now = timezone.now()
         active_cutoff = now - timedelta(seconds=15)
-        active_devices_count = Agent.objects.filter(last_seen__gte=active_cutoff).count()
+        active_agents = Agent.objects.filter(last_seen__gte=active_cutoff)
+        active_devices_count = active_agents.count()
         latest["active_devices_count"] = active_devices_count
+        latest["agents"] = [
+            {
+                "hostname": agent.hostname,
+                "ip_address": agent.ip_address,
+                "mac_address": agent.mac_address,
+                "cpu_usage": agent.cpu_usage,
+                "memory_usage": agent.memory_usage,
+                "disk_usage": agent.disk_usage,
+                "active_connections": agent.active_connections
+            }
+            for agent in active_agents
+        ]
 
         # If no agents are online, override metrics to 0
         if active_devices_count == 0:
