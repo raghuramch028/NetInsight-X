@@ -264,10 +264,33 @@ def optimization_view(request):
         except Exception as e:
             logger.error(f"Error loading manual custom LP settings: {e}")
 
+    # Fetch current network state and apply MDP dynamic adjustments
+    latest_state = StateHistory.objects.all().order_by("-timestamp").first()
+    curr_state = latest_state.network_state if latest_state else "Normal"
+    mdp_rec = mdp_engine.get_recommendation(curr_state)
+    recommended_action = mdp_rec["recommended_action"]
+
+    active_priorities = list(priorities)
+    active_min_bounds = list(min_bounds)
+
+    if recommended_action == "Prioritize Critical Services":
+        # Boost Critical Services priority weight (index 3) and min guaranteed bounds
+        active_priorities[3] = float(active_priorities[3] * 2.0)
+        active_min_bounds[3] = float(active_min_bounds[3] * 1.5)
+        # Throttle low priority class: File Transfer priority is halved
+        active_priorities[2] = float(active_priorities[2] * 0.5)
+        logger.info(f"MDP Optimization Override active: {recommended_action}. Boosting Critical Services weight.")
+    elif recommended_action == "Reroute Traffic":
+        # Mitigate severe congestion by prioritizing basic browsing and throttling streaming/files
+        active_priorities[0] = float(active_priorities[0] * 1.5)
+        active_priorities[1] = float(active_priorities[1] * 0.5)
+        active_priorities[2] = float(active_priorities[2] * 0.2)
+        logger.info(f"MDP Optimization Override active: {recommended_action}. Throttling heavy flows.")
+
     classes = ["Web Browsing", "Streaming", "File Transfer", "Critical Services"]
 
-    # Solve LP
-    result = optimizer.solve_allocation(priorities, min_bounds, max_bounds, capacity)
+    # Solve LP using dynamically adjusted weights and bounds
+    result = optimizer.solve_allocation(active_priorities, active_min_bounds, max_bounds, capacity)
 
     # Map allocations back for template rendering
     allocation_mbps = [x / 1e6 for x in result["allocations"]]
@@ -275,8 +298,8 @@ def optimization_view(request):
     for idx, name in enumerate(classes):
         mapped_allocations.append({
             "class": name,
-            "priority": priorities[idx],
-            "min_req": min_bounds[idx] / 1e6,
+            "priority": active_priorities[idx],
+            "min_req": active_min_bounds[idx] / 1e6,
             "max_lim": max_bounds[idx] / 1e6,
             "allocated": allocation_mbps[idx]
         })
@@ -292,10 +315,11 @@ def optimization_view(request):
         "mapped_allocations": mapped_allocations,
         "kkt": result["kkt_results"],
         "total_capacity_mbps": capacity / 1e6,
-        "input_priorities": priorities,
-        "input_min_bounds": [x / 1e6 for x in min_bounds],
+        "input_priorities": active_priorities,
+        "input_min_bounds": [x / 1e6 for x in active_min_bounds],
         "input_max_bounds": [x / 1e6 for x in max_bounds],
-        "online_agents_count": online_agents_count
+        "online_agents_count": online_agents_count,
+        "mdp_rec": mdp_rec
     }
     return render(request, "dashboard/optimization.html", context)
 
