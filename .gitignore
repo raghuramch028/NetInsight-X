@@ -40,3 +40,7 @@ data/
 agent/agent.log
 netinsight/database/*.db
 netinsight/database/*.sqlite3
+
+# Root-level runtime files
+agent.log
+agent_id.txt
