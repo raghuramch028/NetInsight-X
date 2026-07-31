@@ -31,14 +31,56 @@
 </div>
 {% endif %}
 
+<!-- DSE Alerts Container -->
+<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-3">
+    {% for alert in dse_alerts %}
+        <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card {% if alert.severity == 'Critical' %}severity-critical{% elif alert.severity == 'Warning' %}severity-warning{% else %}severity-info{% endif %}" role="alert">
+            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0 {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="width:20px;height:20px;"></i>
+            <div>
+                <strong class="d-block {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="font-size:0.95rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
+                <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">{{ alert.message }}</span>
+                <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
-                    <span class="text-secondary small font-mono">Telemetry Monitor</span>
-                    <h3 class="font-bold h5 mt-1 mb-0">Throughput Analysis</h3>
+                    <span class="text-secondary small font-mono">QoS Status Profile</span>
+                    <h3 class="font-bold h5 mt-1 mb-0">System Operational Health</h3>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span id="card-state-badge" class="saas-badge 
+                        {% if current_state == 'NORMAL' %}badge-normal
+                        {% elif current_state == 'BUSY' %}badge-busy
+                        {% elif current_state == 'CONGESTED' %}badge-congested
+                        {% else %}badge-failure{% endif %}">
+                        <span id="card-state-pulse" class="pulse-indicator 
+                            {% if current_state == 'NORMAL' %}pulse-normal
+                            {% elif current_state == 'BUSY' %}pulse-busy
+                            {% elif current_state == 'CONGESTED' %}pulse-congested
+                            {% else %}pulse-failure{% endif %}">
+                        </span>
+                        <span id="card-state-label">{{ current_state }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Dynamic MDP Advisory Action -->
+            <div class="p-3 rounded mb-4" style="background-color: rgba(59,130,246,0.04); border: 1px dashed rgba(59,130,246,0.2);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="small text-secondary font-mono d-block">MDP Decision Advisory Policy</span>
+                        <span id="mdp-action" class="font-bold text-white fs-6 mt-1 d-inline-block">
+                            <i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>{{ mdp_rec.recommended_action }}
+                        </span>
+                    </div>
+                    <span class="badge bg-secondary font-mono" style="font-size: 0.75rem;">SOLVER ACTIVE</span>
                 </div>
             </div>
 
@@ -132,6 +174,19 @@
     </div>
 </div>
 
+
+<!-- Expected MDP Values List -->
+<div class="saas-card mb-4">
+    <h4 class="mb-4 text-white font-bold h6"><i data-lucide="line-chart" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Expected State-Action Utility (Bellman Updates)</h4>
+    <div id="mdp-values-list" class="d-flex flex-column gap-2">
+        {% for name, val in mdp_rec.action_values.items %}
+            <div class="d-flex justify-content-between align-items-center p-2 rounded {% if name == mdp_rec.recommended_action %}bg-primary bg-opacity-25{% endif %}">
+                <span class="{% if name == mdp_rec.recommended_action %}text-primary font-bold{% else %}text-secondary{% endif %}" style="font-size:0.9rem;">{{ name }}</span>
+                <span class="badge {% if name == mdp_rec.recommended_action %}bg-primary{% else %}bg-secondary{% endif %} font-mono">{{ val|floatformat:2 }}</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
 
 <!-- Live Packet Log Table -->
 <div class="saas-card mb-4">
@@ -326,7 +381,34 @@
                 // Update Progress bar
                 document.getElementById('capacity-progress').style.width = `${data.bandwidth_util}%`;
 
-                // Network state badge updates are disabled for review.
+                                const state = data.network_state;
+                const stateBadge = document.getElementById('card-state-badge');
+                const statePulse = document.getElementById('card-state-pulse');
+                const stateLabel = document.getElementById('card-state-label');
+                
+                if (stateBadge && statePulse && stateLabel) {
+                    stateBadge.className = 'saas-badge';
+                    statePulse.className = 'pulse-indicator';
+                    stateLabel.innerText = state;
+                    
+                    const stateLower = state.toLowerCase();
+                    if (stateLower === 'normal') {
+                        stateBadge.classList.add('badge-normal');
+                        statePulse.classList.add('pulse-normal');
+                    } else if (stateLower === 'busy') {
+                        stateBadge.classList.add('badge-busy');
+                        statePulse.classList.add('pulse-busy');
+                    } else if (stateLower === 'congested') {
+                        stateBadge.classList.add('badge-congested');
+                        statePulse.classList.add('pulse-congested');
+                    } else if (stateLower === 'recovering') {
+                        stateBadge.classList.add('badge-busy');
+                        statePulse.classList.add('pulse-busy');
+                    } else {
+                        stateBadge.classList.add('badge-failure');
+                        statePulse.classList.add('pulse-failure');
+                    }
+                }
                 
                 // Update chart
                 throughputData.shift();
@@ -339,9 +421,75 @@
                 labels.push(timeStr);
                 liveChart.update();
                 
-                // MDP advisory action updates are disabled for Phase 1 review.
+                                // Fetch live recommendation from MDP from the polled data
+                if (data.mdp_recommendation) {
+                    const bestAction = data.mdp_recommendation.recommended_action;
+                    const actionVals = data.mdp_recommendation.action_values;
+                    
+                    const mdpActionEl = document.getElementById('mdp-action');
+                    if (mdpActionEl) {
+                        mdpActionEl.innerHTML = `<i data-lucide="info" class="text-info me-2 align-text-top" style="width:16px;height:16px;"></i>${bestAction}`;
+                    }
+                    
+                    const mdpListEl = document.getElementById('mdp-values-list');
+                    if (mdpListEl) {
+                        let valuesHtml = "";
+                        Object.keys(actionVals).forEach(actName => {
+                            const isBest = actName === bestAction;
+                            const valStr = parseFloat(actionVals[actName]).toFixed(2);
+                            valuesHtml += `
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded ${isBest ? 'bg-primary bg-opacity-25' : ''}">
+                                    <span class="${isBest ? 'text-primary font-bold' : 'text-secondary'}" style="font-size:0.9rem;">${actName}</span>
+                                    <span class="badge ${isBest ? 'bg-primary' : 'bg-secondary'} font-mono">${valStr}</span>
+                                </div>
+                            `;
+                        });
+                        mdpListEl.innerHTML = valuesHtml;
+                    }
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons(); // Refresh icons inside modified dynamic list
+                    }
+                }
 
-                // DSE Alerts updates are disabled for review.
+                // Update DSE Alerts
+                if (data.dse_alerts) {
+                    let alertsHtml = "";
+                    data.dse_alerts.forEach(alert => {
+                        let severityClass = "";
+                        let iconClass = "";
+                        let iconName = "";
+                        if (alert.severity === 'Critical') {
+                            severityClass = "severity-critical";
+                            iconClass = "text-danger";
+                            iconName = "shield-alert";
+                        } else if (alert.severity === 'Warning') {
+                            severityClass = "severity-warning";
+                            iconClass = "text-warning";
+                            iconName = "alert-triangle";
+                        } else {
+                            severityClass = "severity-info";
+                            iconClass = "text-info";
+                            iconName = "info";
+                        }
+                        alertsHtml += `
+                            <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card ${severityClass}" role="alert">
+                                <i data-lucide="${iconName}" class="me-3 mt-1 flex-shrink-0 ${iconClass}" style="width:20px;height:20px;"></i>
+                                <div>
+                                    <strong class="d-block ${iconClass}" style="font-size:0.95rem;">[${alert.severity}] ${alert.title} (${alert.module})</strong>
+                                    <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">${alert.message}</span>
+                                    <span class="d-block small mt-2 font-bold text-white" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: ${alert.action}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    const dseAlertsEl = document.getElementById('dse-alerts-container');
+                    if (dseAlertsEl) {
+                        dseAlertsEl.innerHTML = alertsHtml;
+                    }
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }
 
                 // Update Network Topology nodes and edges dynamically
                 if (data.agents) {

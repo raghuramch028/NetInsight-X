@@ -185,8 +185,9 @@ def index_view(request):
     latest["throughput_mbps"] = latest["throughput"] / 1e6
     latest["latency_ms"] = latest["latency"] * 1000.0
 
-    # Force state to Normal for review (HMM dynamic state decoding is coming soon)
-    state_name = "Normal"
+    # Retrieve current network state
+    state_record = StateHistory.objects.all().order_by("-timestamp").first()
+    state_name = state_record.network_state if state_record and online_agents_count > 0 else "Normal"
 
     # Solve MDP Recommendation Engine
     mdp_rec = mdp_engine.get_recommendation(state_name)
@@ -755,8 +756,9 @@ def api_live_metrics(request):
             latest["latency"] = 0.0
             latest["packet_loss"] = 0.0
 
-        # Force state to Normal for review (HMM dynamic state decoding is coming soon)
-        state_name = "Normal"
+        # Determine network state dynamically
+        state_record = StateHistory.objects.all().order_by("-timestamp").first()
+        state_name = state_record.network_state if state_record and active_devices_count > 0 else "Normal"
         latest["network_state"] = state_name
 
         # Generate MDP recommendations
