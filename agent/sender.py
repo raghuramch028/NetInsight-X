@@ -67,11 +67,11 @@ class TelemetrySender:
             time.sleep(backoff)
             backoff = min(backoff * 2.0, max_backoff)
 
-    def send_telemetry(self, stats: dict, packets: list[dict]) -> bool:
-        """Uploads telemetry payload to server. Returns True on success, False otherwise."""
+    def send_telemetry(self, stats: dict, packets: list[dict]) -> tuple[bool, dict | None]:
+        """Uploads telemetry payload to server. Returns (success, enforced_qos)."""
         if not self.agent_id:
             logger.error("Cannot send telemetry: Agent is not registered.")
-            return False
+            return False, None
 
         payload = {
             "agent_id": self.agent_id,
@@ -83,7 +83,8 @@ class TelemetrySender:
             response = requests.post(config.TELEMETRY_ENDPOINT, json=payload, timeout=10.0)
             if response.status_code == 200:
                 logger.info(f"Successfully uploaded telemetry (packets: {len(packets)}).")
-                return True
+                data = response.json()
+                return True, data.get("enforced_qos")
             elif response.status_code == 404:
                 logger.error("Server reported agent is not registered (Status 404). Clearing invalid local agent ID.")
                 if os.path.exists(config.AGENT_ID_FILE):
@@ -92,10 +93,10 @@ class TelemetrySender:
                     except Exception as e:
                         logger.error(f"Failed to delete invalid agent ID file: {e}")
                 self.agent_id = None
-                return False
+                return False, None
             else:
                 logger.error(f"Server rejected telemetry payload (Status {response.status_code}): {response.text}")
-                return False
+                return False, None
         except requests.RequestException as e:
             logger.error(f"Failed to transmit telemetry to server: {e}")
-            return False
+            return False, None

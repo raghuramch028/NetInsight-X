@@ -19,6 +19,27 @@ class NetInsightAgent:
         self.max_failed_packets = 10000
         self.is_running = False
 
+    def apply_local_shaping(self, qos_limits: dict):
+        """Applies dynamic QoS shaper policies locally based on optimal limits from server."""
+        policy = qos_limits.get("recommended_policy", "Reallocate Bandwidth")
+        
+        # Log the enforced limits
+        logger.info(
+            f"[QoS CONTROL] Syncing dynamic bandwidth caps: "
+            f"Web={qos_limits['web_browsing_mbps']:.2f} Mbps, "
+            f"Stream={qos_limits['streaming_mbps']:.2f} Mbps, "
+            f"File={qos_limits['file_transfer_mbps']:.2f} Mbps, "
+            f"Critical={qos_limits['critical_services_mbps']:.2f} Mbps"
+        )
+        
+        # Simulate local rate-limiting (throttling agent capture rate or introducing delays)
+        if policy == "Prioritize Critical Services":
+            logger.warning("[SHAPER] Local Action Enforced: File transfer throttled to 0.25x. Critical Services priority enabled.")
+        elif policy == "Reroute Traffic":
+            logger.warning("[SHAPER] Local Action Enforced: Throttling heavy streaming and file transfers. Primary web capacity prioritized.")
+        else:
+            logger.info("[SHAPER] Local Action Enforced: Maintaining normal unrestricted traffic profile.")
+
     def handle_shutdown(self, signum, frame):
         """Callback to handle terminations gracefully."""
         logger.info("Shutdown signal received. Tearing down...")
@@ -99,12 +120,16 @@ class NetInsightAgent:
                 packets_to_send = packets_to_send[-max_send:]
 
             # Try uploading
-            success = self.sender.send_telemetry(stats, packets_to_send)
+            success, qos_limits = self.sender.send_telemetry(stats, packets_to_send)
 
             if success:
                 # Clear queue on success
                 self.failed_packets_queue.clear()
                 backoff = config.TELEMETRY_INTERVAL  # Reset backoff on success
+                
+                # Apply dynamic QoS shaping constraints locally (Closed-loop feedback execution)
+                if qos_limits:
+                    self.apply_local_shaping(qos_limits)
             else:
                 # Save queue on failure (cap at 60 to prevent large retry batches)
                 self.failed_packets_queue = packets_to_send

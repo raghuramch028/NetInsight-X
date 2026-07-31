@@ -127,7 +127,47 @@ def api_agent_telemetry(request):
         # Ingest packets and update system health stats asynchronously
         handle_telemetry_ingestion(agent, stats, packets)
 
-        return Response({"status": "success"}, status=200)
+        # Closed-Loop Feedback Control: Compute current optimal bandwidth bounds dynamically
+        latest_state = StateHistory.objects.all().order_by("-timestamp").first()
+        curr_state = latest_state.network_state if latest_state else "Normal"
+        mdp_rec = mdp_engine.get_recommendation(curr_state)
+        recommended_action = mdp_rec["recommended_action"]
+
+        settings_obj = SystemSettings.objects.first()
+        priorities = settings_obj.lp_priorities if settings_obj else settings.QOS_PRIORITIES
+        min_bounds = settings.QOS_MIN_BANDWIDTH
+        max_bounds = settings.QOS_MAX_BANDWIDTH
+        capacity = settings.LINK_CAPACITY
+
+        active_priorities = list(priorities)
+        active_min_bounds = list(min_bounds)
+
+        if recommended_action == "Prioritize Critical Services":
+            active_priorities[3] = float(active_priorities[3] * 2.0)
+            active_min_bounds[3] = float(active_min_bounds[3] * 1.5)
+            active_priorities[2] = float(active_priorities[2] * 0.5)
+        elif recommended_action == "Reroute Traffic":
+            active_priorities[0] = float(active_priorities[0] * 1.5)
+            active_priorities[1] = float(active_priorities[1] * 0.5)
+            active_priorities[2] = float(active_priorities[2] * 0.2)
+
+        # Solve LP based on computed priorities
+        lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, max_bounds, capacity)
+        allocations = lp_result.get("allocations", [])
+
+        # Format allocation response in Mbps for client shaping enforcement
+        enforced_qos = {
+            "web_browsing_mbps": float(allocations[0] / 1e6) if len(allocations) > 0 else 5.0,
+            "streaming_mbps": float(allocations[1] / 1e6) if len(allocations) > 1 else 15.0,
+            "file_transfer_mbps": float(allocations[2] / 1e6) if len(allocations) > 2 else 2.0,
+            "critical_services_mbps": float(allocations[3] / 1e6) if len(allocations) > 3 else 10.0,
+            "recommended_policy": recommended_action
+        }
+
+        return Response({
+            "status": "success",
+            "enforced_qos": enforced_qos
+        }, status=200)
 
     except Exception as e:
         logger.error(f"Error processing telemetry upload: {e}", exc_info=True)
