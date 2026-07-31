@@ -137,8 +137,8 @@ class NetInsightAgent:
                     self.failed_packets_queue = self.failed_packets_queue[-60:]
                 logger.warning(f"Telemetry upload failed. Queued {len(self.failed_packets_queue)} packets for next attempt.")
                 
-                # Apply exponential backoff delay for the next loop run
-                backoff = min(backoff * 1.5, max_backoff)
+                # Force a constant fast retry interval instead of exponential backoff
+                backoff = config.TELEMETRY_INTERVAL
 
             # Rest of the loop interval calculation
             elapsed = time.time() - start_time
