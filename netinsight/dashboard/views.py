@@ -462,12 +462,19 @@ def settings_view(request):
 
 def _plot_to_base64(fig) -> str:
     """Helper converting Matplotlib figure object to base64 PNG string."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", facecolor="#0d111c")
-    buf.seek(0)
-    encoded = base64.b64encode(buf.read()).decode("utf-8")
-    plt.close(fig)
-    return encoded
+    import gc
+    try:
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", facecolor="#0d111c")
+        buf.seek(0)
+        encoded = base64.b64encode(buf.read()).decode("utf-8")
+        return encoded
+    finally:
+        fig.clear()
+        plt.close(fig)
+        plt.close('all')
+        del fig
+        gc.collect()
 
 def _generate_throughput_latency_plot(df_metrics: pd.DataFrame) -> str:
     """Generates a dual-axis throughput/latency time-series plot."""
