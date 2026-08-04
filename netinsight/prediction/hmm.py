@@ -130,8 +130,8 @@ class HiddenMarkovModel:
     def estimate_transition_matrix(self) -> np.ndarray:
         """Estimates transitions between hidden states dynamically from StateHistory database."""
         try:
-            # Query state history chronologically
-            history = StateHistory.objects.all().order_by("timestamp")
+            # Query only the latest 300 state histories chronologically
+            history = list(StateHistory.objects.all().order_by("-timestamp")[:300])[::-1]
             states = [r.network_state for r in history]
 
             if len(states) < 2:

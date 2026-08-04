@@ -401,7 +401,7 @@ def prediction_view(request):
 
 def classification_view(request):
     """Renders SVM Classifier threat audit tables and live packet predictions."""
-    packets_qs = PacketRecord.objects.all().order_by("-timestamp")[:50]
+    packets_qs = PacketRecord.objects.all().select_related("agent").order_by("-timestamp")[:50]
     
     packets_list = []
     for pkt in packets_qs:
