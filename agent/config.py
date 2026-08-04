@@ -1,7 +1,8 @@
 import os
 
 # Server address configuration
-SERVER_URL = "https://netinsight-gnt6.onrender.com"
+
+SERVER_URL = "http://10.91.150.128:8000"
 
 # API Endpoints
 REGISTRATION_ENDPOINT = f"{SERVER_URL}/api/v1/agents/register"
