@@ -141,7 +141,10 @@ def api_agent_telemetry(request):
         capacity = speed_monitor.CURRENT_CAPACITY
 
         active_priorities = list(priorities)
-        active_min_bounds = list(min_bounds)
+        # Scale bounds dynamically as percentages of current link capacity (relative to 100 Mbps baseline)
+        scale_ratio = capacity / 100000000.0
+        active_min_bounds = [float(val * scale_ratio) for val in min_bounds]
+        active_max_bounds = [float(val * scale_ratio) for val in max_bounds]
 
         if recommended_action == "Prioritize Critical Services":
             active_priorities[3] = float(active_priorities[3] * 2.0)
@@ -152,8 +155,8 @@ def api_agent_telemetry(request):
             active_priorities[1] = float(active_priorities[1] * 0.5)
             active_priorities[2] = float(active_priorities[2] * 0.2)
 
-        # Solve LP based on computed priorities
-        lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, max_bounds, capacity)
+        # Solve LP based on computed priorities and dynamic capacity bounds
+        lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
         allocations = lp_result.get("allocations", [])
 
         # Format allocation response in Mbps for client shaping enforcement
@@ -306,6 +309,11 @@ def optimization_view(request):
             settings_obj.save()
         except Exception as e:
             logger.error(f"Error loading manual custom LP settings: {e}")
+    else:
+        # Scale bounds dynamically on GET load relative to current dynamic capacity
+        scale_ratio = capacity / 100000000.0
+        min_bounds = [float(val * scale_ratio) for val in min_bounds]
+        max_bounds = [float(val * scale_ratio) for val in max_bounds]
 
     # Fetch current network state and apply MDP dynamic adjustments
     latest_state = StateHistory.objects.all().order_by("-timestamp").first()
@@ -315,6 +323,7 @@ def optimization_view(request):
 
     active_priorities = list(priorities)
     active_min_bounds = list(min_bounds)
+    active_max_bounds = list(max_bounds)
 
     if recommended_action == "Prioritize Critical Services":
         # Boost Critical Services priority weight (index 3) and min guaranteed bounds
@@ -333,7 +342,7 @@ def optimization_view(request):
     classes = ["Web Browsing", "Streaming", "File Transfer", "Critical Services"]
 
     # Solve LP using dynamically adjusted weights and bounds
-    result = optimizer.solve_allocation(active_priorities, active_min_bounds, max_bounds, capacity)
+    result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
 
     # Map allocations back for template rendering
     allocation_mbps = [x / 1e6 for x in result["allocations"]]
@@ -343,7 +352,7 @@ def optimization_view(request):
             "class": name,
             "priority": active_priorities[idx],
             "min_req": active_min_bounds[idx] / 1e6,
-            "max_lim": max_bounds[idx] / 1e6,
+            "max_lim": active_max_bounds[idx] / 1e6,
             "allocated": allocation_mbps[idx]
         })
 
@@ -360,7 +369,7 @@ def optimization_view(request):
         "total_capacity_mbps": capacity / 1e6,
         "input_priorities": active_priorities,
         "input_min_bounds": [x / 1e6 for x in active_min_bounds],
-        "input_max_bounds": [x / 1e6 for x in max_bounds],
+        "input_max_bounds": [x / 1e6 for x in active_max_bounds],
         "online_agents_count": online_agents_count,
         "mdp_rec": mdp_rec
     }
