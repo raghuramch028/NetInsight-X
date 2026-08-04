@@ -8,15 +8,7 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /code
 
-# Install system dependencies needed for PostgreSQL, compilation, and pcap
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    libpcap-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install python dependencies
+# Install python dependencies (Layer caching standard)
 COPY requirements.txt /code/
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -30,7 +22,7 @@ ENV PORT=7860
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Expose Hugging Face default container port
+# Expose default container port
 EXPOSE 7860
 
 # Run migrations and start gunicorn server (using optimized 1 worker, 2 threads configuration)
