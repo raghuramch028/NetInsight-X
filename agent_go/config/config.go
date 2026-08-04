@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ServerURL            = "https://netinsight-gnt6.onrender.com"
+	ServerURL            = "http://localhost:8000"
 	RegistrationEndpoint = ServerURL + "/dashboard/api/agent/register/"
 	TelemetryEndpoint    = ServerURL + "/dashboard/api/agent/telemetry/"
 	TelemetryInterval    = 3 // seconds
