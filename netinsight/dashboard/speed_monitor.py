@@ -6,8 +6,12 @@ from django.conf import settings
 
 logger = logging.getLogger("netinsight.speed_monitor")
 
+# Thread-safe global variable for dynamic capacity (initialized from settings)
+CURRENT_CAPACITY = getattr(settings, "LINK_CAPACITY", 100000000.0)
+
 def run_speed_test():
     """Downloads a small static file to estimate current network link capacity dynamically."""
+    global CURRENT_CAPACITY
     # cloudflare-hosted file (~150 KB)
     url = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
     try:
@@ -23,8 +27,8 @@ def run_speed_test():
             # Clamp between 2.0 Mbps and 100.0 Mbps for solver stability
             speed_bps = max(2000000.0, min(100000000.0, speed_bps))
             
-            # Dynamically update settings capacity in memory
-            settings.LINK_CAPACITY = speed_bps
+            # Dynamically update the module level global variable
+            CURRENT_CAPACITY = speed_bps
             logger.info(f"[DYNAMIC CAPACITY] Bandwidth capacity updated to {speed_bps / 1e6:.2f} Mbps based on active speed test.")
         else:
             raise Exception(f"HTTP status {response.status_code}")
@@ -39,14 +43,14 @@ def run_speed_test():
                 if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
                     speed_bps = max_throughput * 1.2
                     speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-                    settings.LINK_CAPACITY = speed_bps
+                    CURRENT_CAPACITY = speed_bps
                     logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
                 else:
                     # Default backup if no traffic is running
-                    settings.LINK_CAPACITY = 10000000.0 # 10 Mbps
+                    CURRENT_CAPACITY = 10000000.0 # 10 Mbps
                     logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
             else:
-                settings.LINK_CAPACITY = 10000000.0 # 10 Mbps
+                CURRENT_CAPACITY = 10000000.0 # 10 Mbps
                 logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
         except Exception as fallback_err:
             logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
