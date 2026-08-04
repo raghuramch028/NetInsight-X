@@ -33,5 +33,5 @@ RUN python manage.py collectstatic --noinput
 # Expose Hugging Face default container port
 EXPOSE 7860
 
-# Run gunicorn server (using 2 workers since Hugging Face has 16GB RAM)
-CMD ["gunicorn", "netinsight.wsgi:application", "--bind", "0.0.0.0:7860", "--workers", "2", "--threads", "4", "--timeout", "120"]
+# Run migrations and start gunicorn server (using optimized 1 worker, 2 threads configuration)
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn netinsight.wsgi:application --bind 0.0.0.0:7860 --workers 1 --threads 2 --timeout 120"]
