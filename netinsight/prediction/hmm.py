@@ -18,7 +18,7 @@ HIDDEN_STATES = {
 }
 STATE_INDEX = {v: k for k, v in HIDDEN_STATES.items()}
 
-# SVM Threat Labels mapping
+# XGBoost Threat Labels mapping
 THREAT_LABELS = {
     "Normal": 0,
     "DoS": 1,
@@ -43,8 +43,8 @@ class HiddenMarkovModel:
             [0.30, 0.10, 0.05, 0.05, 0.50]   # Recovering ->
         ])
 
-        # 2. Discrete Threat Emission Matrix for SVM Labels (shape: 5x7)
-        # Rows: Hidden States, Columns: SVM Threat Labels
+        # 2. Discrete Threat Emission Matrix for XGBoost Labels (shape: 5x7)
+        # Rows: Hidden States, Columns: XGBoost Threat Labels
         self.threat_emission = np.array([
             [0.95, 0.01, 0.00, 0.01, 0.01, 0.01, 0.01],  # Normal expects Normal
             [0.90, 0.02, 0.00, 0.02, 0.02, 0.02, 0.02],  # Busy expects Normal
@@ -115,7 +115,7 @@ class HiddenMarkovModel:
             # Continuous emission likelihood
             p_continuous = p_util * p_latency * p_loss * p_rate * p_sockets
 
-            # Discrete Threat label score from SVM
+            # Discrete Threat label score from XGBoost
             threat_name = observation.get("threat_label", "Normal")
             threat_idx = THREAT_LABELS.get(threat_name, 0)
             state_idx = STATE_INDEX[state_name]

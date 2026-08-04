@@ -661,7 +661,7 @@ def reports_pdf_download(request):
         story.append(Spacer(1, 20))
 
         # 3. Threat History Audit
-        story.append(Paragraph("<b>3. Security Incidents Logs (SVM Threat Classification)</b>", styles["Heading2"]))
+        story.append(Paragraph("<b>3. Security Incidents Logs (XGBoost Threat Classification)</b>", styles["Heading2"]))
         threats = ThreatHistory.objects.all().order_by("-timestamp")[:10]
         threat_data = [["Timestamp", "Source Host", "Threat Classified", "Severity Level"]]
         for t in threats:
