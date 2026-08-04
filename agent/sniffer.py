@@ -13,6 +13,8 @@ class PacketSniffer:
         self.sniffer = None
         self.is_running = False
         self.proto_map = {1: "ICMP", 6: "TCP", 17: "UDP"}
+        self.start_time = time.time()
+        self.start_perf = time.perf_counter()
 
     def packet_callback(self, packet) -> None:
         """Processes a single sniffed packet, extracts headers, and stores in buffer."""
@@ -26,7 +28,8 @@ class PacketSniffer:
             proto_num = ip_layer.proto
             protocol = self.proto_map.get(proto_num, f"OTHER({proto_num})")
             size = len(packet)
-            timestamp = float(packet.time) if packet.time else time.time()
+            # High-precision monotonic epoch timestamp
+            timestamp = self.start_time + (time.perf_counter() - self.start_perf)
             ttl = ip_layer.ttl
 
             src_port = 0
