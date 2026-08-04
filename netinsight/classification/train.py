@@ -8,7 +8,8 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -194,9 +195,10 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    logger.info("Training Random Forest Classifier on real intrusion traffic data...")
-    clf = RandomForestClassifier(n_estimators=100, max_depth=15, class_weight="balanced", random_state=42)
-    clf.fit(X_train_scaled, y_train)
+    logger.info("Training XGBoost Classifier on real intrusion traffic data...")
+    clf = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.1, random_state=42)
+    sample_weights = compute_sample_weight(class_weight="balanced", y=y_train)
+    clf.fit(X_train_scaled, y_train, sample_weight=sample_weights)
 
     # 4. Evaluate Performance
     y_pred = clf.predict(X_test_scaled)
@@ -211,7 +213,7 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
         zero_division=0
     )
 
-    logger.info(f"Random Forest Model successfully trained! Validation Accuracy: {acc * 100:.2f}%")
+    logger.info(f"XGBoost Model successfully trained! Validation Accuracy: {acc * 100:.2f}%")
 
     # 5. Persist Model and Scaler
     joblib.dump(clf, str(model_path))
@@ -223,7 +225,7 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
         "precision": float(report["macro avg"]["precision"]) * 100.0,
         "recall": float(report["macro avg"]["recall"]) * 100.0,
         "f1_score": float(report["macro avg"]["f1-score"]) * 100.0,
-        "kernel": "Random Forest",
+        "kernel": "XGBoost",
         "features": ", ".join(FEATURE_COLUMNS),
         "training_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "dataset_info": "CICIDS2017 Real Sample Subset",
