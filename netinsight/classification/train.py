@@ -196,7 +196,14 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     X_test_scaled = scaler.transform(X_test)
 
     logger.info("Training XGBoost Classifier on real intrusion traffic data...")
-    clf = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.1, random_state=42)
+    clf = XGBClassifier(
+        n_estimators=250, 
+        max_depth=9, 
+        learning_rate=0.08, 
+        subsample=0.8, 
+        colsample_bytree=0.8, 
+        random_state=42
+    )
     sample_weights = compute_sample_weight(class_weight="balanced", y=y_train)
     clf.fit(X_train_scaled, y_train, sample_weight=sample_weights)
 
