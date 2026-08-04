@@ -94,7 +94,7 @@
                             {{ latest_metrics.throughput_mbps|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">Mbps</span>
                         </h2>
                     </div>
-                    <span class="small text-secondary font-mono">Capacity: {{ link_capacity_mbps|floatformat:0 }} Mbps</span>
+                    <span class="small text-secondary font-mono">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
                 </div>
                 
                 <div class="progress" style="height: 6px; background-color: var(--bg-primary);">

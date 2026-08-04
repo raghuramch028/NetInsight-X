@@ -70,7 +70,7 @@
                 {% csrf_token %}
                 <div class="mb-3">
                     <label class="form-label text-secondary small font-mono">Link Capacity (Mbps)</label>
-                    <input type="number" class="form-control bg-dark border-secondary text-white font-mono" name="capacity" value="{{ total_capacity_mbps|floatformat:0 }}" style="border-color: var(--border-subtle) !important;" required>
+                    <input type="number" step="0.1" class="form-control bg-dark border-secondary text-white font-mono" name="capacity" value="{{ total_capacity_mbps|floatformat:1 }}" style="border-color: var(--border-subtle) !important;" required>
                 </div>
                 
                 <div class="text-secondary small font-mono mb-2">Class Weights & Mins (Mbps)</div>
