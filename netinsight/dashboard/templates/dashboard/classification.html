@@ -1,6 +1,6 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Traffic Classification (SVM Inference Engine){% endblock %}
+{% block page_title %}Traffic Classification (XGBoost Inference Engine){% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
@@ -9,7 +9,7 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="m-0 text-white font-bold h6">
-                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>SVM Model Profile
+                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>XGBoost Model Profile
                 </h4>
                 {% if model_loaded %}
                     <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">Active</span>
@@ -19,13 +19,13 @@
             </div>
             
             <p class="text-secondary small mb-4">
-                The classification module is built using a Support Vector Machine trained on the real benchmark CICIDS2017 / CICIoT2023 datasets.
+                The classification module is built using an XGBoost Classifier trained on the real benchmark CICIDS2017 / CICIoT2023 datasets.
             </p>
 
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
-                    <span class="text-secondary small font-mono">Kernel Model</span>
-                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">{{ stats.kernel|default:"RBF Kernel" }}</span>
+                    <span class="text-secondary small font-mono">Classifier Type</span>
+                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">{{ stats.kernel|default:"XGBoost" }}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Validation Accuracy</span>
@@ -39,7 +39,7 @@
                         {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
                     </span>
                 </li>
-                <li class="list-group-item bg-transparent border-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
+                <li class="list-group-item bg-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono">Inference Port</span>
                     <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE</span>
                 </li>
@@ -85,7 +85,7 @@
             </div>
             
             <p class="text-secondary small mb-0">
-                <strong>Why RBF Kernel:</strong> Network traffic dimensions exhibit highly overlapping parameters. The Radial Basis Function (RBF) Kernel projects these metrics into an infinite-dimensional Hilbert space to construct optimal classification boundaries.
+                <strong>Why XGBoost:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The eXtreme Gradient Boosting (XGBoost) model constructs sequential decision trees that learn directly from the classification residuals of prior trees, maximizing detection accuracy.
             </p>
         </div>
     </div>
