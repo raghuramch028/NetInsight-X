@@ -10,13 +10,13 @@ logger = logging.getLogger("netinsight.speed_monitor")
 CURRENT_CAPACITY = getattr(settings, "LINK_CAPACITY", 100000000.0)
 
 def run_speed_test():
-    """Streams a 10MB chunked payload from Cloudflare Edge to measure sustained capacity."""
+    """Streams up to 40MB from Cloudflare Edge with an 8-second cutoff to emulate Google's test."""
     global CURRENT_CAPACITY
-    # Official Cloudflare Speed Test API
-    url = "https://speed.cloudflare.com/__down?bytes=10000000"
+    # Cloudflare API requesting up to 40 MB of data
+    url = "https://speed.cloudflare.com/__down?bytes=40000000"
     try:
         start_time = time.perf_counter()
-        # Stream download to allow chunk-by-chunk time tracking and early abort
+        # Stream download to track bytes chunk-by-chunk and allow early time cutoff
         response = requests.get(url, stream=True, timeout=5)
         
         if response.status_code == 200:
@@ -25,19 +25,19 @@ def run_speed_test():
             for chunk in response.iter_content(chunk_size=65536):
                 total_bytes += len(chunk)
                 elapsed = time.perf_counter() - start_time
-                # Cap the speed test at 4.0 seconds max to prevent data hogging
-                if elapsed >= 4.0:
+                # Cap the speed test duration at 8.0 seconds max to save data on slow links
+                if elapsed >= 8.0:
                     break
             
             elapsed = time.perf_counter() - start_time
             if elapsed > 0 and total_bytes > 0:
                 speed_bps = (total_bytes * 8) / elapsed
                 
-                # Clamp between 2.0 Mbps and 100.0 Mbps for solver mathematical stability
+                # Clamp between 2.0 Mbps and 100.0 Mbps for solver stability
                 speed_bps = max(2000000.0, min(100000000.0, speed_bps))
                 
                 CURRENT_CAPACITY = speed_bps
-                logger.info(f"[DYNAMIC CAPACITY] Speed test: {speed_bps / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
+                logger.info(f"[DYNAMIC CAPACITY] Google-style Speed test: {speed_bps / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
                 return
         raise Exception(f"HTTP status {response.status_code}")
     except Exception as e:
@@ -68,7 +68,6 @@ def speed_monitor_loop():
     time.sleep(5)
     run_speed_test()
     while True:
-        # Run every 30 seconds as requested
         time.sleep(30)
         run_speed_test()
 
