@@ -165,6 +165,24 @@ def preprocess_intrusion_data(csv_path: Path) -> pd.DataFrame:
     df["label"] = labels
     return df
 
+def oversample_data(X, y, target_count=3000):
+    """Oversamples minority classes in X and y array formats to target_count."""
+    unique_labels, counts = np.unique(y, return_counts=True)
+    X_new, y_new = [], []
+    for label in unique_labels:
+        idx = np.where(y == label)[0]
+        X_group = X[idx]
+        y_group = y[idx]
+        if len(X_group) < target_count:
+            # Sample with replacement
+            indices = np.random.RandomState(42).choice(len(X_group), size=target_count, replace=True)
+            X_new.append(X_group[indices])
+            y_new.append(y_group[indices])
+        else:
+            X_new.append(X_group)
+            y_new.append(y_group)
+    return np.vstack(X_new), np.concatenate(y_new)
+
 def train_and_save_model(data_dir_str: str | None = None) -> dict:
     """Runs the full model training pipeline on the real intrusion dataset."""
     model_path, scaler_path, model_dir = _model_paths()
@@ -184,6 +202,9 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
 
     X = df[FEATURE_COLUMNS].values
     y = df["label"].values
+
+    # Oversample the entire dataset to ensure balanced classes in training and validation
+    X, y = oversample_data(X, y, target_count=4000)
 
     # Stratify split to ensure balanced classes in validation
     X_train, X_test, y_train, y_test = train_test_split(
