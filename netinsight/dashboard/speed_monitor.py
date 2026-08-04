@@ -10,28 +10,36 @@ logger = logging.getLogger("netinsight.speed_monitor")
 CURRENT_CAPACITY = getattr(settings, "LINK_CAPACITY", 100000000.0)
 
 def run_speed_test():
-    """Downloads a small static file to estimate current network link capacity dynamically."""
+    """Streams a 10MB chunked payload from Cloudflare Edge to measure sustained capacity."""
     global CURRENT_CAPACITY
-    # cloudflare-hosted file (~150 KB)
-    url = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+    # Official Cloudflare Speed Test API
+    url = "https://speed.cloudflare.com/__down?bytes=10000000"
     try:
         start_time = time.perf_counter()
-        # 5-second timeout to prevent blocking during bad cellular signal
-        response = requests.get(url, timeout=5)
-        elapsed = time.perf_counter() - start_time
+        # Stream download to allow chunk-by-chunk time tracking and early abort
+        response = requests.get(url, stream=True, timeout=5)
         
-        if response.status_code == 200 and elapsed > 0:
-            size_bits = len(response.content) * 8
-            speed_bps = size_bits / elapsed
+        if response.status_code == 200:
+            total_bytes = 0
+            # Read in 64KB chunks
+            for chunk in response.iter_content(chunk_size=65536):
+                total_bytes += len(chunk)
+                elapsed = time.perf_counter() - start_time
+                # Cap the speed test at 4.0 seconds max to prevent data hogging
+                if elapsed >= 4.0:
+                    break
             
-            # Clamp between 2.0 Mbps and 100.0 Mbps for solver stability
-            speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-            
-            # Dynamically update the module level global variable
-            CURRENT_CAPACITY = speed_bps
-            logger.info(f"[DYNAMIC CAPACITY] Bandwidth capacity updated to {speed_bps / 1e6:.2f} Mbps based on active speed test.")
-        else:
-            raise Exception(f"HTTP status {response.status_code}")
+            elapsed = time.perf_counter() - start_time
+            if elapsed > 0 and total_bytes > 0:
+                speed_bps = (total_bytes * 8) / elapsed
+                
+                # Clamp between 2.0 Mbps and 100.0 Mbps for solver mathematical stability
+                speed_bps = max(2000000.0, min(100000000.0, speed_bps))
+                
+                CURRENT_CAPACITY = speed_bps
+                logger.info(f"[DYNAMIC CAPACITY] Speed test: {speed_bps / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
+                return
+        raise Exception(f"HTTP status {response.status_code}")
     except Exception as e:
         logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Attempting telemetry fallback.")
         try:
@@ -46,7 +54,6 @@ def run_speed_test():
                     CURRENT_CAPACITY = speed_bps
                     logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
                 else:
-                    # Default backup if no traffic is running
                     CURRENT_CAPACITY = 10000000.0 # 10 Mbps
                     logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
             else:
@@ -56,12 +63,13 @@ def run_speed_test():
             logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
 
 def speed_monitor_loop():
-    """Infinite loop executing speed tests every 60 seconds."""
+    """Infinite loop executing speed tests every 30 seconds."""
     # Allow Django server to complete boot sequence
     time.sleep(5)
     run_speed_test()
     while True:
-        time.sleep(60)
+        # Run every 30 seconds as requested
+        time.sleep(30)
         run_speed_test()
 
 def start_speed_monitor():
