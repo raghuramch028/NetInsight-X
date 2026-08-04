@@ -3,6 +3,8 @@ import sys
 import signal
 import os
 import json
+import platform
+import subprocess
 from agent.logger import logger
 from agent.collector import TelemetryCollector
 from agent.sniffer import PacketSniffer
@@ -33,6 +35,33 @@ class NetInsightAgent:
             f"Critical={qos_limits['critical_services_mbps']:.2f} Mbps"
         )
         
+        # Execute platform-aware system shaper commands
+        system_platform = platform.system().lower()
+        
+        try:
+            if system_platform == "linux":
+                # Real Linux tc (Traffic Control) queue adjustment
+                interface = config.CAPTURE_INTERFACE or "eth0"
+                # Limit total rate to link capacity using TBF
+                rate_limit = f"{qos_limits['web_browsing_mbps'] + qos_limits['streaming_mbps'] + qos_limits['file_transfer_mbps']:.1f}mbit"
+                cmd = ["sudo", "tc", "qdisc", "change", "dev", interface, "root", "tbf", "rate", rate_limit, "burst", "32k", "latency", "400ms"]
+                logger.info(f"[SHAPER] Executing Linux tc command: {' '.join(cmd)}")
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+            elif system_platform == "windows":
+                # Real Windows PowerShell QoS policy throttling
+                # Throttle file transfers (e.g. 2 Mbps -> 256KB/s)
+                bytes_per_sec = int(qos_limits['file_transfer_mbps'] * 125000)
+                cmd = ["powershell", "-Command", f"Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"]
+                logger.info(f"[SHAPER] Executing Windows PowerShell QoS command: {' '.join(cmd)}")
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+        except Exception as e:
+            logger.warning(
+                f"[SHAPER] Local hardware shaping command skipped (Requires Admin/Root privileges). "
+                f"Falling back to simulated logs. Error: {e}"
+            )
+            
         # Simulate local rate-limiting (throttling agent capture rate or introducing delays)
         if policy == "Prioritize Critical Services":
             logger.warning("[SHAPER] Local Action Enforced: File transfer throttled to 0.25x. Critical Services priority enabled.")
