@@ -34,6 +34,7 @@ from netinsight.prediction.hmm import HiddenMarkovModel
 from netinsight.prediction.mdp import MDPRecommendationEngine
 from netinsight.prediction.dse import DecisionSupportEngine
 from netinsight.dashboard.models import Agent, PacketRecord, FlowRecord, MetricRecord, StateHistory, ThreatHistory, SystemSettings
+import netinsight.dashboard.speed_monitor as speed_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ def api_agent_telemetry(request):
         priorities = settings_obj.lp_priorities if settings_obj else settings.QOS_PRIORITIES
         min_bounds = settings.QOS_MIN_BANDWIDTH
         max_bounds = settings.QOS_MAX_BANDWIDTH
-        capacity = settings.LINK_CAPACITY
+        capacity = speed_monitor.CURRENT_CAPACITY
 
         active_priorities = list(priorities)
         active_min_bounds = list(min_bounds)
@@ -245,7 +246,7 @@ def index_view(request):
         "online_agents_count": sum(1 for a in active_agents if a["is_online"]),
         "dse_alerts": dse_alerts,
         "settings": settings_obj,
-        "link_capacity_mbps": settings.LINK_CAPACITY / 1e6,
+        "link_capacity_mbps": speed_monitor.CURRENT_CAPACITY / 1e6,
     }
     return render(request, "dashboard/index.html", context)
 
@@ -290,7 +291,7 @@ def optimization_view(request):
 
     min_bounds = settings.QOS_MIN_BANDWIDTH
     max_bounds = settings.QOS_MAX_BANDWIDTH
-    capacity = settings.LINK_CAPACITY
+    capacity = speed_monitor.CURRENT_CAPACITY
 
     # Handle manual updates via UI Form POST
     if request.method == "POST":
