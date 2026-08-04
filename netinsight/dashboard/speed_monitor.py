@@ -27,9 +27,29 @@ def run_speed_test():
             settings.LINK_CAPACITY = speed_bps
             logger.info(f"[DYNAMIC CAPACITY] Bandwidth capacity updated to {speed_bps / 1e6:.2f} Mbps based on active speed test.")
         else:
-            logger.warning(f"[SPEED MONITOR] Speed test returned status {response.status_code}.")
+            raise Exception(f"HTTP status {response.status_code}")
     except Exception as e:
-        logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Maintaining capacity at {settings.LINK_CAPACITY / 1e6:.2f} Mbps.")
+        logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Attempting telemetry fallback.")
+        try:
+            from netinsight.dashboard.models import MetricRecord
+            # Retrieve last 40 metric records (approx 2 minutes of traffic)
+            records = MetricRecord.objects.all().order_by("-timestamp")[:40]
+            if records.exists():
+                max_throughput = max(r.throughput for r in records)
+                if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
+                    speed_bps = max_throughput * 1.2
+                    speed_bps = max(2000000.0, min(100000000.0, speed_bps))
+                    settings.LINK_CAPACITY = speed_bps
+                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
+                else:
+                    # Default backup if no traffic is running
+                    settings.LINK_CAPACITY = 10000000.0 # 10 Mbps
+                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
+            else:
+                settings.LINK_CAPACITY = 10000000.0 # 10 Mbps
+                logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
+        except Exception as fallback_err:
+            logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
 
 def speed_monitor_loop():
     """Infinite loop executing speed tests every 60 seconds."""
