@@ -59,18 +59,18 @@ class DecisionSupportEngine:
                     "severity": "Critical",
                     "module": "Security Threat Detection",
                     "title": f"Active Cyber Attack Detected: {threat_type}",
-                    "message": f"SVM classifier and HMM state forecast confirm the network is Under Attack. Threat source: {target_agent}.",
+                    "message": f"XGBoost classifier and HMM state forecast confirm the network is Under Attack. Threat source: {target_agent}.",
                     "action": f"Isolate {target_agent} immediately. Apply LP QoS rules to prioritize critical control systems."
                 })
 
-            # RULE B: SVM Security Alerts Check (even if HMM is still transitioning)
+            # RULE B: XGBoost Security Alerts Check (even if HMM is still transitioning)
             elif latest_threat and (timezone.now() - latest_threat.timestamp).total_seconds() < 30:
                 severity = latest_threat.severity
                 cards.append({
                     "severity": severity,
                     "module": "Security Threat Detection",
                     "title": f"Suspicious Activity: {latest_threat.threat_type}",
-                    "message": f"SVM classified traffic anomalies on host {latest_threat.agent.hostname}.",
+                    "message": f"XGBoost classified traffic anomalies on host {latest_threat.agent.hostname}.",
                     "action": f"Inspect active connection ports on {latest_threat.agent.hostname}. Restrict non-SSL socket traffic."
                 })
 

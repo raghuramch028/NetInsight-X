@@ -244,7 +244,8 @@ def index_view(request):
         "agents_count": len(active_agents),
         "online_agents_count": sum(1 for a in active_agents if a["is_online"]),
         "dse_alerts": dse_alerts,
-        "settings": settings_obj
+        "settings": settings_obj,
+        "link_capacity_mbps": settings.LINK_CAPACITY / 1e6,
     }
     return render(request, "dashboard/index.html", context)
 
