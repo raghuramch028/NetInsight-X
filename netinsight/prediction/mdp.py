@@ -69,6 +69,10 @@ class MDPRecommendationEngine:
             2: self.P_prioritize
         }
 
+        # Cached value iteration results
+        self._cached_V = None
+        self._cached_policy = None
+
         # Fallback rewards matrix (5 states x 3 actions)
         self.default_rewards = {
             0: {0: 10.0, 1: 5.0, 2: 8.0},    # Normal (likes Reallocation)
@@ -134,7 +138,9 @@ class MDPRecommendationEngine:
         """Solves the MDP policy and returns the advisory action for the current state."""
         state_idx = self.STATE_MAP.get(current_state_name.upper(), 0)
 
-        V, policy = self.solve_value_iteration()
+        if self._cached_V is None:
+            self._cached_V, self._cached_policy = self.solve_value_iteration()
+        V, policy = self._cached_V, self._cached_policy
         opt_action_idx = int(policy[state_idx])
         recommended_action = self.ACTION_NAMES[opt_action_idx]
 

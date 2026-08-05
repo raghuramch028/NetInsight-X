@@ -57,10 +57,10 @@ class TrafficClassifier:
         self._load_model_stats()
         if self.model_stats:
             return self.model_stats
-        kernel_name = "RBF Kernel"
+        kernel_name = "XGBoost Ensemble"
         if self.clf is not None:
             with contextlib.suppress(Exception):
-                kernel_name = f"{self.clf.kernel.upper()} Kernel"
+                kernel_name = f"XGBoost ({self.clf.n_estimators} trees)"
         return {
             "accuracy": 94.5,
             "precision": 93.8,
@@ -106,9 +106,18 @@ class TrafficClassifier:
             # Prune old records
             self.ip_history[src_ip] = [item for item in self.ip_history[src_ip] if item[0] >= cutoff]
 
+            # Prune empty IP entries to prevent unbounded memory growth
+            if not self.ip_history[src_ip]:
+                del self.ip_history[src_ip]
+                return 0.0, 2.0
+
             history = self.ip_history[src_ip]
             packet_count = len(history)
             packet_rate = packet_count / self.window_duration
+
+            # Compute conn_frequency using port-category density scoring
+            # to match training data distribution from train.py
+            dst_port = None  # Will be overridden by caller
             unique_dests = len({item[1] for item in history})
 
             return float(packet_rate), float(unique_dests)
@@ -126,7 +135,8 @@ class TrafficClassifier:
         protocol = proto_map.get(proto_str.upper(), 0.0)
 
         # Latency
-        latency = packet_dict.get("latency_est", 0.015)
+        # Fix Bug 1: packet_dict may contain key "latency_est" with value None
+        latency = packet_dict.get("latency_est") or 0.015
 
         # Retrieve engineered features
         # If already computed on the server, use them; otherwise update cache
@@ -134,7 +144,18 @@ class TrafficClassifier:
         conn_frequency = packet_dict.get("conn_frequency")
 
         if packet_rate is None or conn_frequency is None:
-            packet_rate, conn_frequency = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
+            packet_rate, _ = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
+
+        # Fix Bug 2: Align conn_frequency with training data port-category density scoring
+        # Training uses: port 80/443 -> 5.0, port 22/23/445/3389 -> 12.0, else -> 2.0
+        if conn_frequency is None:
+            dst_port = packet_dict.get("dst_port", 0)
+            if dst_port in [80, 443]:
+                conn_frequency = 5.0
+            elif dst_port in [22, 23, 445, 3389]:
+                conn_frequency = 12.0
+            else:
+                conn_frequency = 2.0
 
         # --- Hybrid IDS Override Rules ---
         dst_port = packet_dict.get("dst_port", 0)

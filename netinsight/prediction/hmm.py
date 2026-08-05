@@ -2,8 +2,6 @@ import logging
 import math
 import numpy as np
 import pandas as pd
-from django.utils import timezone
-from netinsight.config import settings
 from netinsight.dashboard.models import StateHistory, ThreatHistory, MetricRecord, Agent
 
 logger = logging.getLogger(__name__)
@@ -93,27 +91,33 @@ class HiddenMarkovModel:
             }
         }
 
-    def _calculate_gaussian_pdf(self, val: float, mean: float, std: float) -> float:
-        """Calculates univariate Gaussian probability density function (PDF)."""
+    def _calculate_log_gaussian_pdf(self, val: float, mean: float, std: float) -> float:
+        """Calculates log of univariate Gaussian PDF for numerical stability.
+        
+        log N(x|μ,σ) = -0.5*log(2π) - log(σ) - (x-μ)²/(2σ²)
+        """
         if std <= 0:
             std = 1e-4
-        exponent = math.exp(-((val - mean) ** 2) / (2 * (std ** 2)))
-        return (1.0 / (std * math.sqrt(2 * math.pi))) * exponent
+        return -0.5 * math.log(2 * math.pi) - math.log(std) - ((val - mean) ** 2) / (2 * (std ** 2))
 
-    def calculate_emission_probability(self, state_name: str, observation: dict) -> float:
-        """Computes emission probability P(Observation | State) combining continuous and discrete features."""
+    def calculate_log_emission_probability(self, state_name: str, observation: dict) -> float:
+        """Computes log emission probability log P(Observation | State) using log-space arithmetic.
+        
+        Uses log-space to prevent numerical underflow from multiplying small PDF values
+        and to eliminate feature scale bias (latency σ=0.005 vs packet_rate σ=300).
+        """
         try:
             params = self.gaussian_params[state_name]
             
-            # Continuous metrics scores
-            p_util = self._calculate_gaussian_pdf(observation["util"], *params["util"])
-            p_latency = self._calculate_gaussian_pdf(observation["latency"], *params["latency"])
-            p_loss = self._calculate_gaussian_pdf(observation["loss"], *params["loss"])
-            p_rate = self._calculate_gaussian_pdf(observation["packet_rate"], *params["packet_rate"])
-            p_sockets = self._calculate_gaussian_pdf(observation["sockets"], *params["sockets"])
+            # Continuous metrics scores in log-space (sum of logs = log of product)
+            log_p_util = self._calculate_log_gaussian_pdf(observation["util"], *params["util"])
+            log_p_latency = self._calculate_log_gaussian_pdf(observation["latency"], *params["latency"])
+            log_p_loss = self._calculate_log_gaussian_pdf(observation["loss"], *params["loss"])
+            log_p_rate = self._calculate_log_gaussian_pdf(observation["packet_rate"], *params["packet_rate"])
+            log_p_sockets = self._calculate_log_gaussian_pdf(observation["sockets"], *params["sockets"])
             
-            # Continuous emission likelihood
-            p_continuous = p_util * p_latency * p_loss * p_rate * p_sockets
+            # Sum of log-probabilities (equivalent to log of product)
+            log_p_continuous = log_p_util + log_p_latency + log_p_loss + log_p_rate + log_p_sockets
 
             # Discrete Threat label score from XGBoost
             threat_name = observation.get("threat_label", "Normal")
@@ -121,11 +125,12 @@ class HiddenMarkovModel:
             state_idx = STATE_INDEX[state_name]
             p_discrete = self.threat_emission[state_idx, threat_idx]
 
-            # Joint emission probability
-            return max(1e-15, p_continuous * p_discrete)
+            # Joint log emission probability
+            log_p_discrete = math.log(max(1e-15, p_discrete))
+            return log_p_continuous + log_p_discrete
         except Exception as e:
             logger.error(f"Error computing emission probability for {state_name}: {e}")
-            return 1e-15
+            return math.log(1e-15)
 
     def estimate_transition_matrix(self) -> np.ndarray:
         """Estimates transitions between hidden states dynamically from StateHistory database."""
@@ -159,10 +164,10 @@ class HiddenMarkovModel:
             return self.transition_matrix
 
     def decode_states(self, observations_list: list[dict]) -> list[str]:
-        """Runs the Viterbi Algorithm to find the most likely hidden state path.
+        """Runs the Viterbi Algorithm in log-probability space for numerical stability.
 
-        Viterbi DP Updates:
-            V_t(j) = max_i [ V_{t-1}(i) * A_ij * B_j(o_t) ]
+        Log-space Viterbi DP Updates:
+            log V_t(j) = max_i [ log V_{t-1}(i) + log A_ij + log B_j(o_t) ]
         """
         N = len(HIDDEN_STATES)
         T = len(observations_list)
@@ -173,36 +178,34 @@ class HiddenMarkovModel:
         # Prior probabilities (uniform distribution over states)
         pi = np.array([0.40, 0.20, 0.15, 0.10, 0.15])
 
-        # Viterbi DP tables
-        viterbi_table = np.zeros((N, T))
+        # Viterbi DP tables in LOG-SPACE
+        viterbi_table = np.full((N, T), -np.inf)
         backpointer = np.zeros((N, T), dtype=int)
 
-        # Step 1. Initialization
+        # Step 1. Initialization (log-space)
         obs_0 = observations_list[0]
         for s in range(N):
             state_name = HIDDEN_STATES[s]
-            viterbi_table[s, 0] = pi[s] * self.calculate_emission_probability(state_name, obs_0)
+            log_emission = self.calculate_log_emission_probability(state_name, obs_0)
+            viterbi_table[s, 0] = math.log(max(1e-15, pi[s])) + log_emission
             backpointer[s, 0] = 0
 
         # Dynamic transition matrix estimation
         A = self.estimate_transition_matrix()
+        # Pre-compute log transition matrix
+        log_A = np.log(np.maximum(A, 1e-15))
 
-        # Step 2. Recursion
+        # Step 2. Recursion (log-space: addition replaces multiplication)
         for t in range(1, T):
             obs_t = observations_list[t]
             for s in range(N):
                 state_name = HIDDEN_STATES[s]
-                emission_prob = self.calculate_emission_probability(state_name, obs_t)
+                log_emission = self.calculate_log_emission_probability(state_name, obs_t)
                 
-                # Find max transition path
-                probabilities = [viterbi_table[prev_s, t-1] * A[prev_s, s] * emission_prob for prev_s in range(N)]
-                viterbi_table[s, t] = max(probabilities)
-                backpointer[s, t] = int(np.argmax(probabilities))
-
-            # Normalize column to prevent underflow
-            col_sum = viterbi_table[:, t].sum()
-            if col_sum > 0:
-                viterbi_table[:, t] /= col_sum
+                # Find max transition path in log-space
+                log_probs = [viterbi_table[prev_s, t-1] + log_A[prev_s, s] + log_emission for prev_s in range(N)]
+                viterbi_table[s, t] = max(log_probs)
+                backpointer[s, t] = int(np.argmax(log_probs))
 
         # Step 3. Termination & Backtracking
         best_path = []

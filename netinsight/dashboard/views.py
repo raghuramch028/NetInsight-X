@@ -157,7 +157,7 @@ def api_agent_telemetry(request):
 
         # Solve LP based on computed priorities and dynamic capacity bounds
         lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
-        allocations = lp_result.get("allocations", [])
+        allocations = lp_result.get("allocations") or []
 
         # Format allocation response in Mbps for client shaping enforcement
         enforced_qos = {
@@ -345,7 +345,8 @@ def optimization_view(request):
     result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
 
     # Map allocations back for template rendering
-    allocation_mbps = [x / 1e6 for x in result["allocations"]]
+    raw_allocations = result.get("allocations") or [0.0] * len(classes)
+    allocation_mbps = [x / 1e6 for x in raw_allocations]
     mapped_allocations = []
     for idx, name in enumerate(classes):
         mapped_allocations.append({
@@ -363,7 +364,7 @@ def optimization_view(request):
 
     context = {
         "status": result["status"],
-        "utility": result["utility"] / 1e6,
+        "utility": (result["utility"] or 0.0) / 1e6,
         "mapped_allocations": mapped_allocations,
         "kkt": result["kkt_results"],
         "total_capacity_mbps": capacity / 1e6,
@@ -672,12 +673,12 @@ def reports_pdf_download(request):
 
         # 3. Threat History Audit
         story.append(Paragraph("<b>3. Security Incidents Logs (XGBoost Threat Classification)</b>", styles["Heading2"]))
-        threats = ThreatHistory.objects.all().order_by("-timestamp")[:10]
+        threats = ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:10]
         threat_data = [["Timestamp", "Source Host", "Threat Classified", "Severity Level"]]
         for t in threats:
             threat_data.append([
                 t.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                t.agent.hostname,
+                t.agent.hostname if t.agent else "Unknown",
                 t.threat_type,
                 t.severity
             ])
@@ -763,10 +764,10 @@ def reports_json_download(request):
             })
 
         # Query threat records
-        for t in ThreatHistory.objects.all().order_by("-timestamp")[:200]:
+        for t in ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:200]:
             data["threats"].append({
                 "timestamp": t.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "agent_mac": t.agent.mac_address,
+                "agent_mac": t.agent.mac_address if t.agent else "Unknown",
                 "threat_type": t.threat_type,
                 "severity": t.severity
             })
@@ -841,7 +842,7 @@ def api_live_packets(request):
         if active_agents_count == 0:
             return JsonResponse({"packets": []})
 
-        packets_qs = PacketRecord.objects.all().order_by("-id")[:20]
+        packets_qs = PacketRecord.objects.select_related("agent").order_by("-id")[:20]
         records = [
             {
                 "id": r.id,
@@ -853,7 +854,7 @@ def api_live_packets(request):
                 "size": r.size,
                 "timestamp": r.timestamp,
                 "ttl": r.ttl,
-                "agent_hostname": r.agent.hostname
+                "agent_hostname": r.agent.hostname if r.agent else "Unknown"
             }
             for r in packets_qs
         ]

@@ -17,7 +17,7 @@ def run_speed_test():
     try:
         start_time = time.perf_counter()
         # Stream download to track bytes chunk-by-chunk and allow early time cutoff
-        response = requests.get(url, stream=True, timeout=5)
+        response = requests.get(url, stream=True, timeout=(5, 10))
         
         if response.status_code == 200:
             total_bytes = 0
@@ -44,6 +44,7 @@ def run_speed_test():
         logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Attempting telemetry fallback.")
         try:
             from netinsight.dashboard.models import MetricRecord
+            import django.db
             # Retrieve last 40 metric records (approx 2 minutes of traffic)
             records = MetricRecord.objects.all().order_by("-timestamp")[:40]
             if records.exists():
@@ -59,6 +60,8 @@ def run_speed_test():
             else:
                 CURRENT_CAPACITY = 10000000.0 # 10 Mbps
                 logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
+            # Close DB connections to prevent leaks in background threads
+            django.db.close_old_connections()
         except Exception as fallback_err:
             logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
 

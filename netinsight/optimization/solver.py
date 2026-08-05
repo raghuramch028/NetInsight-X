@@ -116,8 +116,13 @@ class BandwidthOptimizer:
                 # Verify KKT conditions on the scaled problem
                 kkt_results = self.kkt_verifier.verify(c_arr, G_arr, h_arr, x_arr, z_arr)
 
-                # Scale primal allocations back to original bps
+                # Scale primal allocations back to original bps and clip to bounds
                 allocations_bps = [float(x) * scale for x in x_opt]
+                # Clip to [min, max] bounds to eliminate solver numerical noise
+                allocations_bps = [
+                    max(float(m_min[i]), min(float(M_max[i]), allocations_bps[i]))
+                    for i in range(n_classes)
+                ]
                 utility = float(sum(p * x for p, x in zip(c_priorities, allocations_bps, strict=False)))
 
                 return {
@@ -164,8 +169,12 @@ class BandwidthOptimizer:
                     allocations[i] += min(added, max_addition)
         else:
             # Scale down minimum requirements proportionally to fit total capacity
-            scale = total_capacity / sum_min
-            allocations = [float(m * scale) for m in min_bounds]
+            if sum_min > 0:
+                scale = total_capacity / sum_min
+                allocations = [float(m * scale) for m in min_bounds]
+            else:
+                # All minimums are zero; distribute capacity equally
+                allocations = [total_capacity / max(n_classes, 1)] * n_classes
 
         utility = float(sum(p * x for p, x in zip(priorities, allocations, strict=False)))
 

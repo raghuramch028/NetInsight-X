@@ -26,7 +26,12 @@ class NetInsightAgent:
         """Applies dynamic QoS shaper policies locally based on optimal limits from server."""
         policy = qos_limits.get("recommended_policy", "Reallocate Bandwidth")
         
-        # Log the enforced limits
+        # Safely extract QoS limits with sensible defaults
+        qos_limits.setdefault('web_browsing_mbps', 5.0)
+        qos_limits.setdefault('streaming_mbps', 15.0)
+        qos_limits.setdefault('file_transfer_mbps', 2.0)
+        qos_limits.setdefault('critical_services_mbps', 10.0)
+        
         logger.info(
             f"[QoS CONTROL] Syncing dynamic bandwidth caps: "
             f"Web={qos_limits['web_browsing_mbps']:.2f} Mbps, "
@@ -123,7 +128,6 @@ class NetInsightAgent:
         logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s)...")
 
         backoff = config.TELEMETRY_INTERVAL
-        max_backoff = 60.0
 
         while self.is_running:
             # Check SSID restriction if configured
