@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetInsight-X | Live Demonstration & System Architecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(22, 30, 46, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #0284c7;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(2, 132, 199, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 24px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+        }
+
+        .brand-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        /* Scenario Controls */
+        .controls-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .scenario-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .scenario-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
+        .scenario-btn.active {
+            background: linear-gradient(135deg, var(--accent-blue), #0369a1);
+            color: #ffffff;
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        /* Main Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+        }
+
+        .card-header {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Top Metrics Row */
+        .metric-card {
+            grid-column: span 3;
+        }
+
+        .metric-val {
+            font-size: 28px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-top: 6px;
+        }
+
+        .metric-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* System Pipeline Workflow */
+        .pipeline-card {
+            grid-column: span 12;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .flow-node {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            position: relative;
+            min-width: 140px;
+            transition: all 0.3s ease;
+        }
+
+        .flow-node.active {
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.08);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+        }
+
+        .flow-node-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .flow-node-val {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .flow-arrow {
+            color: var(--text-muted);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* Optimization Table & Gauges */
+        .opt-card {
+            grid-column: span 7;
+        }
+
+        .terminal-card {
+            grid-column: span 5;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* Terminal Window */
+        .terminal-box {
+            background: #050811;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #38bdf8;
+            height: 240px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .cmd-prompt { color: #10b981; }
+        .cmd-out { color: #e2e8f0; }
+        .cmd-warn { color: #f59e0b; }
+        .cmd-err { color: #ef4444; }
+
+        @media (max-width: 900px) {
+            .metric-card { grid-column: span 6; }
+            .opt-card, .terminal-card { grid-column: span 12; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="brand">
+            <div class="brand-logo">N</div>
+            <div>
+                <div class="brand-title">NetInsight-X Dynamic QoS Engine</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Closed-Loop Network Analytics & Hardware QoS Control</div>
+            </div>
+        </div>
+        <div class="badge">
+            <div class="badge-dot"></div>
+            SYSTEM OPERATIONAL
+        </div>
+    </div>
+
+    <!-- Scenario Controls -->
+    <div class="controls-bar">
+        <div style="font-weight: 600; font-size: 14px;">Select Demonstration Scenario:</div>
+        <div class="scenario-buttons">
+            <button class="scenario-btn active" onclick="setScenario(1)">1. Baseline (100 Mbps Link)</button>
+            <button class="scenario-btn" onclick="setScenario(2)">2. Mobile Hotspot (8.5 Mbps)</button>
+            <button class="scenario-btn" onclick="setScenario(3)">3. DDoS Attack Detection</button>
+            <button class="scenario-btn" onclick="setScenario(4)">4. Hardware QoS Enforcement</button>
+        </div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="grid-container">
+        <div class="card metric-card">
+            <div class="card-header">Active Capacity (Cloudflare Speed Test)</div>
+            <div class="metric-val" id="metric-capacity">100.0 Mbps</div>
+            <div class="metric-sub" id="sub-capacity">Baseline Unthrottled Profile</div>
+        </div>
+        <div class="card metric-card">
+            <div class="card-header">HMM Network State</div>
+            <div class="metric-val" id="metric-state" style="color: var(--accent-green);">NORMAL</div>
+            <div class="metric-sub" id="sub-state">Hidden State Probability: 95.2%</div>
+        </div>
+        <div class="card metric-card">
+            <div class="card-header">XGBoost Threat Status</div>
+            <div class="metric-val" id="metric-threat" style="color: var(--accent-green);">Normal</div>
+            <div class="metric-sub" id="sub-threat">CICIDS2017 Model Confidence: 98.4%</div>
+        </div>
+        <div class="card metric-card">
+            <div class="card-header">MDP Advisory Action</div>
+            <div class="metric-val" id="metric-mdp" style="font-size: 20px; color: var(--accent-cyan);">Reallocate Bandwidth</div>
+            <div class="metric-sub">Optimal Value Iteration Policy</div>
+        </div>
+
+        <!-- Pipeline Diagram -->
+        <div class="card pipeline-card">
+            <div class="card-header">Closed-Loop Optimization Pipeline Workflow</div>
+            <div class="pipeline-flow">
+                <div class="flow-node active">
+                    <div class="flow-node-title">1. Cloudflare Speed Test</div>
+                    <div class="flow-node-val" id="pipe-speed">100.0 Mbps</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">
+                    <div class="flow-node-title">2. Client Telemetry Ingest</div>
+                    <div class="flow-node-val" id="pipe-packets">124 Pkts/s</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">
+                    <div class="flow-node-title">3. XGBoost Threat Classifier</div>
+                    <div class="flow-node-val" id="pipe-threat">Normal</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">
+                    <div class="flow-node-title">4. HMM State Estimator</div>
+                    <div class="flow-node-val" id="pipe-state">NORMAL</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">
+                    <div class="flow-node-title">5. LP Solver (CVXOPT)</div>
+                    <div class="flow-node-val" id="pipe-solver">OPTIMAL</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">
+                    <div class="flow-node-title">6. PowerShell QoS Kernel</div>
+                    <div class="flow-node-val" id="pipe-qos">Active</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optimization Table -->
+        <div class="card opt-card">
+            <div class="card-header">
+                Linear Programming Dynamic QoS Allocations
+                <span id="solver-status" class="badge" style="font-size: 11px;">OPTIMAL</span>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Service Class</th>
+                        <th>Min Bound</th>
+                        <th>Max Bound</th>
+                        <th>Allocated Bandwidth</th>
+                        <th>Allocation Bar</th>
+                    </tr>
+                </thead>
+                <tbody id="opt-table-body">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Terminal Window -->
+        <div class="card terminal-card">
+            <div class="card-header">Windows PowerShell Kernel QoS Console</div>
+            <div class="terminal-box" id="term-box">
+                <div><span class="cmd-prompt">PS C:\></span> Get-NetQosPolicy -Name 'NetInsight-Throttle'</div>
+                <div class="cmd-out">Name : NetInsight-Throttle</div>
+                <div class="cmd-out">AppPathName : python.exe</div>
+                <div class="cmd-out">ThrottleRate : 12,500,000 Bytes/sec (100 Mbps)</div>
+                <div class="cmd-prompt">PS C:\></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scenarios = {
+            1: {
+                capacity: "100.0 Mbps",
+                subCapacity: "Baseline Unthrottled Profile",
+                state: "NORMAL",
+                stateColor: "var(--accent-green)",
+                threat: "Normal",
+                threatColor: "var(--accent-green)",
+                mdp: "Reallocate Bandwidth",
+                packets: "124 Pkts/s",
+                solver: "OPTIMAL",
+                allocations: [
+                    { name: "Web Browsing", min: "5.0", max: "40.0", alloc: "25.0 Mbps", pct: 62.5 },
+                    { name: "Streaming", min: "15.0", max: "60.0", alloc: "45.0 Mbps", pct: 75.0 },
+                    { name: "File Transfer", min: "2.0", max: "30.0", alloc: "15.0 Mbps", pct: 50.0 },
+                    { name: "Critical Services", min: "10.0", max: "50.0", alloc: "15.0 Mbps", pct: 30.0 }
+                ],
+                terminal: [
+                    "<span class='cmd-prompt'>PS C:\\></span> Get-NetQosPolicy -Name 'NetInsight-Throttle'",
+                    "<span class='cmd-out'>Name         : NetInsight-Throttle</span>",
+                    "<span class='cmd-out'>AppPathName  : python.exe</span>",
+                    "<span class='cmd-out'>ThrottleRate : 12,500,000 Bytes/sec (100 Mbps)</span>",
+                    "<span class='cmd-prompt'>PS C:\\></span> <span class='cmd-out'>[AGENT SYNC] Capacity 100.0 Mbps. Link operating at baseline headroom.</span>"
+                ]
+            },
+            2: {
+                capacity: "8.5 Mbps",
+                subCapacity: "Active Google-Style Speed Test (Mobile Hotspot)",
+                state: "BUSY",
+                stateColor: "var(--accent-yellow)",
+                threat: "Normal",
+                threatColor: "var(--accent-green)",
+                mdp: "Reallocate Bandwidth",
+                packets: "310 Pkts/s",
+                solver: "OPTIMAL (Scaled)",
+                allocations: [
+                    { name: "Web Browsing", min: "0.4", max: "3.4", alloc: "2.1 Mbps", pct: 61.7 },
+                    { name: "Streaming", min: "1.3", max: "5.1", alloc: "3.8 Mbps", pct: 74.5 },
+                    { name: "File Transfer", min: "0.2", max: "2.5", alloc: "0.8 Mbps", pct: 32.0 },
+                    { name: "Critical Services", min: "0.8", max: "4.2", alloc: "1.8 Mbps", pct: 42.8 }
+                ],
+                terminal: [
+                    "<span class='cmd-prompt'>PS C:\\></span> Get-NetQosPolicy -Name 'NetInsight-Throttle'",
+                    "<span class='cmd-warn'>[SPEED TEST] Cloudflare Edge payload 40MB sampled in 7.8s</span>",
+                    "<span class='cmd-warn'>[DYNAMIC CAPACITY] Measured Link Capacity: 8.5 Mbps</span>",
+                    "<span class='cmd-prompt'>PS C:\\></span> Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond 1000000",
+                    "<span class='cmd-out'>ThrottleRate : 1,000,000 Bytes/sec (8.0 Mbps)</span>"
+                ]
+            },
+            3: {
+                capacity: "8.5 Mbps",
+                subCapacity: "Mobile Hotspot Network Profile",
+                state: "UNDER ATTACK",
+                stateColor: "var(--accent-red)",
+                threat: "DDoS",
+                threatColor: "var(--accent-red)",
+                mdp: "Prioritize Critical Services",
+                packets: "1,450 Pkts/s",
+                solver: "OPTIMAL (Override)",
+                allocations: [
+                    { name: "Web Browsing", min: "0.4", max: "3.4", alloc: "1.2 Mbps", pct: 35.0 },
+                    { name: "Streaming", min: "1.3", max: "5.1", alloc: "0.9 Mbps", pct: 17.6 },
+                    { name: "File Transfer", min: "0.2", max: "2.5", alloc: "0.2 Mbps", pct: 8.0 },
+                    { name: "Critical Services", min: "0.8", max: "4.2", alloc: "6.2 Mbps", pct: 100.0 }
+                ],
+                terminal: [
+                    "<span class='cmd-err'>[XGBoost DETECT] Threat Classified: DDoS (Confidence: 99.1%)</span>",
+                    "<span class='cmd-err'>[HMM ENGINE] Hidden State Transition -> UNDER ATTACK</span>",
+                    "<span class='cmd-warn'>[MDP ADVISORY] Action -> Prioritize Critical Services</span>",
+                    "<span class='cmd-prompt'>PS C:\\></span> Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond 250000",
+                    "<span class='cmd-err'>[KERNEL SHAPER] File Transfer & Heavy Streams Throttled to 0.25 Mbps!</span>"
+                ]
+            },
+            4: {
+                capacity: "19.7 Mbps",
+                subCapacity: "Post-Attack Recovery Capacity",
+                state: "RECOVERING",
+                stateColor: "var(--accent-cyan)",
+                threat: "Normal",
+                threatColor: "var(--accent-green)",
+                mdp: "Reallocate Bandwidth",
+                packets: "240 Pkts/s",
+                solver: "OPTIMAL",
+                allocations: [
+                    { name: "Web Browsing", min: "1.0", max: "7.9", alloc: "4.8 Mbps", pct: 60.7 },
+                    { name: "Streaming", min: "3.0", max: "11.8", alloc: "8.5 Mbps", pct: 72.0 },
+                    { name: "File Transfer", min: "0.4", max: "5.9", alloc: "2.4 Mbps", pct: 40.6 },
+                    { name: "Critical Services", min: "2.0", max: "9.8", alloc: "4.0 Mbps", pct: 40.8 }
+                ],
+                terminal: [
+                    "<span class='cmd-out'>[HMM ENGINE] State Transition -> RECOVERING</span>",
+                    "<span class='cmd-prompt'>PS C:\\></span> Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond 2462500",
+                    "<span class='cmd-out'>ThrottleRate : 2,462,500 Bytes/sec (19.7 Mbps)</span>",
+                    "<span class='cmd-prompt'>PS C:\\></span> Get-NetQosPolicy -Name 'NetInsight-Throttle'",
+                    "<span class='cmd-out'>Status : Active & Synchronized with LP Optimizer</span>"
+                ]
+            }
+        };
+
+        function setScenario(id) {
+            document.querySelectorAll('.scenario-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === id - 1);
+            });
+
+            const data = scenarios[id];
+            document.getElementById('metric-capacity').innerText = data.capacity;
+            document.getElementById('sub-capacity').innerText = data.subCapacity;
+            document.getElementById('metric-state').innerText = data.state;
+            document.getElementById('metric-state').style.color = data.stateColor;
+            document.getElementById('metric-threat').innerText = data.threat;
+            document.getElementById('metric-threat').style.color = data.threatColor;
+            document.getElementById('metric-mdp').innerText = data.mdp;
+            
+            document.getElementById('pipe-speed').innerText = data.capacity;
+            document.getElementById('pipe-packets').innerText = data.packets;
+            document.getElementById('pipe-threat').innerText = data.threat;
+            document.getElementById('pipe-state').innerText = data.state;
+            document.getElementById('pipe-solver').innerText = data.solver;
+
+            // Table
+            const tbody = document.getElementById('opt-table-body');
+            tbody.innerHTML = '';
+            data.allocations.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: 600;">${row.name}</td>
+                    <td style="color: var(--text-muted);">${row.min} Mbps</td>
+                    <td style="color: var(--text-muted);">${row.max} Mbps</td>
+                    <td style="font-weight: 700; color: var(--accent-cyan);">${row.alloc}</td>
+                    <td>
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width: ${row.pct}%;"></div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Terminal
+            const term = document.getElementById('term-box');
+            term.innerHTML = data.terminal.map(line => `<div>${line}</div>`).join('');
+        }
+
+        // Initialize with Scenario 1
+        setScenario(1);
+    </script>
+</body>
+</html>
