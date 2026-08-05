@@ -15,7 +15,7 @@ These variables are read at runtime from the process environment or specified in
 | `ALLOWED_HOSTS` | `*` | Comma-separated list of hostnames the server will accept. Set to your domain(s) in production. |
 | `NETINSIGHT_AGENT_TOKEN` | `None` | Optional API token for agent endpoint authentication. **Note: If unset, REST ingestion endpoints run in open dev mode. Set a secret token for production deployments.** |
 | `DATABASE_URL` or `NETINSIGHT_DB_PATH` | `netinsight/database/netinsight.db` | Path to the SQLite database file. `DATABASE_URL` supports `sqlite:///` prefixes. |
-| `NETINSIGHT_SVM_PATH` | `netinsight/classification/svm_model.joblib` | Path to the persisted SVM model. A sibling `scaler.joblib` is expected in the same directory. |
+| `NETINSIGHT_SVM_PATH` | `netinsight/classification/svm_model.joblib` | Path to the persisted XGBoost model. A sibling `scaler.joblib` is expected in the same directory. |
 | `NETINSIGHT_DEMO_MODE` | `True` | When `True`, simulated traffic is generated. Set `False` for live interface sniffing. |
 | `NETINSIGHT_LOG_LEVEL` | `INFO` | Logging level for the `netinsight` logger (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 
@@ -72,20 +72,15 @@ STATE_THRESHOLDS = {
 
 ### 2.4 Capture Tuning
 
-* `PACKET_BATCH_SIZE = 50`
-  * Number of parsed packets inserted into SQLite in a single transaction.
-* `METRICS_WINDOW_SECONDS = 2.0`
-  * How frequently the writer thread recomputes and stores metrics.
-* `MAX_QUEUE_SIZE = 1000`
-  * Bounded queue size between capture and writer threads; protects memory under burst traffic.
+Note: `PACKET_BATCH_SIZE`, `METRICS_WINDOW_SECONDS`, and `MAX_QUEUE_SIZE` are internal constants defined in `monitor.py` and are not directly configurable via `settings.py`.
 
 ---
 
-## 3. SVM Model Artifacts
+## 3. XGBoost Model Artifacts
 
 The classifier expects two `joblib` files:
 
-* `<NETINSIGHT_SVM_PATH>` — the trained `SVC` model.
+* `<NETINSIGHT_SVM_PATH>` — the trained XGBoost model.
 * `<directory of NETINSIGHT_SVM_PATH>/scaler.joblib` — the fitted `StandardScaler`.
 
 If the files are missing, `TrafficClassifier` falls back to a deterministic rule-based classifier using packet size and port heuristics, and the dashboard shows an `OFFLINE` badge.

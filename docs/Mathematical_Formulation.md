@@ -152,14 +152,11 @@ To recommend advisory actions $a \in \mathcal{A} = \{\text{Reallocate Bandwidth}
 
 ---
 
-## 5. SVM Traffic Classification (Module 5)
+## 5. XGBoost Traffic Classification (Module 5)
 
-We deploy a **Radial Basis Function (RBF) Kernel Support Vector Machine** to map engineered packet features to traffic profile classes. Network traffic features are highly overlapping and non-linearly separable.
-- **RBF Kernel mapping function:**
-  $$K(x, x') = \exp(-\gamma \|x - x'\|^2)$$
-- **Optimization Objective:**
-  $$\min_{w, b, \xi} \frac{1}{2} \|w\|^2 + C \sum_{i=1}^{M} \xi_i$$
-  $$\text{Subject to } y_i (w^T \phi(x_i) + b) \ge 1 - \xi_i, \quad \xi_i \ge 0$$
-  Where $C$ is the regularization trade-off penalty, and $\xi_i$ represents training slack variables.
-- **Inference vector:**
-  $$X_i = [\text{Packet Size}, \text{Protocol}, \text{Latency}, \text{Packet Rate}, \text{Connection Frequency}]$$
+We deploy an XGBoost Gradient Boosting Classifier to map engineered packet features to traffic profile classes. XGBoost uses an ensemble of gradient-boosted decision trees with regularization to handle overlapping class boundaries in network traffic.
+- Objective function:
+  L(\phi) = \sum_{i} l(\hat{y}_i, y_i) + \sum_{k} \Omega(f_k)
+  Where l is a differentiable convex loss function, and \Omega(f_k) = \gamma T + \frac{1}{2}\lambda ||w||^2 penalizes model complexity.
+- Inference vector:
+  X_i = [Packet Size, Protocol, Latency, Packet Rate, Connection Frequency]

@@ -6,7 +6,7 @@
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 
-NetInsight-X is an intelligent, high-performance distributed network management and security analysis platform. Integrating Python programming, advanced computer networking, and mathematical modeling, NetInsight-X utilizes a hybrid edge-server architecture. Lightweight client agents deployed on monitored edge hosts perform raw packet captures and hardware profiling, streaming telemetry to a central Django decision support server. The server aggregates flows, classifies cyber threats using an RBF SVM model, decodes network states via a Hidden Markov Model (HMM), and optimizes bandwidth via Linear Programming (LP).
+NetInsight-X is an intelligent, high-performance distributed network management and security analysis platform. Integrating Python programming, advanced computer networking, and mathematical modeling, NetInsight-X utilizes a hybrid edge-server architecture. Lightweight client agents deployed on monitored edge hosts perform raw packet captures and hardware profiling, streaming telemetry to a central Django decision support server. The server aggregates flows, classifies cyber threats using an XGBoost classifier model, decodes network states via a Hidden Markov Model (HMM), and optimizes bandwidth via Linear Programming (LP).
 
 ---
 
@@ -16,6 +16,11 @@ NetInsight-X is an intelligent, high-performance distributed network management 
 *   **Central REST Ingestion:** High-speed REST API endpoints (`/api/v1/agents/`) supporting remote agent registration, secure handshakes, and periodic telemetry streaming.
 *   **Neon Cloud PostgreSQL Integration:** Native bindings to Neon Cloud PostgreSQL for production telemetry logging, with automatic local SQLite fallback for isolated development.
 *   **Hybrid Anomaly Classifier:** Combines an XGBoost classifier (achieving 87.18% validation accuracy on balanced CICIDS2017 intrusion dataset samples) with fast, deterministic volumetric heuristic safety bounds for high-throughput DDoS and port-scan detection.
+    > **Note on Classification Metrics**: The reported 87.18% accuracy is dominated by the Normal class (support: 3,645 samples). Per-class performance varies significantly:
+    > - **Strong**: Normal (F1: 90.2%), Mirai (F1: 93.6%), Brute Force (F1: 84.4%), DoS (F1: 77.9%)
+    > - **Weak**: DDoS (F1: 33.7%, support: 19), Reconnaissance (F1: 6.7%, support: 7)
+    > - **Macro-F1**: 67.1% — a more honest aggregate metric reflecting class-imbalanced performance.
+    > Future work: SMOTE oversampling, larger balanced datasets (full CICIDS2017), or per-class threshold tuning.
 *   **Markov State Prediction:** Real-time forecasting across 5 operational states (*Normal, Busy, Congested, Under Attack, Recovering*) decoded from multi-metric sequences using the HMM Viterbi algorithm.
 *   **Convex QoS Optimization:** Formulates bandwidth allocation as a constrained Linear Program solved via interior-point methods, validating solutions against primal-dual Karush-Kuhn-Tucker (KKT) numerical conditions.
 *   **Interactive Topology Mapping:** Generates real-time, dynamic network visualization graphs using NetworkX and Vis.js (PyVis) embedded in the dashboard.
@@ -33,7 +38,7 @@ NetInsight-X is an intelligent, high-performance distributed network management 
   (psutil + Scapy)      │            │   (Central Server) │
                         ├──(HTTPS)───┤                    ├───(PostgreSQL / Neon)
   [ Client Device 2 ] ──┘            │   - Flow Builder   │
-  (psutil + Scapy)                   │   - Hybrid SVM     │
+  (psutil + Scapy)                   │   - XGBoost Classifier │
                                      │   - HMM Viterbi    │
                                      │   - LP Allocator   │
                                      └────────────────────┘
@@ -64,7 +69,7 @@ source venv/bin/activate
 # 3. Install packages
 pip install -r requirements.txt
 
-# 4. Train the SVM model binaries
+# 4. Train the XGBoost model binaries
 python -m netinsight.classification.train
 
 # 5. Initialize Database schemas
@@ -125,7 +130,7 @@ NetInsight-X/
 ├── netinsight/
 │   ├── config/              # Django settings & custom environment variables
 │   ├── analytics/           # Flow Builder, Telemetry handler & Topology generator
-│   ├── classification/      # SVM RBF model, scaler & training pipeline
+│   ├── classification/      # XGBoost model, scaler & training pipeline
 │   ├── prediction/          # Viterbi HMM state forecasting & DSE alerting
 │   ├── optimization/        # LP bandwidth solver & KKT checker
 │   └── dashboard/           # Django templates, styling, views & REST routes

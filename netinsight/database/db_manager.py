@@ -5,6 +5,15 @@ from pathlib import Path
 
 from netinsight.config import settings
 
+"""Legacy standalone packet capture monitor.
+
+.. deprecated::
+    This module is part of the legacy single-machine local capture pipeline.
+    The production architecture uses distributed edge agents (agent/ or agent_go/)
+    that POST telemetry to the central Django server via REST API.
+    This module is retained for offline benchmarking and local development only.
+"""
+
 logger = logging.getLogger(__name__)
 
 def get_connection() -> sqlite3.Connection:

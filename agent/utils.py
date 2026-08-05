@@ -32,19 +32,38 @@ def get_mac_address() -> str:
 
 
 def get_current_ssid() -> str:
-    """Queries netsh on Windows to find the current active Wi-Fi SSID."""
+    """Queries the OS to find the current active Wi-Fi SSID. Supports Windows, Linux, and macOS."""
     import subprocess
+    import platform
+    system = platform.system().lower()
     try:
-        output = subprocess.check_output(
-            ["netsh", "wlan", "show", "interfaces"],
-            shell=True,
-            stderr=subprocess.DEVNULL
-        ).decode("utf-8", errors="ignore")
-        for line in output.split("\n"):
-            if "SSID" in line and "BSSID" not in line:
-                parts = line.split(":")
-                if len(parts) > 1:
-                    return parts[1].strip()
+        if system == "windows":
+            output = subprocess.check_output(
+                ["netsh", "wlan", "show", "interfaces"],
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8", errors="ignore")
+            for line in output.split("\n"):
+                if "SSID" in line and "BSSID" not in line:
+                    parts = line.split(":")
+                    if len(parts) > 1:
+                        return parts[1].strip()
+        elif system == "linux":
+            output = subprocess.check_output(
+                ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"],
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8", errors="ignore")
+            for line in output.strip().split("\n"):
+                if line.startswith("yes:"):
+                    return line.split(":", 1)[1]
+        elif system == "darwin":
+            output = subprocess.check_output(
+                ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8", errors="ignore")
+            for line in output.split("\n"):
+                line = line.strip()
+                if line.startswith("SSID:"):
+                    return line.split(":", 1)[1].strip()
     except Exception:
         pass
     return None

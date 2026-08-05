@@ -50,7 +50,8 @@ class NetInsightAgent:
                 # Real Linux tc (Traffic Control) queue adjustment
                 interface = config.CAPTURE_INTERFACE or "eth0"
                 # Limit total rate to link capacity using TBF
-                rate_limit = f"{qos_limits['web_browsing_mbps'] + qos_limits['streaming_mbps'] + qos_limits['file_transfer_mbps']:.1f}mbit"
+                total_mbps = qos_limits['web_browsing_mbps'] + qos_limits['streaming_mbps'] + qos_limits['file_transfer_mbps'] + qos_limits['critical_services_mbps']
+                rate_limit = f"{total_mbps:.1f}mbit"
                 cmd = ["sudo", "tc", "qdisc", "change", "dev", interface, "root", "tbf", "rate", rate_limit, "burst", "32k", "latency", "400ms"]
                 logger.info(f"[SHAPER] Executing Linux tc command: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -106,8 +107,14 @@ class NetInsightAgent:
         # Check SSID restriction if configured
         if config.HOTSPOT_SSID:
             current_ssid = get_current_ssid()
+            ssid_retries = 0
+            max_ssid_retries = int(os.environ.get("NETINSIGHT_SSID_MAX_RETRIES", "6"))
             while current_ssid != config.HOTSPOT_SSID:
-                logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Waiting to connect to hotspot...")
+                ssid_retries += 1
+                if ssid_retries > max_ssid_retries:
+                    logger.warning(f"SSID check failed after {max_ssid_retries} retries. Proceeding without SSID restriction.")
+                    break
+                logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Waiting to connect to hotspot... (attempt {ssid_retries}/{max_ssid_retries})")
                 time.sleep(5)
                 current_ssid = get_current_ssid()
 

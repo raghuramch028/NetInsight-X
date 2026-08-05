@@ -1,5 +1,6 @@
 import logging
 import math
+import time
 
 import numpy as np
 
@@ -92,6 +93,11 @@ class HiddenMarkovModel:
             }
         }
 
+        # TTL cache for transition matrix (avoids DB query on every telemetry POST)
+        self._cached_transition_matrix = None
+        self._transition_cache_time = 0.0
+        self._transition_cache_ttl = 60.0  # seconds
+
     def _calculate_log_gaussian_pdf(self, val: float, mean: float, std: float) -> float:
         """Calculates log of univariate Gaussian PDF for numerical stability.
 
@@ -135,6 +141,10 @@ class HiddenMarkovModel:
 
     def estimate_transition_matrix(self) -> np.ndarray:
         """Estimates transitions between hidden states dynamically from StateHistory database."""
+        # Return cached matrix if still within TTL
+        if self._cached_transition_matrix is not None and (time.time() - self._transition_cache_time) < self._transition_cache_ttl:
+            return self._cached_transition_matrix
+
         try:
             # Query only the latest 300 state histories chronologically
             history = list(StateHistory.objects.all().order_by("-timestamp")[:300])[::-1]
@@ -159,6 +169,8 @@ class HiddenMarkovModel:
                     empirical = counts[i] / row_sum
                     P[i] = 0.4 * self.transition_matrix[i] + 0.6 * empirical
 
+            self._cached_transition_matrix = P
+            self._transition_cache_time = time.time()
             return P
         except Exception as e:
             logger.error(f"Error estimating HMM transitions: {e}")

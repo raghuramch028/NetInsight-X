@@ -15,7 +15,7 @@ NetInsight-X implements a layered architecture designed to isolate responsibilit
                                     |
                   +-----------------v----------------+
                   |        Intelligence Layer        |
-                  |   (Markov Chain, SVM Classifier) |
+                  |   (Markov Chain, XGBoost Classifier) |
                   +-----------------+----------------+
                                     |
                   +-----------------v----------------+
@@ -88,4 +88,4 @@ When active capture is disabled (`settings.DEMO_MODE = True`), the Sniffer threa
 * **Static file serving:** WhiteNoise serves collected static files in production; `python manage.py collectstatic --noinput` is part of the standard build flow.
 * **Structured logging:** A `LOGGING` dictionary routes `netinsight`, `django`, and `matplotlib` loggers through a single console handler. `print()` statements in backend modules have been replaced with `logging` calls.
 * **Thread safety and resource cleanup:** The capture pipeline uses a bounded `queue.Queue`, `threading.Lock` for shared window counters and caches, and `with` blocks around database connections to prevent connection leaks.
-* **Graceful degradation:** If the SVM model is missing, the classifier falls back to deterministic heuristics; if the CVXOPT solver reports infeasibility, a proportional fallback allocation is returned with KKT indicators set to `False`.
+* **Graceful degradation:** If the XGBoost model is missing, the classifier falls back to deterministic heuristics; if the CVXOPT solver reports infeasibility, a proportional fallback allocation is returned with KKT indicators set to `False`.

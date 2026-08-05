@@ -2,6 +2,7 @@ import base64
 import csv
 import io
 import json
+import hmac
 import logging
 from datetime import timedelta
 from typing import Any
@@ -62,17 +63,113 @@ def _to_native_types(obj: Any) -> Any:
     return obj
 
 def _validate_agent_token(request) -> bool:
-    """Validates optional X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured."""
+    """Validates optional X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured.
+    Uses hmac.compare_digest for constant-time comparison to prevent timing attacks."""
     token = getattr(settings, "NETINSIGHT_AGENT_TOKEN", None)
     if token:
         auth_header = request.headers.get("X-Agent-Token") or request.META.get("HTTP_X_AGENT_TOKEN")
-        if auth_header != token:
+        if not auth_header or not hmac.compare_digest(str(auth_header), str(token)):
             return False
     return True
 
+def _apply_mdp_overrides(recommended_action: str, priorities: list, min_bounds: list, max_bounds: list) -> tuple:
+    """Applies MDP-driven priority/bounds adjustments based on recommended action.
+    Returns (adjusted_priorities, adjusted_min_bounds, adjusted_max_bounds)."""
+    p = list(priorities)
+    m = list(min_bounds)
+    x = list(max_bounds)
+    if recommended_action == "Prioritize Critical Services" and len(p) >= 4:
+        p[3] = float(p[3] * 2.0)
+        m[3] = float(m[3] * 1.5)
+        p[2] = float(p[2] * 0.5)
+    elif recommended_action == "Reroute Traffic" and len(p) >= 3:
+        p[0] = float(p[0] * 1.5)
+        p[1] = float(p[1] * 0.5)
+        p[2] = float(p[2] * 0.2)
+    return p, m, x
+
+def _demo_telemetry_generator():
+    """Background thread generating synthetic telemetry data for demo/demonstration mode."""
+    import random
+    import time as _time
+    from django.db import close_old_connections
+    close_old_connections()
+    try:
+        _time.sleep(3)  # Wait for Django to fully boot
+        # Create a synthetic demo agent
+        demo_agent, _ = Agent.objects.get_or_create(
+            mac_address="de:mo:00:00:00:01",
+            defaults={
+                "hostname": "Demo-Agent-1",
+                "device_type": "Demo Node",
+                "vendor": "NetInsight Demo",
+                "ip_address": "192.168.1.100"
+            }
+        )
+        states = ["Normal", "Normal", "Normal", "Busy", "Busy", "Congested"]
+        protocols = ["TCP", "TCP", "TCP", "UDP", "UDP", "ICMP"]
+        while True:
+            close_old_connections()
+            now_ts = _time.time()
+            demo_agent.cpu_usage = round(random.uniform(15, 65), 1)
+            demo_agent.memory_usage = round(random.uniform(30, 75), 1)
+            demo_agent.disk_usage = round(random.uniform(20, 50), 1)
+            demo_agent.active_connections = random.randint(5, 40)
+            demo_agent.bytes_sent = random.randint(100000, 5000000)
+            demo_agent.bytes_recv = random.randint(500000, 15000000)
+            demo_agent.last_seen = timezone.now()
+            demo_agent.save()
+            # Generate synthetic packets
+            for _ in range(random.randint(3, 8)):
+                PacketRecord.objects.create(
+                    src_ip=f"192.168.1.{random.randint(2, 254)}",
+                    dst_ip=f"10.0.0.{random.randint(1, 50)}",
+                    src_port=random.randint(1024, 65535),
+                    dst_port=random.choice([80, 443, 53, 22, 8080]),
+                    protocol=random.choice(protocols),
+                    size=random.randint(64, 1500),
+                    timestamp=now_ts,
+                    ttl=random.choice([64, 128]),
+                    agent=demo_agent
+                )
+            # Generate synthetic metric
+            throughput = random.uniform(1e6, 8e6)
+            MetricRecord.objects.create(
+                timestamp=now_ts,
+                throughput=throughput,
+                packet_rate=random.uniform(50, 300),
+                bandwidth_util=random.uniform(5, 60),
+                latency=random.uniform(0.005, 0.080),
+                packet_loss=random.uniform(0, 2.0)
+            )
+            # Generate synthetic state
+            StateHistory.objects.create(
+                timestamp=now_ts,
+                network_state=random.choice(states),
+                bandwidth_utilization=random.uniform(0.05, 0.60),
+                packet_loss=random.uniform(0, 0.02),
+                latency=random.uniform(0.005, 0.080)
+            )
+            # Prune old demo data (keep last 5 minutes)
+            cutoff = now_ts - 300
+            PacketRecord.objects.filter(timestamp__lt=cutoff, agent=demo_agent).delete()
+            _time.sleep(3)
+    except Exception as e:
+        logger.error(f"Demo telemetry generator error: {e}", exc_info=True)
+    finally:
+        close_old_connections()
+
+_demo_thread_started = False
+
 def ensure_monitor_started():
-    """No-op on central server. Packet sniffers run exclusively on client agents."""
-    pass
+    """Starts demo telemetry generator if DEMO_MODE is active. Otherwise no-op."""
+    import threading
+    global _demo_thread_started
+    if settings.DEMO_MODE and not _demo_thread_started:
+        _demo_thread_started = True
+        t = threading.Thread(target=_demo_telemetry_generator, daemon=True, name="DemoTelemetryGen")
+        t.start()
+        logger.info("[DEMO MODE] Synthetic telemetry generator started.")
 
 # =====================================================================
 # REST APIs for Agents Ingestion
@@ -95,8 +192,7 @@ def api_register_agent(request):
         if not mac_address:
             return Response({"error": "MAC Address is required for registration"}, status=400)
 
-        # Clean up any other registered agents with the same hostname to avoid duplicates in topology view
-        Agent.objects.filter(hostname=hostname).exclude(mac_address=mac_address).delete()
+        # Agent identity keyed strictly by MAC address (hostname collisions are allowed)
 
         # Check if already registered
         agent, created = Agent.objects.get_or_create(
@@ -167,14 +263,9 @@ def api_agent_telemetry(request):
         active_min_bounds = [float(val * scale_ratio) for val in base_min]
         active_max_bounds = [float(val * scale_ratio) for val in base_max]
 
-        if recommended_action == "Prioritize Critical Services" and len(active_priorities) >= 4:
-            active_priorities[3] = float(active_priorities[3] * 2.0)
-            active_min_bounds[3] = float(active_min_bounds[3] * 1.5)
-            active_priorities[2] = float(active_priorities[2] * 0.5)
-        elif recommended_action == "Reroute Traffic" and len(active_priorities) >= 3:
-            active_priorities[0] = float(active_priorities[0] * 1.5)
-            active_priorities[1] = float(active_priorities[1] * 0.5)
-            active_priorities[2] = float(active_priorities[2] * 0.2)
+        active_priorities, active_min_bounds, active_max_bounds = _apply_mdp_overrides(
+            recommended_action, active_priorities, active_min_bounds, active_max_bounds
+        )
 
         # Solve LP based on computed priorities and dynamic capacity bounds
         lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
@@ -204,6 +295,7 @@ def api_agent_telemetry(request):
 
 def index_view(request):
     """Renders the main Live Monitor and System Dashboard page."""
+    ensure_monitor_started()
     # Retrieve system settings
     settings_obj = SystemSettings.objects.first()
     if not settings_obj:
@@ -346,19 +438,11 @@ def optimization_view(request):
     active_min_bounds = list(min_bounds)
     active_max_bounds = list(max_bounds)
 
-    if recommended_action == "Prioritize Critical Services":
-        # Boost Critical Services priority weight (index 3) and min guaranteed bounds
-        active_priorities[3] = float(active_priorities[3] * 2.0)
-        active_min_bounds[3] = float(active_min_bounds[3] * 1.5)
-        # Throttle low priority class: File Transfer priority is halved
-        active_priorities[2] = float(active_priorities[2] * 0.5)
-        logger.info(f"MDP Optimization Override active: {recommended_action}. Boosting Critical Services weight.")
-    elif recommended_action == "Reroute Traffic":
-        # Mitigate severe congestion by prioritizing basic browsing and throttling streaming/files
-        active_priorities[0] = float(active_priorities[0] * 1.5)
-        active_priorities[1] = float(active_priorities[1] * 0.5)
-        active_priorities[2] = float(active_priorities[2] * 0.2)
-        logger.info(f"MDP Optimization Override active: {recommended_action}. Throttling heavy flows.")
+    active_priorities, active_min_bounds, active_max_bounds = _apply_mdp_overrides(
+        recommended_action, active_priorities, active_min_bounds, active_max_bounds
+    )
+    if recommended_action != "Reallocate Bandwidth":
+        logger.info(f"MDP Optimization Override active: {recommended_action}.")
 
     classes = ["Web Browsing", "Streaming", "File Transfer", "Critical Services"]
 
@@ -488,6 +572,8 @@ def settings_view(request):
             return redirect("dashboard:index")
         except Exception as e:
             logger.error(f"Failed to save dynamic thresholds: {e}")
+            context = {"settings": settings_obj, "error_message": f"Failed to save settings: {e}"}
+            return render(request, "dashboard/settings.html", context)
 
     context = {
         "settings": settings_obj

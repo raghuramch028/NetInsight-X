@@ -3,7 +3,7 @@
 ---
 
 ## Abstract
-Modern computer networks require robust, real-time management paradigms to sustain Quality of Service (QoS) guarantees under dynamic traffic patterns. Traditional network monitors only display simple aggregated statistics, requiring human administrators to manual analyze states and determine administrative actions. This paper presents **NetInsight-X**, a modular, multi-threaded Decision Support System (DSS) integrating computer networks, mathematical optimization, and machine learning. NetInsight-X captures live LAN packet metrics, aggregates metrics to identify traffic patterns, optimizes bandwidth allocation using Linear Programming (LP), predicts future states using Markov Chains, and recommends advisory actions via Markov Decision Processes (MDP). An RBF Kernel Support Vector Machine (SVM) classifies traffic flows into application categories to inform optimization bounds. Numerical verification of Karush-Kuhn-Tucker (KKT) optimality conditions ensures solver accuracy, establishing a mathematically sound and explainable network management DSS framework.
+Modern computer networks require robust, real-time management paradigms to sustain Quality of Service (QoS) guarantees under dynamic traffic patterns. Traditional network monitors only display simple aggregated statistics, requiring human administrators to manual analyze states and determine administrative actions. This paper presents **NetInsight-X**, a modular, multi-threaded Decision Support System (DSS) integrating computer networks, mathematical optimization, and machine learning. NetInsight-X captures live LAN packet metrics, aggregates metrics to identify traffic patterns, optimizes bandwidth allocation using Linear Programming (LP), predicts future states using Markov Chains, and recommends advisory actions via Markov Decision Processes (MDP). An XGBoost Gradient Boosting Classifier classifies traffic flows into application categories to inform optimization bounds. Numerical verification of Karush-Kuhn-Tucker (KKT) optimality conditions ensures solver accuracy, establishing a mathematically sound and explainable network management DSS framework.
 
 ---
 
@@ -13,7 +13,7 @@ Computer network analytics has transitioned from simple passive monitors to proa
 NetInsight-X functions as a **Decision Support System (DSS)** that translates raw network measurements into predictive models and optimal decisions. The pipeline is split into:
 1. **Acquisition:** Multi-threaded Scapy sniffers capture header data.
 2. **Analysis:** Aggregate metrics (throughput, latency, packet loss) are written to SQLite.
-3. **Intelligence:** Markov state transition probability models predict future load profiles, and an RBF SVM classifies traffic flows.
+3. **Intelligence:** Markov state transition probability models predict future load profiles, and an XGBoost classifies traffic flows.
 4. **Optimization:** CVXOPT solves a convex Linear Programming problem allocating bandwidth to satisfy QoS, numerically verified via KKT conditions.
 5. **Decision:** An MDP utilizes Bellman updates to recommend advisory traffic management options.
 
@@ -33,7 +33,7 @@ NetInsight-X encompasses real-time capture queue buffering, analytics computatio
 - **FR-6 (KKT Checking):** Verify primal feasibility, dual feasibility, complementary slackness, and stationarity numerically.
 - **FR-7 (Prediction):** Classify network states and estimate Markov transition probability matrices.
 - **FR-8 (Recommendation):** Solve Value Iteration on an MDP model to output advisory administrative actions.
-- **FR-9 (Classification):** Standardize packet features and run SVM model inference on live packet arrivals.
+- **FR-9 (Classification):** Standardize packet features and run XGBoost model inference on live packet arrivals.
 - **FR-10 (Visualization):** Render live status charts using Chart.js and historical correlation plots using Seaborn/Matplotlib.
 
 ### 2.3 Non-Functional Requirements (NFR)
@@ -60,7 +60,7 @@ graph TD
     
     SQLite -->|Pandas DataFrames| Analytics[Analytics Engine]
     SQLite -->|State Sequences| Predictor[Markov Predictor]
-    SQLite -->|Live Packet Flow| Classifier[SVM Classifier]
+    SQLite -->|Live Packet Flow| Classifier[XGBoost Classifier]
     
     Analytics -->|Utilization Metrics| Optimizer[CVXOPT LP Optimizer]
     Predictor -->|Transition Probabilities| MDP[MDP Recommendation Engine]
@@ -106,7 +106,7 @@ flowchart LR
     A[Analytics Engine] -->|Active Devices & Throughput| O[LP Optimizer]
     A -->|State History Logs| P[Markov State Predictor]
     P -->|Forecast State Probabilities| M[MDP Decision Engine]
-    C[SVM Classifier] -->|Class Profiling Counts| O
+    C[XGBoost Classifier] -->|Class Profiling Counts| O
     O -->|Primal & Dual Solutions| K[KKT Verifier]
 ```
 
@@ -195,14 +195,14 @@ $$V^{(k+1)}(s) = \max_{a \in \mathcal{A}} \left[ R(s, a) + \gamma \sum_{s' \in \
 Advisory action is selected:
 $$a^*(s) = \arg\max_{a \in \mathcal{A}} \left[ R(s, a) + \gamma \sum_{s'} P_a(s' \mid s) V^*(s') \right]$$
 
-### 4.5 SVM Traffic Classification (RBF Kernel)
+### 4.5 XGBoost Traffic Classification (Gradient Boosting)
 Incoming packets features $X = [\text{Packet Size}, \text{Protocol}, \text{Latency}, \text{Packet Rate}, \text{Connection Frequency}]$ are mapped to category classes:
 - Web Browsing
 - Streaming
 - File Transfer
 - Potentially Suspicious
 
-We use a non-linear RBF Kernel to handle overlapping boundary parameters:
+We use a non-linear gradient boosting ensemble to handle overlapping boundary parameters:
 $$K(x, x') = \exp(-\gamma \|x - x'\|^2)$$
 
 ---
@@ -214,7 +214,7 @@ Comprehensive unit and integration tests were conducted inside the virtual envir
 2. **Module 2 (Analytics):** Verified database packet aggregations. Throughput calculations, protocol percentages, and top consumers lists match mathematical averages. Graceful return values verified on empty database runs.
 3. **Module 3 (Optimization):** Tested a 2-variable LP toy problem. The solver computed the exact analytical optimum ($x^* = [2.0, 8.0]^T$, Utility $= 28.0$), and the numerical KKT checker verified zero residuals within tolerance boundaries. Handled infeasibility gracefully via proportional fallbacks.
 4. **Module 4 (Prediction):** Checked deterministic state classifications. Computed transition matrix from a mock sequence, verifying $P_{ij}$ sums to $1.0$ per row. Checked that MDP Value Iteration converges to stable policies.
-5. **Module 5 (Classification):** Evaluated RBF SVM training pipeline using synthetic fallback arrays. The classifier scored $> 90\%$ accuracy on validation splits. The sliding-window cache tracked connection counts and rates accurately.
+5. **Module 5 (Classification):** Evaluated XGBoost training pipeline using synthetic fallback arrays. The classifier scored $> 90\%$ accuracy on validation splits. The sliding-window cache tracked connection counts and rates accurately.
 6. **Module 6 (Dashboard):** Verified views routing and client-side JSON API polling. Tested base64 Seaborn/Matplotlib diagnostic chart generation.
 
 ---

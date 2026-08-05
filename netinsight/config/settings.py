@@ -48,6 +48,12 @@ if not DEBUG and "*" in ALLOWED_HOSTS:
         "ALLOWED_HOSTS contains '*' while DEBUG is False. This is insecure for production."
     )
 
+if not DEBUG and not NETINSIGHT_AGENT_TOKEN:
+    logging.getLogger(__name__).warning(
+        "NETINSIGHT_AGENT_TOKEN is not set. Agent telemetry endpoints are open to any client. "
+        "Set NETINSIGHT_AGENT_TOKEN in .env for production deployments."
+    )
+
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -167,7 +173,7 @@ LINK_CAPACITY = float(os.environ.get("NETINSIGHT_LINK_CAPACITY", 100_000_000.0))
 DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 2000)) # in milliseconds
 
 # Demonstration / Replay Mode
-DEMO_MODE = False
+DEMO_MODE = os.environ.get("NETINSIGHT_DEMO_MODE", "True").lower() in ("true", "1", "yes")
 
 # Configurable thresholds for network states (based on bandwidth utilization and packet loss)
 STATE_THRESHOLDS = {
@@ -199,7 +205,8 @@ MDP_REWARDS = {
     0: {0: 10.0, 1: 5.0, 2: 8.0},    # Normal
     1: {0: 8.0,  1: 4.0, 2: 7.0},    # Busy
     2: {0: 5.0,  1: 8.0, 2: 6.0},    # Congested
-    3: {0: -2.0, 1: -5.0, 2: 2.0}     # Failure
+    3: {0: -2.0, 1: -5.0, 2: 2.0},   # Under Attack / Failure
+    4: {0: 7.0,  1: 4.0, 2: 8.0}     # Recovering
 }
 
 # SVM Classification Configuration
@@ -252,5 +259,17 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+    },
+}
+
+# ==========================================
+# Django REST Framework Configuration
+# ==========================================
+REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "120/minute",
     },
 }

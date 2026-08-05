@@ -556,6 +556,9 @@
                         }
                     });
                 }
+            })
+            .catch(err => {
+                console.warn('[NetInsight] Metrics poll failed:', err.message || err);
             });
 
         // Poll packets
@@ -602,6 +605,9 @@
                     `;
                 });
                 tbody.innerHTML = html;
+            })
+            .catch(err => {
+                console.warn('[NetInsight] Packets poll failed:', err.message || err);
             });
     }
 

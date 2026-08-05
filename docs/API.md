@@ -84,10 +84,10 @@ Computes advisory recommendations using action-dependent transition matrices and
 ## 5. Traffic Classification Module (`netinsight/classification`)
 
 ### 5.1 `train_and_save_model` (in `train.py`)
-Runs the preprocessing, scaling, and training pipelines to save trained SVM parameters.
+Runs the preprocessing, scaling, and training pipelines to save trained XGBoost parameters.
 
 * **Features mapped:** Packet Size, Protocol, Latency, Packet Rate, Connection Frequency.
-* **Algorithm:** Support Vector Machine (`SVC`) with RBF Kernel.
+* **Algorithm:** XGBoost Gradient Boosting Classifier.
 * **Model artifacts:** `svm_model.joblib` and `scaler.joblib` are loaded from the directory resolved by `settings.SVM_MODEL_PATH` (or `NETINSIGHT_SVM_PATH` env var). If absent, a deterministic synthetic dataset is generated and a model is trained on the fly.
 
 ### 5.2 `TrafficClassifier` (in `classifier.py`)
@@ -97,7 +97,7 @@ Performs classification inference on incoming packets.
   * `model_path` overrides `settings.SVM_MODEL_PATH`.
   * `window_duration` is the rolling window in seconds for packet-rate and connection-frequency features.
 * **Methods:**
-  * `load_model() -> bool`: Loads the saved SVM `joblib` model and `scaler.joblib` from the model directory. Reloads at call time; returns `True` on success.
+  * `load_model() -> bool`: Loads the saved XGBoost `joblib` model and `scaler.joblib` from the model directory. Reloads at call time; returns `True` on success.
   * `update_ip_cache(src_ip, dst_ip, size, timestamp) -> tuple[float, float]`: Maintains in-memory packet rates and unique connection destination frequencies.
   * `classify_packet(packet_dict) -> str`: Runs hybrid model predictions and rule-based heuristics. Returns one of `Normal`, `DoS`, `DDoS`, `Brute Force`, `Reconnaissance`, `Mirai`, `Other Attacks`.
 
@@ -115,7 +115,7 @@ The Django dashboard exposes both server-rendered pages and JSON endpoints used 
 | `/analytics/` | `analytics_view` | Protocol distribution and top bandwidth consumers. |
 | `/optimization/` | `optimization_view` | LP bandwidth allocator and KKT verification results. |
 | `/prediction/` | `prediction_view` | Markov state forecast and MDP advisory policy. |
-| `/classification/` | `classification_view` | SVM model status and recent packet classification history. |
+| `/classification/` | `classification_view` | XGBoost model status and recent packet classification history. |
 | `/reports/` | `reports_view` | Historical telemetry charts rendered as base64 PNG images. |
 
 ### 6.2 JSON Endpoints

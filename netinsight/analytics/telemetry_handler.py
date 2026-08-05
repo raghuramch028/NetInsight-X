@@ -1,5 +1,5 @@
 import logging
-import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 from datetime import timedelta
 
@@ -13,6 +13,9 @@ from netinsight.prediction.hmm import HiddenMarkovModel
 
 logger = logging.getLogger(__name__)
 hmm_model = HiddenMarkovModel()
+
+# Bounded thread pool prevents unbounded thread creation under high agent load
+_telemetry_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="telemetry")
 
 def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: list[dict]) -> None:
     """Orchestrates system telemetry ingestion, metrics aggregation, and HMM predictions."""
@@ -28,11 +31,7 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         agent.save()
 
         # 2. Spin off heavy queries and analysis to a background thread to prevent client timeouts
-        threading.Thread(
-            target=_async_telemetry_worker,
-            args=(agent.id, stats_data, packets_list),
-            daemon=True
-        ).start()
+        _telemetry_pool.submit(_async_telemetry_worker, agent.id, stats_data, packets_list)
 
     except Exception as e:
         logger.error(f"Error handling telemetry payload: {e}", exc_info=True)
@@ -168,6 +167,14 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         # E. Database Pruner: Delete raw PacketRecord entries older than 10 minutes (600s)
         prune_cutoff = now_ts - 600.0
         PacketRecord.objects.filter(timestamp__lt=prune_cutoff).delete()
+
+        # Prune stale records older than 24 hours to prevent unbounded DB growth
+        retention_cutoff = now_ts - 86400.0  # 24 hours
+        FlowRecord.objects.filter(end_time__lt=retention_cutoff).delete()
+        MetricRecord.objects.filter(timestamp__lt=retention_cutoff).delete()
+        StateHistory.objects.filter(timestamp__lt=retention_cutoff).delete()
+        retention_cutoff_dt = timezone.now() - timedelta(hours=24)
+        ThreatHistory.objects.filter(timestamp__lt=retention_cutoff_dt).delete()
 
     except Exception as e:
         logger.error(f"Error in async telemetry worker thread: {e}", exc_info=True)
