@@ -50,6 +50,14 @@ class NetInsightAgent:
                 
             elif system_platform == "windows":
                 # Real Windows PowerShell QoS policy throttling
+                # Ensure the system-wide QoS policy exists on startup
+                check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Throttle' -ErrorAction Stop"]
+                check_result = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if check_result.returncode != 0:
+                    create_cmd = ["powershell", "-Command", "New-NetQosPolicy -Name 'NetInsight-Throttle' -IPProtocol MatchAny -ThrottleRateActionBytesPerSecond 100000000 -ErrorAction SilentlyContinue"]
+                    logger.info("[SHAPER] Initializing NetInsight QoS Policy on Windows...")
+                    subprocess.run(create_cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
                 # Throttle file transfers (e.g. 2 Mbps -> 256KB/s)
                 bytes_per_sec = int(qos_limits['file_transfer_mbps'] * 125000)
                 cmd = ["powershell", "-Command", f"Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"]
