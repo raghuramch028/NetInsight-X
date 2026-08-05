@@ -4,42 +4,29 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from netinsight.classification.classifier import TrafficClassifier
-from netinsight.dashboard.models import FlowRecord, PacketRecord, ThreatHistory
+from netinsight.classification.classifier import get_shared_classifier
+from netinsight.dashboard.models import Agent, FlowRecord, PacketRecord, ThreatHistory
 
 logger = logging.getLogger(__name__)
-classifier = TrafficClassifier()
+classifier = get_shared_classifier()
 
-def process_incoming_packet(agent, pkt_data: dict) -> None:
-    """Saves raw packet, builds bi-directional flows, and performs SVM classification."""
+def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
+    """Prepares an unsaved PacketRecord instance for batch insertion, after updating flow aggregations."""
     try:
-        src_ip = pkt_data["src_ip"]
-        dst_ip = pkt_data["dst_ip"]
-        src_port = int(pkt_data.get("src_port", 0))
-        dst_port = int(pkt_data.get("dst_port", 0))
-        protocol = pkt_data["protocol"]
-        size = int(pkt_data["size"])
-        ttl = int(pkt_data.get("ttl", 64))
-        timestamp = float(pkt_data.get("timestamp", time.time()))
-
-        # 1. Save PacketRecord
-        PacketRecord.objects.create(
-            agent=agent,
-            src_ip=src_ip,
-            dst_ip=dst_ip,
-            src_port=src_port,
-            dst_port=dst_port,
-            protocol=protocol,
-            size=size,
-            ttl=ttl,
-            timestamp=timestamp
-        )
+        src_ip = packet_dict["src_ip"]
+        dst_ip = packet_dict["dst_ip"]
+        src_port = int(packet_dict.get("src_port", 0))
+        dst_port = int(packet_dict.get("dst_port", 0))
+        protocol = packet_dict["protocol"]
+        size = int(packet_dict["size"])
+        ttl = int(packet_dict.get("ttl", 64))
+        pkt_ts = float(packet_dict.get("timestamp", time.time()))
 
         # 2. Build normalized bi-directional flow key
         flow_key = f"{min(src_ip, dst_ip)}_{max(src_ip, dst_ip)}_{min(src_port, dst_port)}_{max(src_port, dst_port)}_{protocol}"
 
         # 3. Retrieve or create FlowRecord active within a 30s window
-        cutoff_time = timestamp - 30.0
+        cutoff_time = pkt_ts - 30.0
         flow = FlowRecord.objects.filter(
             agent=agent,
             flow_key=flow_key,
@@ -49,15 +36,15 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
         if flow:
             flow.packet_count += 1
             flow.byte_count += size
-            flow.end_time = timestamp
+            flow.end_time = pkt_ts
             flow.duration = flow.end_time - flow.start_time
             flow.avg_packet_size = float(flow.byte_count) / flow.packet_count
         else:
             flow = FlowRecord(
                 agent=agent,
                 flow_key=flow_key,
-                start_time=timestamp,
-                end_time=timestamp,
+                start_time=pkt_ts,
+                end_time=pkt_ts,
                 duration=0.0,
                 packet_count=1,
                 byte_count=size,
@@ -68,7 +55,7 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
         # 4. Feature Extraction & SVM Threat Classification
 
         # Estimate connection frequency (unique destinations visited by the agent in last 10m)
-        window_start = timestamp - 600.0
+        window_start = pkt_ts - 600.0
         unique_dests = PacketRecord.objects.filter(
             agent=agent,
             src_ip=src_ip,
@@ -85,7 +72,7 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
             "src_ip": src_ip,
             "dst_ip": dst_ip,
             "size": int(flow.avg_packet_size),
-            "timestamp": timestamp,
+            "timestamp": pkt_ts,
             "protocol": protocol,
             "latency_est": 0.015,  # Heuristic fallback on server
             "packet_rate": packet_rate,
@@ -115,6 +102,18 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
                     threat_type=threat_label,
                     severity=severity
                 )
+
+        return PacketRecord(
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=src_port,
+            dst_port=dst_port,
+            protocol=protocol,
+            size=size,
+            timestamp=pkt_ts,
+            ttl=ttl,
+            agent=agent
+        )
 
     except Exception as e:
         logger.error(f"Error in Flow Builder for packet: {e}", exc_info=True)

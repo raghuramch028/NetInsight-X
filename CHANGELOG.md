@@ -6,7 +6,7 @@ All notable changes to the NetInsight-X project will be documented in this file.
 
 ## [1.2.0] - 2026-08-04
 ### Added
-- **XGBoost Classifier Integration:** Transitioned the ML threat classification from baseline SVM to XGBoost with balanced class weights, raising validation accuracy to **91.82%**.
+- **XGBoost Classifier Integration:** Transitioned the ML threat classification from baseline SVM to XGBoost with balanced class weights, raising validation accuracy to **87.18%** (Note that accuracy is dominated by Normal class and macro-F1 is 67.1%).
 - **Dataset Balancing:** Implemented a pre-split `oversample_data` numpy algorithm to address minority class target sample limits (DDoS, Reconnaissance).
 - **Platform-Aware Local Shaper:** Upgraded simulated shaping to execute Linux kernel `tc` (Traffic Control) token bucket filter (`tbf`) rules and Windows PowerShell QoS policies natively.
 - **Continuous Integration:** Added GitHub Actions CI workflows for automated code style checks and test execution.

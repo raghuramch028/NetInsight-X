@@ -1,9 +1,10 @@
 import base64
 import csv
+import hmac
 import io
 import json
-import hmac
 import logging
+import threading
 from datetime import timedelta
 from typing import Any
 
@@ -25,7 +26,7 @@ import netinsight.dashboard.speed_monitor as speed_monitor
 from netinsight.analytics.engine import AnalyticsEngine
 from netinsight.analytics.telemetry_handler import handle_telemetry_ingestion
 from netinsight.analytics.topology import generate_topology_pyvis
-from netinsight.classification.classifier import TrafficClassifier
+from netinsight.classification.classifier import get_shared_classifier
 from netinsight.config import settings
 from netinsight.dashboard.models import (
     Agent,
@@ -49,7 +50,7 @@ optimizer = BandwidthOptimizer()
 hmm_predictor = HiddenMarkovModel()
 markov_predictor = MarkovPredictor()
 mdp_engine = MDPRecommendationEngine()
-classifier = TrafficClassifier()
+classifier = get_shared_classifier()
 dse_engine = DecisionSupportEngine()
 
 def _to_native_types(obj: Any) -> Any:
@@ -159,17 +160,20 @@ def _demo_telemetry_generator():
     finally:
         close_old_connections()
 
+_demo_lock = threading.Lock()
 _demo_thread_started = False
 
 def ensure_monitor_started():
-    """Starts demo telemetry generator if DEMO_MODE is active. Otherwise no-op."""
+    """Starts demo telemetry generator if DEMO_MODE is active. Thread-safe check-and-set."""
     import threading
     global _demo_thread_started
     if settings.DEMO_MODE and not _demo_thread_started:
-        _demo_thread_started = True
-        t = threading.Thread(target=_demo_telemetry_generator, daemon=True, name="DemoTelemetryGen")
-        t.start()
-        logger.info("[DEMO MODE] Synthetic telemetry generator started.")
+        with _demo_lock:
+            if not _demo_thread_started:
+                _demo_thread_started = True
+                t = threading.Thread(target=_demo_telemetry_generator, daemon=True, name="DemoTelemetryGen")
+                t.start()
+                logger.info("[DEMO MODE] Synthetic telemetry generator started.")
 
 # =====================================================================
 # REST APIs for Agents Ingestion
@@ -409,13 +413,20 @@ def optimization_view(request):
     max_bounds = settings.QOS_MAX_BANDWIDTH
     capacity = speed_monitor.get_current_capacity()
 
-    # Handle manual updates via UI Form POST
     if request.method == "POST":
         try:
-            priorities = [float(x) for x in request.POST.getlist("priorities")]
-            min_bounds = [float(x) * 1e6 for x in request.POST.getlist("min_bounds")]
-            max_bounds = [float(x) * 1e6 for x in request.POST.getlist("max_bounds")]
-            capacity = float(request.POST.get("capacity")) * 1e6
+            raw_priorities = request.POST.getlist("priorities")
+            raw_min_bounds = request.POST.getlist("min_bounds")
+            raw_max_bounds = request.POST.getlist("max_bounds")
+            raw_capacity = request.POST.get("capacity")
+
+            if len(raw_priorities) != 4 or len(raw_min_bounds) != 4 or len(raw_max_bounds) != 4:
+                raise ValueError("Optimization requires exactly 4 QoS classes.")
+
+            priorities = [max(0.1, float(x)) for x in raw_priorities]
+            min_bounds = [max(0.0, float(x) * 1e6) for x in raw_min_bounds]
+            max_bounds = [max(0.0, float(x) * 1e6) for x in raw_max_bounds]
+            capacity = max(1e6, float(raw_capacity) * 1e6)
 
             # Save priorities dynamically
             settings_obj.lp_priorities = priorities

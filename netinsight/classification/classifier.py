@@ -208,3 +208,16 @@ class TrafficClassifier:
                     logger.error(f"Inference error in SVM classifier: {e}.", exc_info=True)
 
         return "Normal"
+
+# Shared module singleton instance to ensure IP history cache is shared across threads/views
+_shared_classifier = None
+_shared_classifier_lock = threading.Lock()
+
+def get_shared_classifier() -> TrafficClassifier:
+    """Returns the process-wide shared TrafficClassifier singleton instance."""
+    global _shared_classifier
+    if _shared_classifier is None:
+        with _shared_classifier_lock:
+            if _shared_classifier is None:
+                _shared_classifier = TrafficClassifier()
+    return _shared_classifier

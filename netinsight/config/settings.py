@@ -271,5 +271,6 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "120/minute",
+        "agent": "600/minute",
     },
 }

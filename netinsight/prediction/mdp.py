@@ -84,11 +84,11 @@ class MDPRecommendationEngine:
 
         # Fallback rewards matrix (5 states x 3 actions)
         self.default_rewards = {
-            0: {0: 10.0, 1: 5.0, 2: 8.0},    # Normal (likes Reallocation)
-            1: {0: 8.0,  1: 4.0, 2: 7.0},    # Busy (likes Reallocation)
-            2: {0: 4.0,  1: 9.0, 2: 6.0},    # Congested (likes Reroute)
-            3: {0: -5.0, 1: 2.0, 2: 10.0},   # Under Attack (likes Prioritization)
-            4: {0: 7.0,  1: 4.0, 2: 8.0}     # Recovering (likes Reallocation/Prioritize)
+            0: {0: 10.0, 1: 5.0, 2: 8.0},    # Normal
+            1: {0: 8.0,  1: 4.0, 2: 7.0},    # Busy
+            2: {0: 5.0,  1: 8.0, 2: 6.0},    # Congested
+            3: {0: -2.0, 1: -5.0, 2: 2.0},   # Under Attack / Failure
+            4: {0: 7.0,  1: 4.0, 2: 8.0}     # Recovering
         }
 
     def get_reward(self, state: int, action: int) -> float:

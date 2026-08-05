@@ -7,7 +7,7 @@ from django.db import close_old_connections
 from django.db.models import Sum
 from django.utils import timezone
 
-from netinsight.analytics.flow_builder import process_incoming_packet
+from netinsight.analytics.flow_builder import prepare_packet_record
 from netinsight.dashboard.models import Agent, FlowRecord, MetricRecord, PacketRecord, StateHistory, ThreatHistory
 from netinsight.prediction.hmm import HiddenMarkovModel
 
@@ -45,8 +45,14 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         now_ts = time.time()
 
         # A. Process and Classify all incoming packets
+        packet_objects = []
         for pkt in packets_list:
-            process_incoming_packet(agent, pkt)
+            pkt_obj = prepare_packet_record(agent, pkt)
+            if pkt_obj:
+                packet_objects.append(pkt_obj)
+
+        if packet_objects:
+            PacketRecord.objects.bulk_create(packet_objects, ignore_conflicts=True)
 
         # B. Calculate Server-Side Network-Wide Metrics (window: last 10 seconds)
         window_start = now_ts - 10.0

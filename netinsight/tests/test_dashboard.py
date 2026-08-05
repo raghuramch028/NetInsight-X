@@ -95,3 +95,55 @@ class TestDashboardViews(TestCase):
         response = self.client.get(url_reports)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data:image/png;base64", count=None, status_code=200)
+
+    def test_optimization_post_validation(self):
+        """Verifies optimization POST handling validates list length and clamping boundaries."""
+        url = reverse("dashboard:optimization")
+        # Valid POST
+        valid_payload = {
+            "priorities": ["1.0", "2.0", "0.5", "3.0"],
+            "min_bounds": ["5", "15", "2", "10"],
+            "max_bounds": ["40", "60", "30", "50"],
+            "capacity": "100"
+        }
+        response = self.client.post(url, valid_payload)
+        self.assertEqual(response.status_code, 200)
+
+        # Malformed POST (fewer than 4 classes) - should be handled gracefully without IndexError
+        malformed_payload = {
+            "priorities": ["1.0", "2.0"],
+            "min_bounds": ["5"],
+            "max_bounds": ["40"],
+            "capacity": "100"
+        }
+        response = self.client.post(url, malformed_payload)
+        self.assertEqual(response.status_code, 200)
+
+    def test_shared_classifier_singleton(self):
+        """Verifies that get_shared_classifier returns a shared singleton instance."""
+        from netinsight.classification.classifier import get_shared_classifier
+        clf1 = get_shared_classifier()
+        clf2 = get_shared_classifier()
+        self.assertIs(clf1, clf2, "get_shared_classifier must return the exact same instance")
+
+    def test_bulk_packet_preparation(self):
+        """Verifies that prepare_packet_record builds unsaved PacketRecord instances for batch insert."""
+        from django.utils import timezone
+        from netinsight.analytics.flow_builder import prepare_packet_record
+        from netinsight.dashboard.models import PacketRecord
+        agent = Agent.objects.create(mac_address="00:aa:bb:cc:dd:ee", hostname="Agent Bulk", ip_address="192.168.1.10", last_seen=timezone.now())
+        pkt_dict = {
+            "src_ip": "192.168.1.10",
+            "dst_ip": "8.8.8.8",
+            "src_port": 12345,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "size": 512,
+            "timestamp": time.time(),
+            "ttl": 64
+        }
+        record = prepare_packet_record(agent, pkt_dict)
+        self.assertIsInstance(record, PacketRecord)
+        self.assertIsNone(record.pk, "Prepared record should be unsaved for bulk_create")
+        self.assertEqual(record.agent, agent)
+
