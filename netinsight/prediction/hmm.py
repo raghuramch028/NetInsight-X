@@ -1,8 +1,9 @@
 import logging
 import math
+
 import numpy as np
-import pandas as pd
-from netinsight.dashboard.models import StateHistory, ThreatHistory, MetricRecord, Agent
+
+from netinsight.dashboard.models import StateHistory
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class HiddenMarkovModel:
 
     def _calculate_log_gaussian_pdf(self, val: float, mean: float, std: float) -> float:
         """Calculates log of univariate Gaussian PDF for numerical stability.
-        
+
         log N(x|μ,σ) = -0.5*log(2π) - log(σ) - (x-μ)²/(2σ²)
         """
         if std <= 0:
@@ -102,20 +103,20 @@ class HiddenMarkovModel:
 
     def calculate_log_emission_probability(self, state_name: str, observation: dict) -> float:
         """Computes log emission probability log P(Observation | State) using log-space arithmetic.
-        
+
         Uses log-space to prevent numerical underflow from multiplying small PDF values
         and to eliminate feature scale bias (latency σ=0.005 vs packet_rate σ=300).
         """
         try:
             params = self.gaussian_params[state_name]
-            
+
             # Continuous metrics scores in log-space (sum of logs = log of product)
             log_p_util = self._calculate_log_gaussian_pdf(observation["util"], *params["util"])
             log_p_latency = self._calculate_log_gaussian_pdf(observation["latency"], *params["latency"])
             log_p_loss = self._calculate_log_gaussian_pdf(observation["loss"], *params["loss"])
             log_p_rate = self._calculate_log_gaussian_pdf(observation["packet_rate"], *params["packet_rate"])
             log_p_sockets = self._calculate_log_gaussian_pdf(observation["sockets"], *params["sockets"])
-            
+
             # Sum of log-probabilities (equivalent to log of product)
             log_p_continuous = log_p_util + log_p_latency + log_p_loss + log_p_rate + log_p_sockets
 
@@ -157,7 +158,7 @@ class HiddenMarkovModel:
                     # Blend empirical transitions with prior transition probabilities
                     empirical = counts[i] / row_sum
                     P[i] = 0.4 * self.transition_matrix[i] + 0.6 * empirical
-            
+
             return P
         except Exception as e:
             logger.error(f"Error estimating HMM transitions: {e}")
@@ -201,7 +202,7 @@ class HiddenMarkovModel:
             for s in range(N):
                 state_name = HIDDEN_STATES[s]
                 log_emission = self.calculate_log_emission_probability(state_name, obs_t)
-                
+
                 # Find max transition path in log-space
                 log_probs = [viterbi_table[prev_s, t-1] + log_A[prev_s, s] + log_emission for prev_s in range(N)]
                 viterbi_table[s, t] = max(log_probs)
@@ -227,7 +228,7 @@ class HiddenMarkovModel:
             current_state_name = "Normal"
 
         state_idx = STATE_INDEX[current_state_name]
-        
+
         # One-hot state vector
         s_t = np.zeros(5)
         s_t[state_idx] = 1.0

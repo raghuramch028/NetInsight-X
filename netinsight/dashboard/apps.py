@@ -1,5 +1,6 @@
-from django.apps import AppConfig
 import os
+
+from django.apps import AppConfig
 
 
 class DashboardConfig(AppConfig):
@@ -11,7 +12,7 @@ class DashboardConfig(AppConfig):
         # Check if executing via local development runserver auto-reloader
         is_manage_py = any(x.endswith('manage.py') for x in sys.argv)
         is_runserver = 'runserver' in sys.argv
-        
+
         if is_manage_py and is_runserver:
             if os.environ.get('RUN_MAIN') == 'true':
                 from netinsight.dashboard.speed_monitor import start_speed_monitor

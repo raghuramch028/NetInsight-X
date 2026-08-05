@@ -1,4 +1,3 @@
-import os
 import json
 import logging
 import urllib.request
@@ -8,11 +7,11 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
-from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
+from xgboost import XGBClassifier
 
 from netinsight.config import settings
 
@@ -56,7 +55,7 @@ def download_dataset(data_dir: Path) -> Path:
         try:
             # Add user agent to avoid blocking
             req = urllib.request.Request(
-                DATASET_URL, 
+                DATASET_URL,
                 headers={'User-Agent': 'Mozilla/5.0'}
             )
             with urllib.request.urlopen(req) as response, open(target_csv, 'wb') as out_file:
@@ -135,7 +134,7 @@ def preprocess_intrusion_data(csv_path: Path) -> pd.DataFrame:
     labels = []
     raw_labels = df_raw["Label"].tolist() if "Label" in df_raw.columns else []
 
-    for idx, raw_label in enumerate(raw_labels):
+    for _idx, raw_label in enumerate(raw_labels):
         # Support numeric labels directly
         try:
             val = int(float(raw_label))
@@ -146,7 +145,7 @@ def preprocess_intrusion_data(csv_path: Path) -> pd.DataFrame:
             pass
 
         label_str = str(raw_label).upper().strip()
-        
+
         if "BENIGN" in label_str or "NORMAL" in label_str:
             labels.append(0)  # Normal
         elif "DOS" in label_str and "DDOS" not in label_str:
@@ -165,7 +164,7 @@ def preprocess_intrusion_data(csv_path: Path) -> pd.DataFrame:
     df["label"] = labels
     return df
 
-def oversample_data(X, y, target_count=3000):
+def oversample_data(X, y, target_count=3000):  # noqa: N803
     """Oversamples minority classes in X and y array formats to target_count."""
     unique_labels, counts = np.unique(y, return_counts=True)
     X_new, y_new = [], []
@@ -218,11 +217,11 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
 
     logger.info("Training XGBoost Classifier on real intrusion traffic data...")
     clf = XGBClassifier(
-        n_estimators=250, 
-        max_depth=9, 
-        learning_rate=0.08, 
-        subsample=0.8, 
-        colsample_bytree=0.8, 
+        n_estimators=250,
+        max_depth=9,
+        learning_rate=0.08,
+        subsample=0.8,
+        colsample_bytree=0.8,
         random_state=42
     )
     sample_weights = compute_sample_weight(class_weight="balanced", y=y_train)
@@ -233,9 +232,9 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     acc = accuracy_score(y_test, y_pred)
     cm = confusion_matrix(y_test, y_pred)
     report = classification_report(
-        y_test, 
-        y_pred, 
-        labels=sorted(list(CLASS_LABELS.keys())),
+        y_test,
+        y_pred,
+        labels=sorted(CLASS_LABELS.keys()),
         target_names=[CLASS_LABELS[i] for i in sorted(CLASS_LABELS.keys())],
         output_dict=True,
         zero_division=0

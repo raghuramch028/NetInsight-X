@@ -1,12 +1,15 @@
 import uuid
+
 import psutil
+
 from agent.logger import logger
+
 
 def get_mac_address() -> str:
     """Discovers the physical MAC address of the active network interface."""
     try:
         # Loop through network interfaces
-        for interface_name, addrs in psutil.net_if_addrs().items():
+        for _interface_name, addrs in psutil.net_if_addrs().items():
             for addr in addrs:
                 # AF_LINK represents MAC addresses on Windows/macOS
                 # AF_PACKET represents MAC addresses on Linux
@@ -21,7 +24,7 @@ def get_mac_address() -> str:
     # Fallback to standard library uuid node discovery
     try:
         mac_num = uuid.getnode()
-        mac_str = ":".join(("%012X" % mac_num)[i:i+2] for i in range(0, 12, 2))
+        mac_str = ":".join((f"{mac_num:012X}")[i:i+2] for i in range(0, 12, 2))
         return mac_str.lower()
     except Exception as e:
         logger.error(f"Fallback getnode MAC discovery failed: {e}")

@@ -1,7 +1,8 @@
-import time
-import requests
 import random
 import sys
+import time
+
+import requests
 
 SERVER_URL = "http://127.0.0.1:8000"
 if len(sys.argv) > 1:
@@ -43,10 +44,10 @@ scenarios = [
 ]
 
 for idx, sc in enumerate(scenarios, 1):
-    print(f"---------------------------------------------------------")
+    print("---------------------------------------------------------")
     print(f"[SCENARIO {idx}] Triggering Event: {sc['name']}")
     print(f" -> Injecting: Rate={sc['rate']} pkts/s, Size={sc['size']}B, Proto={sc['proto']}, Latency={sc['latency']*1000:.1f}ms")
-    
+
     payload = {
         "agent_id": agent_id,
         "mac_address": mac,
@@ -79,7 +80,7 @@ for idx, sc in enumerate(scenarios, 1):
         if res.status_code == 200:
             resp_data = res.json()
             enforced = resp_data.get("enforced_qos", {})
-            print(f" -> SERVER RESPONSE: [HTTP 200 OK]")
+            print(" -> SERVER RESPONSE: [HTTP 200 OK]")
             print(f"    - Policy Recommended : {enforced.get('recommended_policy', 'N/A')}")
             print(f"    - Web Mbps           : {enforced.get('web_browsing_mbps', 0):.2f} Mbps")
             print(f"    - Streaming Mbps     : {enforced.get('streaming_mbps', 0):.2f} Mbps")

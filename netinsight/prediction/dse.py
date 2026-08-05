@@ -1,6 +1,8 @@
 import logging
+
 from django.utils import timezone
-from netinsight.dashboard.models import MetricRecord, ThreatHistory, StateHistory, Agent, SystemSettings
+
+from netinsight.dashboard.models import Agent, MetricRecord, StateHistory, SystemSettings, ThreatHistory
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +30,12 @@ class DecisionSupportEngine:
             latest_metric = MetricRecord.objects.all().order_by("-timestamp").first()
             latest_state = StateHistory.objects.all().order_by("-timestamp").first()
             latest_threat = ThreatHistory.objects.all().order_by("-timestamp").first()
-            
+
             # Active agents seen in last 15 seconds
             from datetime import timedelta
             cutoff = timezone.now() - timedelta(seconds=15)
             active_agents = Agent.objects.filter(last_seen__gte=cutoff)
-            
+
             # Check empty state
             if not active_agents.exists():
                 cards.append({
@@ -46,7 +48,7 @@ class DecisionSupportEngine:
                 return cards
 
             # 2. Evaluate Severity Tiers and formulate rules
-            
+
             # RULE A: HMM 'Under Attack' state evaluation
             if latest_state and latest_state.network_state == "Under Attack":
                 target_agent = "a registered device"
@@ -95,7 +97,7 @@ class DecisionSupportEngine:
                         "message": f"Average network round-trip time exceeds configured threshold of {settings_obj.latency_threshold * 1000.0:.0f}ms.",
                         "action": "Check for bufferbloat or routing bottlenecks. Verify link speeds."
                     })
-                
+
                 # Packet loss alert
                 if latest_metric.packet_loss > (settings_obj.loss_threshold * 100.0):
                     cards.append({

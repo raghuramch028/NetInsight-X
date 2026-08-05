@@ -1,9 +1,11 @@
 import logging
 import time
 from datetime import timedelta
+
 from django.utils import timezone
-from netinsight.dashboard.models import PacketRecord, FlowRecord, ThreatHistory
+
 from netinsight.classification.classifier import TrafficClassifier
+from netinsight.dashboard.models import FlowRecord, PacketRecord, ThreatHistory
 
 logger = logging.getLogger(__name__)
 classifier = TrafficClassifier()
@@ -64,9 +66,6 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
             )
 
         # 4. Feature Extraction & SVM Threat Classification
-        # Protocol mapping
-        proto_map = {"TCP": 6.0, "UDP": 17.0, "ICMP": 1.0}
-        protocol_val = proto_map.get(protocol.upper(), 0.0)
 
         # Estimate connection frequency (unique destinations visited by the agent in last 10m)
         window_start = timestamp - 600.0

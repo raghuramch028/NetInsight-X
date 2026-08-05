@@ -3,17 +3,19 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+
 from django.test import Client, TestCase
 from django.urls import reverse
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "netinsight.config.settings")
 
 import django
+
 django.setup()
 
 from netinsight.config import settings
+from netinsight.dashboard.models import Agent, MetricRecord, StateHistory
 from netinsight.database import db_manager
-from netinsight.dashboard.models import MetricRecord, StateHistory, Agent
 
 
 class TestDashboardViews(TestCase):
@@ -84,7 +86,6 @@ class TestDashboardViews(TestCase):
     def test_reports_with_data(self):
         """Verifies the reports page can generate telemetry charts."""
         # Seed a couple of metrics/state rows via Django ORM so the plots are generated
-        from django.utils import timezone
         MetricRecord.objects.create(timestamp=time.time() - 10, throughput=1.0, packet_rate=1.0, bandwidth_util=1.0, latency=0.015, packet_loss=0.0)
         MetricRecord.objects.create(timestamp=time.time() - 5, throughput=2.0, packet_rate=2.0, bandwidth_util=2.0, latency=0.015, packet_loss=0.0)
         MetricRecord.objects.create(timestamp=time.time(), throughput=3.0, packet_rate=3.0, bandwidth_util=3.0, latency=0.015, packet_loss=0.0)

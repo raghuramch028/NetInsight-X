@@ -1,10 +1,12 @@
 import logging
 import time
 from datetime import timedelta
+
 import pandas as pd
-from django.db.models import Count, Sum, Avg
+from django.db.models import Avg, Count, Sum
 from django.utils import timezone
-from netinsight.dashboard.models import Agent, PacketRecord, MetricRecord
+
+from netinsight.dashboard.models import Agent, MetricRecord, PacketRecord
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 import logging
 import queue
-import random
 import threading
 import time
 

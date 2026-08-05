@@ -2,6 +2,8 @@ import logging
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -88,7 +90,6 @@ WSGI_APPLICATION = "netinsight.wsgi.application"
 # ==========================================
 # Database Configuration
 # ==========================================
-import dj_database_url
 
 DB_PATH = os.environ.get("NETINSIGHT_DB_PATH", str(BASE_DIR / "database" / "netinsight.db"))
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")

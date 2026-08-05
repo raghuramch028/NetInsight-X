@@ -115,9 +115,6 @@ class TrafficClassifier:
             packet_count = len(history)
             packet_rate = packet_count / self.window_duration
 
-            # Compute conn_frequency using port-category density scoring
-            # to match training data distribution from train.py
-            dst_port = None  # Will be overridden by caller
             unique_dests = len({item[1] for item in history})
 
             return float(packet_rate), float(unique_dests)
@@ -168,14 +165,12 @@ class TrafficClassifier:
             return "DoS"
 
         # 2. Mirai attack (high UDP packet rate or connection frequency to specific target ports)
-        if proto_str == "UDP" and (dst_port in [5004, 1935] or src_port in [5004, 1935] or packet_rate > 50.0):
-            if conn_frequency > 15.0:
-                return "Mirai"
+        if proto_str == "UDP" and (dst_port in [5004, 1935] or src_port in [5004, 1935] or packet_rate > 50.0) and conn_frequency > 15.0:
+            return "Mirai"
 
         # 3. Brute Force detection (high TCP connection attempts to admin ports SSH/Telnet/RDP)
-        if dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]:
-            if packet_rate > 10.0:
-                return "Brute Force"
+        if (dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]) and packet_rate > 10.0:
+            return "Brute Force"
 
         # 4. Reconnaissance / Port Scan (high connection frequency to many different IPs/ports)
         if conn_frequency > 20.0 or (packet_rate > 5.0 and conn_frequency > 10.0):

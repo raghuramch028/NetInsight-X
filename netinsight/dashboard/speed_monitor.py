@@ -1,7 +1,8 @@
-import time
-import threading
-import requests
 import logging
+import threading
+import time
+
+import requests
 from django.conf import settings
 
 logger = logging.getLogger("netinsight.speed_monitor")
@@ -18,7 +19,7 @@ def run_speed_test():
         start_time = time.perf_counter()
         # Stream download to track bytes chunk-by-chunk and allow early time cutoff
         response = requests.get(url, stream=True, timeout=(5, 10))
-        
+
         if response.status_code == 200:
             total_bytes = 0
             # Read in 64KB chunks
@@ -28,14 +29,14 @@ def run_speed_test():
                 # Cap the speed test duration at 8.0 seconds max to save data on slow links
                 if elapsed >= 8.0:
                     break
-            
+
             elapsed = time.perf_counter() - start_time
             if elapsed > 0 and total_bytes > 0:
                 speed_bps = (total_bytes * 8) / elapsed
-                
+
                 # Clamp between 2.0 Mbps and 100.0 Mbps for solver stability
                 speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-                
+
                 CURRENT_CAPACITY = speed_bps
                 logger.info(f"[DYNAMIC CAPACITY] Google-style Speed test: {speed_bps / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
                 return
@@ -43,8 +44,9 @@ def run_speed_test():
     except Exception as e:
         logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Attempting telemetry fallback.")
         try:
-            from netinsight.dashboard.models import MetricRecord
             import django.db
+
+            from netinsight.dashboard.models import MetricRecord
             # Retrieve last 40 metric records (approx 2 minutes of traffic)
             records = MetricRecord.objects.all().order_by("-timestamp")[:40]
             if records.exists():

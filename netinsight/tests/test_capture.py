@@ -4,11 +4,10 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from django.test import TestCase
 
+from django.test import TestCase
 from scapy.all import IP, TCP
 
-from netinsight.capture.monitor import LiveMonitor
 from netinsight.capture.parser import PacketParser
 from netinsight.config import settings
 from netinsight.database import db_manager

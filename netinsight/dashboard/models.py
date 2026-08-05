@@ -1,5 +1,7 @@
 import uuid
+
 from django.db import models
+
 
 class Agent(models.Model):
     """Tracks active telemetry agent endpoints using unique MAC addresses."""

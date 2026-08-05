@@ -1,8 +1,11 @@
 import threading
 import time
+
 from scapy.all import IP, TCP, UDP, AsyncSniffer
-from agent.logger import logger
+
 from agent import config
+from agent.logger import logger
+
 
 class PacketSniffer:
     """Uses Scapy to perform local packet capture and extract metadata from packet headers."""

@@ -1,5 +1,7 @@
 import logging
+
 import numpy as np
+
 from netinsight.config import settings
 
 logger = logging.getLogger(__name__)
@@ -153,7 +155,7 @@ class MDPRecommendationEngine:
             action_values[self.ACTION_NAMES[a]] = float(expected_val)
 
         logger.info(f"MDP recommendation solved. Current State={current_state_name}, Recommended Action={recommended_action}")
-        
+
         # Build human-readable mapping of the policy
         reverse_map = {0: "Normal", 1: "Busy", 2: "Congested", 3: "Under Attack", 4: "Recovering"}
         policy_map = {reverse_map[idx]: self.ACTION_NAMES[policy[idx]] for idx in range(5)}

@@ -1,10 +1,12 @@
-import os
 import logging
+import os
 from datetime import timedelta
+
 import networkx as nx
-from pyvis.network import Network
 import pyvis
 from django.utils import timezone
+from pyvis.network import Network
+
 from netinsight.dashboard.models import Agent
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,7 @@ def generate_topology_pyvis() -> str:
             if not os.path.exists(utils_js_path):
                 utils_js_path = os.path.join(pyvis_dir, "lib", "bindings", "utils.js")
 
-            with open(utils_js_path, "r", encoding="utf-8") as f:
+            with open(utils_js_path, encoding="utf-8") as f:
                 utils_js_content = f.read()
 
             relative_tag = '<script src="lib/bindings/utils.js"></script>'

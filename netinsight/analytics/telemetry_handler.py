@@ -1,11 +1,13 @@
-import time
 import logging
 import threading
-from django.utils import timezone
+import time
+
 from django.db import close_old_connections
-from django.db.models import Sum, Count, Avg
-from netinsight.dashboard.models import Agent, PacketRecord, FlowRecord, MetricRecord, StateHistory, ThreatHistory
+from django.db.models import Sum
+from django.utils import timezone
+
 from netinsight.analytics.flow_builder import process_incoming_packet
+from netinsight.dashboard.models import Agent, FlowRecord, MetricRecord, PacketRecord, StateHistory, ThreatHistory
 from netinsight.prediction.hmm import HiddenMarkovModel
 
 logger = logging.getLogger(__name__)
@@ -49,7 +51,7 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         # B. Calculate Server-Side Network-Wide Metrics (window: last 10 seconds)
         window_start = now_ts - 10.0
         active_packets = PacketRecord.objects.filter(timestamp__gte=window_start)
-        
+
         packet_count = active_packets.count()
         total_bytes = active_packets.aggregate(total_bytes=Sum("size"))["total_bytes"] or 0
 
@@ -94,7 +96,7 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         # C. Gather HMM Observation Vector
         latest_threat = ThreatHistory.objects.all().order_by("-timestamp").first()
         threat_label = latest_threat.threat_type if latest_threat else "Normal"
-        
+
         from datetime import timedelta
         online_cutoff = timezone.now() - timedelta(seconds=15)
         online_agents = Agent.objects.filter(last_seen__gte=online_cutoff)
@@ -103,7 +105,7 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         # D. Decode Hidden State Sequence
         recent_metrics = MetricRecord.objects.all().order_by("-timestamp")[:5]
         observations_history = []
-        
+
         for metric in reversed(recent_metrics):
             observations_history.append({
                 "util": metric.bandwidth_util,

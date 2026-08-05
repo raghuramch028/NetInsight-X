@@ -1,16 +1,18 @@
-import time
-import sys
-import signal
-import os
 import json
+import os
 import platform
+import signal
 import subprocess
-from agent.logger import logger
-from agent.collector import TelemetryCollector
-from agent.sniffer import PacketSniffer
-from agent.sender import TelemetrySender
-from agent.utils import get_mac_address, get_current_ssid
+import sys
+import time
+
 from agent import config
+from agent.collector import TelemetryCollector
+from agent.logger import logger
+from agent.sender import TelemetrySender
+from agent.sniffer import PacketSniffer
+from agent.utils import get_current_ssid, get_mac_address
+
 
 class NetInsightAgent:
     """Coordinates startup registration, telemetry gathering, and asynchronous sniffing."""
@@ -25,13 +27,13 @@ class NetInsightAgent:
     def apply_local_shaping(self, qos_limits: dict):
         """Applies dynamic QoS shaper policies locally based on optimal limits from server."""
         policy = qos_limits.get("recommended_policy", "Reallocate Bandwidth")
-        
+
         # Safely extract QoS limits with sensible defaults
         qos_limits.setdefault('web_browsing_mbps', 5.0)
         qos_limits.setdefault('streaming_mbps', 15.0)
         qos_limits.setdefault('file_transfer_mbps', 2.0)
         qos_limits.setdefault('critical_services_mbps', 10.0)
-        
+
         logger.info(
             f"[QoS CONTROL] Syncing dynamic bandwidth caps: "
             f"Web={qos_limits['web_browsing_mbps']:.2f} Mbps, "
@@ -39,10 +41,10 @@ class NetInsightAgent:
             f"File={qos_limits['file_transfer_mbps']:.2f} Mbps, "
             f"Critical={qos_limits['critical_services_mbps']:.2f} Mbps"
         )
-        
+
         # Execute platform-aware system shaper commands
         system_platform = platform.system().lower()
-        
+
         try:
             if system_platform == "linux":
                 # Real Linux tc (Traffic Control) queue adjustment
@@ -52,7 +54,7 @@ class NetInsightAgent:
                 cmd = ["sudo", "tc", "qdisc", "change", "dev", interface, "root", "tbf", "rate", rate_limit, "burst", "32k", "latency", "400ms"]
                 logger.info(f"[SHAPER] Executing Linux tc command: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+
             elif system_platform == "windows":
                 # Real Windows PowerShell QoS policy throttling
                 # Ensure the system-wide QoS policy exists on startup
@@ -68,13 +70,13 @@ class NetInsightAgent:
                 cmd = ["powershell", "-Command", f"Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"]
                 logger.info(f"[SHAPER] Executing Windows PowerShell QoS command: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+
         except Exception as e:
             logger.warning(
                 f"[SHAPER] Local hardware shaping command skipped (Requires Admin/Root privileges). "
                 f"Falling back to simulated logs. Error: {e}"
             )
-            
+
         # Simulate local rate-limiting (throttling agent capture rate or introducing delays)
         if policy == "Prioritize Critical Services":
             logger.warning("[SHAPER] Local Action Enforced: File transfer throttled to 0.25x. Critical Services priority enabled.")
@@ -116,7 +118,7 @@ class NetInsightAgent:
         vendor = self.collector.vendor
 
         logger.info(f"Local Host Details: MAC={mac_addr}, Hostname={hostname}, OS={device_type}")
-        
+
         # Blocks until registered
         self.sender.register(mac_addr, hostname, device_type, vendor)
 
@@ -160,7 +162,7 @@ class NetInsightAgent:
                         failed_packets = json.load(f)
                 except Exception as e:
                     logger.error(f"Error reading offline buffer: {e}")
-            
+
             packets_to_send = failed_packets + new_packets
 
             # Bounded limit for transmission safety (send at most 100 recent packets to prevent server timeouts)
@@ -180,7 +182,7 @@ class NetInsightAgent:
                     except Exception as e:
                         logger.error(f"Failed to remove offline buffer: {e}")
                 backoff = config.TELEMETRY_INTERVAL  # Reset backoff on success
-                
+
                 # Apply dynamic QoS shaping constraints locally (Closed-loop feedback execution)
                 if qos_limits:
                     self.apply_local_shaping(qos_limits)
@@ -194,7 +196,7 @@ class NetInsightAgent:
                 except Exception as e:
                     logger.error(f"Failed to write to offline buffer: {e}")
                 logger.warning(f"Telemetry upload failed. Saved {len(packets_to_send)} packets to disk-buffered queue.")
-                
+
                 # Force a constant fast retry interval instead of exponential backoff
                 backoff = config.TELEMETRY_INTERVAL
 

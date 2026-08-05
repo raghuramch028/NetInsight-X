@@ -1,8 +1,11 @@
-import socket
 import os
 import platform
+import socket
+
 import psutil
+
 from agent.logger import logger
+
 
 class TelemetryCollector:
     """Queries hardware state metrics and network usage counts from the local host."""
@@ -47,7 +50,7 @@ class TelemetryCollector:
         try:
             # Memory details
             mem = psutil.virtual_memory()
-            
+
             # Disk details
             try:
                 disk = psutil.disk_usage("/")

@@ -1,8 +1,11 @@
 import os
 import time
+
 import requests
-from agent.logger import logger
+
 from agent import config
+from agent.logger import logger
+
 
 class TelemetrySender:
     """Handles communications with the central Django API. Implements backoff retries."""
@@ -42,8 +45,7 @@ class TelemetrySender:
             "vendor": vendor
         }
 
-        backoff = 5.0
-        max_backoff = 60.0
+
 
         while True:
             logger.info(f"Attempting to register agent at {config.REGISTRATION_ENDPOINT}...")

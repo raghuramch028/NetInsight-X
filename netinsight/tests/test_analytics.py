@@ -2,7 +2,9 @@ import os
 import shutil
 import tempfile
 import time
+import unittest
 from pathlib import Path
+
 from django.test import TestCase
 
 from netinsight.analytics.engine import AnalyticsEngine
@@ -58,8 +60,9 @@ class TestAnalyticsEngine(TestCase):
     def test_analytics_calculations(self):
         """Saves known packets to SQLite and verifies Pandas metrics aggregation calculations."""
         now = time.time()
-        from netinsight.dashboard.models import Agent, PacketRecord
         from django.utils import timezone
+
+        from netinsight.dashboard.models import Agent, PacketRecord
 
         # Create active Agent database records first
         agent1 = Agent.objects.create(mac_address="00:11:22:33:44:55", hostname="Agent 1", ip_address="192.168.1.5", last_seen=timezone.now())

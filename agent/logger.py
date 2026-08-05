@@ -1,6 +1,7 @@
 import logging
 import sys
 
+
 def setup_logger():
     """Sets up standard logger formatting for console and file log targets."""
     logger = logging.getLogger("netinsight_agent")

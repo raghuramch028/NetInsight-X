@@ -1,40 +1,43 @@
 import base64
-import io
 import csv
+import io
 import json
 import logging
-import time
 from datetime import timedelta
 from typing import Any
 
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 import pandas as pd
-
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect
+import seaborn as sns
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.db.models import Sum, Count, Avg
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.clickjacking import xframe_options_exempt
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+import netinsight.dashboard.speed_monitor as speed_monitor
 from netinsight.analytics.engine import AnalyticsEngine
-from netinsight.analytics.topology import generate_topology_pyvis
 from netinsight.analytics.telemetry_handler import handle_telemetry_ingestion
+from netinsight.analytics.topology import generate_topology_pyvis
 from netinsight.classification.classifier import TrafficClassifier
 from netinsight.config import settings
+from netinsight.dashboard.models import (
+    Agent,
+    MetricRecord,
+    PacketRecord,
+    StateHistory,
+    SystemSettings,
+    ThreatHistory,
+)
 from netinsight.optimization.solver import BandwidthOptimizer
+from netinsight.prediction.dse import DecisionSupportEngine
 from netinsight.prediction.hmm import HiddenMarkovModel
 from netinsight.prediction.mdp import MDPRecommendationEngine
-from netinsight.prediction.dse import DecisionSupportEngine
-from netinsight.dashboard.models import Agent, PacketRecord, FlowRecord, MetricRecord, StateHistory, ThreatHistory, SystemSettings
-import netinsight.dashboard.speed_monitor as speed_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -191,10 +194,10 @@ def index_view(request):
     # Query active agents dynamically
     now = timezone.now()
     active_threshold = timedelta(seconds=15)
-    
+
     agents_all = Agent.objects.all()
     active_agents = []
-    
+
     for agent in agents_all:
         is_online = (now - agent.last_seen) < active_threshold
         active_agents.append({
@@ -217,7 +220,7 @@ def index_view(request):
 
     # Get latest calculated network-wide metrics
     latest = analytics_engine.get_latest_metrics()
-    
+
     # If no agents are online, force metrics to 0
     if online_agents_count == 0:
         latest["throughput"] = 0.0
@@ -303,7 +306,7 @@ def optimization_view(request):
             min_bounds = [float(x) * 1e6 for x in request.POST.getlist("min_bounds")]
             max_bounds = [float(x) * 1e6 for x in request.POST.getlist("max_bounds")]
             capacity = float(request.POST.get("capacity")) * 1e6
-            
+
             # Save priorities dynamically
             settings_obj.lp_priorities = priorities
             settings_obj.save()
@@ -414,7 +417,7 @@ def prediction_view(request):
 def classification_view(request):
     """Renders SVM Classifier threat audit tables and live packet predictions."""
     packets_qs = PacketRecord.objects.all().select_related("agent").order_by("-timestamp")[:50]
-    
+
     packets_list = []
     for pkt in packets_qs:
         rec = {
@@ -592,10 +595,10 @@ def reports_view(request):
 def reports_pdf_download(request):
     """Generates and downloads a formatted PDF network health report using ReportLab."""
     try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
         response = HttpResponse(content_type="application/pdf")
         response["Content-Disposition"] = 'attachment; filename="netinsight_health_report.pdf"'
