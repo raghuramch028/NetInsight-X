@@ -109,7 +109,7 @@ class TrafficClassifier:
             # Prune empty IP entries to prevent unbounded memory growth
             if not self.ip_history[src_ip]:
                 del self.ip_history[src_ip]
-                return 0.0, 2.0
+                return 0.0, 1.0
 
             history = self.ip_history[src_ip]
             packet_count = len(history)
@@ -120,33 +120,43 @@ class TrafficClassifier:
             return float(packet_rate), float(unique_dests)
 
     def classify_packet(self, packet_dict: dict) -> str:
-        """Performs SVM inference on packet/flow features. Falls back to heuristics."""
+        """Performs hybrid SVM/heuristic inference on packet features.
+
+        Returns one of 7 canonical threat labels:
+            - Normal
+            - DoS
+            - DDoS
+            - Brute Force
+            - Reconnaissance
+            - Mirai
+            - Other Attacks
+        """
         src_ip = packet_dict["src_ip"]
         dst_ip = packet_dict["dst_ip"]
         size = packet_dict["size"]
         timestamp = packet_dict["timestamp"]
         proto_str = packet_dict["protocol"]
 
+        # Safely extract and cast ports to int
+        dst_port = int(packet_dict.get("dst_port") or 0)
+        src_port = int(packet_dict.get("src_port") or 0)
+
         # Numeric protocol mapping
         proto_map = {"TCP": 6.0, "UDP": 17.0, "ICMP": 1.0}
-        protocol = proto_map.get(proto_str.upper(), 0.0)
+        protocol = proto_map.get(str(proto_str).upper(), 0.0)
 
         # Latency
-        # Fix Bug 1: packet_dict may contain key "latency_est" with value None
         latency = packet_dict.get("latency_est") or 0.015
 
         # Retrieve engineered features
-        # If already computed on the server, use them; otherwise update cache
         packet_rate = packet_dict.get("packet_rate")
         conn_frequency = packet_dict.get("conn_frequency")
 
         if packet_rate is None or conn_frequency is None:
             packet_rate, _ = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
 
-        # Fix Bug 2: Align conn_frequency with training data port-category density scoring
-        # Training uses: port 80/443 -> 5.0, port 22/23/445/3389 -> 12.0, else -> 2.0
+        # Align conn_frequency fallback with port density heuristics if uncomputed
         if conn_frequency is None:
-            dst_port = packet_dict.get("dst_port", 0)
             if dst_port in [80, 443]:
                 conn_frequency = 5.0
             elif dst_port in [22, 23, 445, 3389]:
@@ -157,10 +167,6 @@ class TrafficClassifier:
         # --- Hybrid IDS Override Rules ---
         # These thresholds are calibrated for REAL attacks, not normal browsing/streaming.
         # Normal web browsing: 5-50 pps, YouTube HD: 50-200 pps, Windows Update: 30-150 pps
-        # Real DDoS attack: 5,000-50,000+ pps with tiny uniform packets
-        dst_port = packet_dict.get("dst_port", 0)
-        src_port = packet_dict.get("src_port", 0)
-
         # 1. DDoS / DoS detection — requires SUSTAINED high-volume flooding
         #    DDoS: 1000+ pps with small packets (<200 bytes) = volumetric flood
         #    DoS:  500+ pps with any packet size = application-layer flood

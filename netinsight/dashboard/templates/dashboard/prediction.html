@@ -113,8 +113,8 @@
                             {% elif state_name == 'Busy' %}badge-busy
                             {% elif state_name == 'Congested' %}badge-congested
                             {% elif state_name == 'Under Attack' %}badge-failure
-                            {% elif state_name == 'Recovering' %}badge-normal" style="color:#a855f7; border-color:rgba(168,85,247,0.2); background-color:rgba(168,85,247,0.05);{% else %}badge-normal{% endif %}
-                            mb-3">
+                            {% elif state_name == 'Recovering' %}badge-normal{% else %}badge-normal{% endif %} mb-3"
+                            {% if state_name == 'Recovering' %}style="color:#a855f7; border-color:rgba(168,85,247,0.2); background-color:rgba(168,85,247,0.05);"{% endif %}>
                             {{ state_name }}
                         </span>
                     </div>

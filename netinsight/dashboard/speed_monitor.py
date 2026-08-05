@@ -8,7 +8,19 @@ from django.conf import settings
 logger = logging.getLogger("netinsight.speed_monitor")
 
 # Thread-safe global variable for dynamic capacity (initialized from settings)
-CURRENT_CAPACITY = getattr(settings, "LINK_CAPACITY", 100000000.0)
+_CAPACITY_LOCK = threading.Lock()
+_CURRENT_CAPACITY = getattr(settings, "LINK_CAPACITY", 100000000.0)
+
+def get_current_capacity() -> float:
+    """Thread-safe getter for current dynamic link capacity."""
+    with _CAPACITY_LOCK:
+        return float(_CURRENT_CAPACITY)
+
+def set_current_capacity(val: float) -> None:
+    """Thread-safe setter for current dynamic link capacity."""
+    global _CURRENT_CAPACITY
+    with _CAPACITY_LOCK:
+        _CURRENT_CAPACITY = float(val)
 
 def run_speed_test():
     """Streams up to 40MB from Cloudflare Edge with an 8-second cutoff to emulate Google's test."""
@@ -37,7 +49,7 @@ def run_speed_test():
                 # Clamp between 2.0 Mbps and 100.0 Mbps for solver stability
                 speed_bps = max(2000000.0, min(100000000.0, speed_bps))
 
-                CURRENT_CAPACITY = speed_bps
+                set_current_capacity(speed_bps)
                 logger.info(f"[DYNAMIC CAPACITY] Google-style Speed test: {speed_bps / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
                 return
         raise Exception(f"HTTP status {response.status_code}")
@@ -54,13 +66,13 @@ def run_speed_test():
                 if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
                     speed_bps = max_throughput * 1.2
                     speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-                    CURRENT_CAPACITY = speed_bps
+                    set_current_capacity(speed_bps)
                     logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
                 else:
-                    CURRENT_CAPACITY = 10000000.0 # 10 Mbps
+                    set_current_capacity(10000000.0) # 10 Mbps
                     logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
             else:
-                CURRENT_CAPACITY = 10000000.0 # 10 Mbps
+                set_current_capacity(10000000.0) # 10 Mbps
                 logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
             # Close DB connections to prevent leaks in background threads
             django.db.close_old_connections()

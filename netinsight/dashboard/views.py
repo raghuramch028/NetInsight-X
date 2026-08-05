@@ -59,6 +59,15 @@ def _to_native_types(obj: Any) -> Any:
         return obj.item()
     return obj
 
+def _validate_agent_token(request) -> bool:
+    """Validates optional X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured."""
+    token = getattr(settings, "NETINSIGHT_AGENT_TOKEN", None)
+    if token:
+        auth_header = request.headers.get("X-Agent-Token") or request.META.get("HTTP_X_AGENT_TOKEN")
+        if auth_header != token:
+            return False
+    return True
+
 def ensure_monitor_started():
     """No-op on central server. Packet sniffers run exclusively on client agents."""
     pass
@@ -70,6 +79,9 @@ def ensure_monitor_started():
 @api_view(["POST"])
 def api_register_agent(request):
     """API endpoint allowing new client endpoints to discover and register on Laptop 1."""
+    if not _validate_agent_token(request):
+        return Response({"error": "Unauthorized agent token"}, status=401)
+
     try:
         data = request.data
         mac_address = data.get("mac_address", "").lower().strip()
@@ -114,6 +126,9 @@ def api_register_agent(request):
 @api_view(["POST"])
 def api_agent_telemetry(request):
     """API endpoint receiving system telemetry and Scapy packet headers from agents."""
+    if not _validate_agent_token(request):
+        return Response({"error": "Unauthorized agent token"}, status=401)
+
     try:
         data = request.data
         agent_id = data.get("agent_id")
@@ -131,7 +146,6 @@ def api_agent_telemetry(request):
         # Ingest packets and update system health stats asynchronously
         handle_telemetry_ingestion(agent, stats, packets)
 
-        # Closed-Loop Feedback Control: Compute current optimal bandwidth bounds dynamically
         latest_state = StateHistory.objects.all().order_by("-timestamp").first()
         curr_state = latest_state.network_state if latest_state else "Normal"
         mdp_rec = mdp_engine.get_recommendation(curr_state)
@@ -141,7 +155,7 @@ def api_agent_telemetry(request):
         raw_priorities = settings_obj.lp_priorities if (settings_obj and settings_obj.lp_priorities) else settings.QOS_PRIORITIES
         raw_min = settings.QOS_MIN_BANDWIDTH
         raw_max = settings.QOS_MAX_BANDWIDTH
-        capacity = speed_monitor.CURRENT_CAPACITY
+        capacity = speed_monitor.get_current_capacity()
 
         active_priorities = list(raw_priorities) if (raw_priorities and len(raw_priorities) >= 4) else [1.0, 2.0, 0.5, 3.0]
         # Scale bounds dynamically as percentages of current link capacity (relative to 100 Mbps baseline)
@@ -254,7 +268,7 @@ def index_view(request):
         "online_agents_count": sum(1 for a in active_agents if a["is_online"]),
         "dse_alerts": dse_alerts,
         "settings": settings_obj,
-        "link_capacity_mbps": speed_monitor.CURRENT_CAPACITY / 1e6,
+        "link_capacity_mbps": speed_monitor.get_current_capacity() / 1e6,
     }
     return render(request, "dashboard/index.html", context)
 
@@ -299,7 +313,7 @@ def optimization_view(request):
 
     min_bounds = settings.QOS_MIN_BANDWIDTH
     max_bounds = settings.QOS_MAX_BANDWIDTH
-    capacity = speed_monitor.CURRENT_CAPACITY
+    capacity = speed_monitor.get_current_capacity()
 
     # Handle manual updates via UI Form POST
     if request.method == "POST":

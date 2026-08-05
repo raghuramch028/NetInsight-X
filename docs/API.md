@@ -99,7 +99,7 @@ Performs classification inference on incoming packets.
 * **Methods:**
   * `load_model() -> bool`: Loads the saved SVM `joblib` model and `scaler.joblib` from the model directory. Reloads at call time; returns `True` on success.
   * `update_ip_cache(src_ip, dst_ip, size, timestamp) -> tuple[float, float]`: Maintains in-memory packet rates and unique connection destination frequencies.
-  * `classify_packet(packet_dict) -> str`: Runs model predictions, falling back to rule-based heuristics if the SVM files are missing. Returns one of `Web Browsing`, `Streaming`, `File Transfer`, `Potentially Suspicious`.
+  * `classify_packet(packet_dict) -> str`: Runs hybrid model predictions and rule-based heuristics. Returns one of `Normal`, `DoS`, `DDoS`, `Brute Force`, `Reconnaissance`, `Mirai`, `Other Attacks`.
 
 ---
 

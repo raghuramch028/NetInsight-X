@@ -25,10 +25,17 @@ class MDPRecommendationEngine:
 
     STATE_MAP = {
         "NORMAL": 0,
+        "Normal": 0,
         "BUSY": 1,
+        "Busy": 1,
         "CONGESTED": 2,
+        "Congested": 2,
         "UNDER ATTACK": 3,
-        "RECOVERING": 4
+        "Under Attack": 3,
+        "FAILURE": 3,
+        "Failure": 3,
+        "RECOVERING": 4,
+        "Recovering": 4
     }
 
     def __init__(self):

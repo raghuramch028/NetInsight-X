@@ -73,25 +73,13 @@ class LiveMonitor:
 
 
     def classify_state_by_metrics(self, util: float, loss: float) -> str:
-        """Classifies network state using configurable thresholds from settings.py."""
-        thresholds = settings.STATE_THRESHOLDS
+        """Classifies network state using unified 5 title-case states matching MarkovPredictor.
 
-        # Check Failure conditions
-        if util >= thresholds["FAILURE"]["util_min"] or loss >= thresholds["FAILURE"]["loss_min"]:
-            return "FAILURE"
-
-        # Check Congested conditions
-        if (thresholds["CONGESTED"]["util_min"] <= util < thresholds["CONGESTED"]["util_max"]
-                and loss < thresholds["CONGESTED"]["loss_max"]):
-            return "CONGESTED"
-
-        # Check Busy conditions
-        if (thresholds["BUSY"]["util_min"] <= util < thresholds["BUSY"]["util_max"]
-                and loss < thresholds["BUSY"]["loss_max"]):
-            return "BUSY"
-
-        # Default to NORMAL
-        return "NORMAL"
+        Note: LiveMonitor and db_manager.py represent a standalone legacy capture mode.
+        The active production web app uses Client Agents -> REST API -> Django ORM + HMM Predictor.
+        """
+        from netinsight.prediction.markov import MarkovPredictor
+        return MarkovPredictor().classify_state(util, loss)
 
     def run_writer_worker(self) -> None:
         """Consumes pre-parsed packets from the queue, batch-writes them, and updates metrics."""

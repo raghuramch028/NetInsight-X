@@ -104,11 +104,7 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
         # 5. Log Security Alerts in ThreatHistory if threat is not Normal
         if threat_label != "Normal":
             # Map labels to severity levels
-            severity = "Warning"
-            if threat_label in ["DoS", "DDoS", "Mirai"]:
-                severity = "Critical"
-            elif threat_label == "Normal":
-                severity = "Information"
+            severity = "Critical" if threat_label in ["DoS", "DDoS", "Mirai"] else "Warning"
 
             # Check if this alert was already logged recently to avoid spamming the logs
             recent_alert = ThreatHistory.objects.filter(

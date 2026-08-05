@@ -35,10 +35,13 @@ if not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project
         "Set DJANGO_SECRET_KEY in production."
     )
 
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS", "*")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
+
+# Optional secret API token for agent endpoint authentication
+NETINSIGHT_AGENT_TOKEN = os.environ.get("NETINSIGHT_AGENT_TOKEN", None)
 
 if not DEBUG and "*" in ALLOWED_HOSTS:
     logging.getLogger(__name__).warning(

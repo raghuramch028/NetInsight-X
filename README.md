@@ -15,7 +15,7 @@ NetInsight-X is an intelligent, high-performance distributed network management 
 *   **Distributed Edge Sniffer:** Lightweight, modular Python agent deployed on endpoints (Laptops, Raspberry Pis) using Scapy for non-blocking packet capture and `psutil` for host resource monitoring.
 *   **Central REST Ingestion:** High-speed REST API endpoints (`/api/v1/agents/`) supporting remote agent registration, secure handshakes, and periodic telemetry streaming.
 *   **Neon Cloud PostgreSQL Integration:** Native bindings to Neon Cloud PostgreSQL for production telemetry logging, with automatic local SQLite fallback for isolated development.
-*   **Hybrid Anomaly Classifier:** Combines a Support Vector Machine (SVM) with an RBF kernel (trained on the real CICIDS2017 intrusion dataset using balanced class weights for high threat recall) with fast volumetric heuristic overrides.
+*   **Hybrid Anomaly Classifier:** Combines an XGBoost classifier (achieving 87.18% validation accuracy on balanced CICIDS2017 intrusion dataset samples) with fast, deterministic volumetric heuristic safety bounds for high-throughput DDoS and port-scan detection.
 *   **Markov State Prediction:** Real-time forecasting across 5 operational states (*Normal, Busy, Congested, Under Attack, Recovering*) decoded from multi-metric sequences using the HMM Viterbi algorithm.
 *   **Convex QoS Optimization:** Formulates bandwidth allocation as a constrained Linear Program solved via interior-point methods, validating solutions against primal-dual Karush-Kuhn-Tucker (KKT) numerical conditions.
 *   **Interactive Topology Mapping:** Generates real-time, dynamic network visualization graphs using NetworkX and Vis.js (PyVis) embedded in the dashboard.

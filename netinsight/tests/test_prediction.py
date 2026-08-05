@@ -37,36 +37,36 @@ class TestPredictionModule(TestCase):
 
     def test_deterministic_state_classifier(self):
         """Tests that utilization and loss metrics map to correct network states."""
-        # NORMAL threshold: util < 40%, loss < 2%
-        self.assertEqual(self.predictor.classify_state(0.25, 0.01), "NORMAL")
-        # BUSY threshold: 40% <= util < 75%, loss < 5%
-        self.assertEqual(self.predictor.classify_state(0.50, 0.03), "BUSY")
-        # CONGESTED threshold: 75% <= util < 95%, loss < 10%
-        self.assertEqual(self.predictor.classify_state(0.80, 0.07), "CONGESTED")
-        # FAILURE threshold: util >= 95% or loss >= 10%
-        self.assertEqual(self.predictor.classify_state(0.96, 0.02), "FAILURE")
-        self.assertEqual(self.predictor.classify_state(0.50, 0.12), "FAILURE")
+        # Normal threshold: util < 40%, loss < 2%
+        self.assertEqual(self.predictor.classify_state(0.25, 0.01), "Normal")
+        # Busy threshold: 40% <= util < 75%, loss < 5%
+        self.assertEqual(self.predictor.classify_state(0.50, 0.03), "Busy")
+        # Congested threshold: 75% <= util < 95%, loss < 10%
+        self.assertEqual(self.predictor.classify_state(0.80, 0.07), "Congested")
+        # Under Attack threshold: util >= 95% or loss >= 10%
+        self.assertEqual(self.predictor.classify_state(0.96, 0.02), "Under Attack")
+        self.assertEqual(self.predictor.classify_state(0.50, 0.12), "Under Attack")
 
     def test_markov_matrix_estimation(self):
         """Tests estimation of transition matrix from state history.
 
         Mock sequence of 7 states:
-        NORMAL -> BUSY -> NORMAL -> BUSY -> CONGESTED -> FAILURE -> CONGESTED
+        Normal -> Busy -> Normal -> Busy -> Congested -> Under Attack -> Congested
 
         Transitions count:
-        - NORMAL to BUSY: 2
-        - BUSY to NORMAL: 1
-        - BUSY to CONGESTED: 1
-        - CONGESTED to FAILURE: 1
-        - FAILURE to CONGESTED: 1
+        - Normal to Busy: 2
+        - Busy to Normal: 1
+        - Busy to Congested: 1
+        - Congested to Under Attack: 1
+        - Under Attack to Congested: 1
 
         Total transitions:
-        - Out of NORMAL: 2 (both to BUSY). Probabilities: NORMAL -> BUSY = 1.0, others = 0.0
-        - Out of BUSY: 2 (1 to NORMAL, 1 to CONGESTED). Probabilities: BUSY -> NORMAL = 0.5, BUSY -> CONGESTED = 0.5
-        - Out of CONGESTED: 1 (to FAILURE). Probabilities: CONGESTED -> FAILURE = 1.0
-        - Out of FAILURE: 1 (to CONGESTED). Probabilities: FAILURE -> CONGESTED = 1.0
+        - Out of Normal: 2 (both to Busy). Probabilities: Normal -> Busy = 1.0, others = 0.0
+        - Out of Busy: 2 (1 to Normal, 1 to Congested). Probabilities: Busy -> Normal = 0.5, Busy -> Congested = 0.5
+        - Out of Congested: 1 (to Under Attack). Probabilities: Congested -> Under Attack = 1.0
+        - Out of Under Attack: 1 (to Congested). Probabilities: Under Attack -> Congested = 1.0
         """
-        history_seq = ["NORMAL", "BUSY", "NORMAL", "BUSY", "CONGESTED", "FAILURE", "CONGESTED"]
+        history_seq = ["Normal", "Busy", "Normal", "Busy", "Congested", "Under Attack", "Congested"]
 
         # Save sequence into state_history table
         timestamp = 10000.0
@@ -76,26 +76,26 @@ class TestPredictionModule(TestCase):
 
         P = self.predictor.estimate_transition_matrix()
 
-        # Row 0: NORMAL transitions
-        self.assertAlmostEqual(P[0, 1], 1.0, places=4) # NORMAL -> BUSY
+        # Row 0: Normal transitions
+        self.assertAlmostEqual(P[0, 1], 1.0, places=4) # Normal -> Busy
         self.assertAlmostEqual(P[0, 0], 0.0, places=4)
 
-        # Row 1: BUSY transitions
-        self.assertAlmostEqual(P[1, 0], 0.5, places=4) # BUSY -> NORMAL
-        self.assertAlmostEqual(P[1, 2], 0.5, places=4) # BUSY -> CONGESTED
+        # Row 1: Busy transitions
+        self.assertAlmostEqual(P[1, 0], 0.5, places=4) # Busy -> Normal
+        self.assertAlmostEqual(P[1, 2], 0.5, places=4) # Busy -> Congested
         self.assertAlmostEqual(P[1, 1], 0.0, places=4)
 
-        # Row 2: CONGESTED transitions
-        self.assertAlmostEqual(P[2, 3], 1.0, places=4) # CONGESTED -> FAILURE
+        # Row 2: Congested transitions
+        self.assertAlmostEqual(P[2, 3], 1.0, places=4) # Congested -> Under Attack
 
-        # Row 3: FAILURE transitions
-        self.assertAlmostEqual(P[3, 2], 1.0, places=4) # FAILURE -> CONGESTED
+        # Row 3: Under Attack transitions
+        self.assertAlmostEqual(P[3, 2], 1.0, places=4) # Under Attack -> Congested
 
-        # Test future prediction (k=1) from BUSY
-        pred_dict = self.predictor.predict_state_distribution("BUSY", k_steps=1)
-        self.assertAlmostEqual(pred_dict["prediction"]["NORMAL"], 0.5, places=4)
-        self.assertAlmostEqual(pred_dict["prediction"]["CONGESTED"], 0.5, places=4)
-        self.assertAlmostEqual(pred_dict["prediction"]["BUSY"], 0.0, places=4)
+        # Test future prediction (k=1) from Busy
+        pred_dict = self.predictor.predict_state_distribution("Busy", k_steps=1)
+        self.assertAlmostEqual(pred_dict["prediction"]["Normal"], 0.5, places=4)
+        self.assertAlmostEqual(pred_dict["prediction"]["Congested"], 0.5, places=4)
+        self.assertAlmostEqual(pred_dict["prediction"]["Busy"], 0.0, places=4)
 
     def test_mdp_value_iteration_convergence(self):
         """Verifies that the MDP Value Iteration algorithm converges and generates a policy."""

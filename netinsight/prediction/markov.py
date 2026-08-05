@@ -11,35 +11,55 @@ logger = logging.getLogger(__name__)
 class MarkovPredictor:
     """Estimates transition probability matrices and predicts future network states."""
 
-    # Map state names to indexes for mathematical matrix operations
+    # Map standard 5 title-case state names to indexes for matrix operations
     STATE_INDEX = {
-        "NORMAL": 0,
-        "BUSY": 1,
-        "CONGESTED": 2,
-        "FAILURE": 3
+        "Normal": 0,
+        "Busy": 1,
+        "Congested": 2,
+        "Under Attack": 3,
+        "Recovering": 4
     }
     INDEX_STATE = {v: k for k, v in STATE_INDEX.items()}
 
     def __init__(self):
-        # Default uniform matrix used when history is insufficient
+        # Default 5x5 transition matrix matching HiddenMarkovModel prior probabilities
         self.default_transition_matrix = np.array([
-            [0.70, 0.20, 0.08, 0.02],  # Normal
-            [0.15, 0.65, 0.15, 0.05],  # Busy
-            [0.05, 0.20, 0.60, 0.15],  # Congested
-            [0.02, 0.08, 0.20, 0.70]   # Failure
+            [0.75, 0.15, 0.05, 0.03, 0.02],  # Normal
+            [0.20, 0.60, 0.15, 0.03, 0.02],  # Busy
+            [0.05, 0.20, 0.55, 0.05, 0.15],  # Congested
+            [0.02, 0.03, 0.10, 0.70, 0.15],  # Under Attack
+            [0.30, 0.10, 0.05, 0.05, 0.50]   # Recovering
         ])
 
-    def classify_state(self, util: float, loss: float) -> str:
-        """Classifies metrics into network states dynamically using settings.py."""
+    def classify_state(self, util: float, loss: float, threat_label: str = "Normal") -> str:
+        """Classifies metrics into standard network states using settings.py thresholds."""
+        if threat_label in ["DoS", "DDoS", "Mirai"]:
+            return "Under Attack"
+
         thresholds = settings.STATE_THRESHOLDS
 
         if util >= thresholds["FAILURE"]["util_min"] or loss >= thresholds["FAILURE"]["loss_min"]:
-            return "FAILURE"
-        if thresholds["CONGESTED"]["util_min"] <= util < thresholds["CONGESTED"]["util_max"]:
-            return "CONGESTED"
-        if thresholds["BUSY"]["util_min"] <= util < thresholds["BUSY"]["util_max"]:
-            return "BUSY"
-        return "NORMAL"
+            return "Under Attack"
+        if thresholds["CONGESTED"]["util_min"] <= util < thresholds["CONGESTED"]["util_max"] or loss >= thresholds["CONGESTED"]["loss_max"]:
+            return "Congested"
+        if thresholds["BUSY"]["util_min"] <= util < thresholds["BUSY"]["util_max"] or loss >= thresholds["BUSY"]["loss_max"]:
+            return "Busy"
+        return "Normal"
+
+    def _canonicalize_state(self, s: str) -> str:
+        """Normalizes free-text database state string to canonical 5 title-case states."""
+        if not s:
+            return "Normal"
+        s_upper = s.strip().upper()
+        mapping = {
+            "NORMAL": "Normal",
+            "BUSY": "Busy",
+            "CONGESTED": "Congested",
+            "FAILURE": "Under Attack",
+            "UNDER ATTACK": "Under Attack",
+            "RECOVERING": "Recovering"
+        }
+        return mapping.get(s_upper, "Normal")
 
     def _estimate_transition_matrix(self) -> tuple[np.ndarray, bool]:
         """Internal implementation that also reports whether the default matrix was used."""
@@ -54,10 +74,11 @@ class MarkovPredictor:
                 logger.info("Insufficient state history to estimate Markov transition matrix. Using default transitions.")
                 return self.default_transition_matrix, True
 
-            states = df["network_state"].tolist()
+            raw_states = df["network_state"].tolist()
+            states = [self._canonicalize_state(s) for s in raw_states]
 
-            # Count transitions
-            counts = np.zeros((4, 4))
+            # Count transitions across 5 states
+            counts = np.zeros((5, 5))
             for i in range(len(states) - 1):
                 s_curr = states[i]
                 s_next = states[i+1]
@@ -67,14 +88,13 @@ class MarkovPredictor:
                     idx_next = self.STATE_INDEX[s_next]
                     counts[idx_curr, idx_next] += 1
 
-            # Normalize to create row-stochastic matrix (transition probabilities)
-            transition_matrix = np.zeros((4, 4))
-            for i in range(4):
+            # Normalize to create 5x5 row-stochastic matrix
+            transition_matrix = np.zeros((5, 5))
+            for i in range(5):
                 row_sum = counts[i].sum()
                 if row_sum > 0:
                     transition_matrix[i] = counts[i] / row_sum
                 else:
-                    # Fallback to default transitions for states with no observed departures
                     transition_matrix[i] = self.default_transition_matrix[i]
 
             return transition_matrix, False
@@ -101,11 +121,12 @@ class MarkovPredictor:
         Formula:
             s^(t+k) = s^(t) * P^k
         """
+        current_state = self._canonicalize_state(current_state)
         if current_state not in self.STATE_INDEX:
-            current_state = "NORMAL"
+            current_state = "Normal"
 
-        # One-hot state vector
-        s_t = np.zeros(4)
+        # One-hot 5-state vector
+        s_t = np.zeros(5)
         s_t[self.STATE_INDEX[current_state]] = 1.0
 
         P, using_default = self._estimate_transition_matrix()
@@ -117,7 +138,7 @@ class MarkovPredictor:
 
         return {
             "matrix": P.tolist(),
-            "prediction": {self.INDEX_STATE[i]: float(s_future[i]) for i in range(4)},
+            "prediction": {self.INDEX_STATE[i]: float(s_future[i]) for i in range(5)},
             "most_likely": self.INDEX_STATE[int(np.argmax(s_future))],
             "using_default_matrix": using_default,
         }
