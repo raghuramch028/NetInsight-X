@@ -2,7 +2,6 @@
 
 **NetInsight-X: An AI-Driven Distributed Network Monitoring, Traffic Analytics, and Decision Support System (DSS)**
 
-[![Live Demo](https://img.shields.io/badge/Interactive-Live%20Demo-blue?style=for-the-badge&logo=html5&logoColor=white)](presentation_demo.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
@@ -132,7 +131,6 @@ NetInsight-X/
 │   └── dashboard/           # Django templates, styling, views & REST routes
 │
 ├── data/                    # Local storage for CSV training sets
-├── presentation_demo.html   # Standalone interactive demonstration suite
 └── requirements.txt         # Package dependencies file
 ```
 

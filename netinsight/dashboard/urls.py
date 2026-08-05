@@ -13,7 +13,6 @@ urlpatterns = [
     path("classification/", views.classification_view, name="classification"),
     path("reports/", views.reports_view, name="reports"),
     path("settings/", views.settings_view, name="settings"),
-    path("demo/", views.demo_view, name="demo"),
 
     # REST Telemetry APIs (Versioned)
     path("api/v1/agents/register", views.api_register_agent, name="api_register_agent"),

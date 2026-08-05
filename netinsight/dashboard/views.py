@@ -865,9 +865,3 @@ def api_live_packets(request):
     except Exception as e:
         logger.error(f"API packets error: {e}", exc_info=True)
         return JsonResponse({"packets": [], "error": str(e)}, status=500)
-
-
-def demo_view(request):
-    """Renders the standalone interactive presentation demonstration suite."""
-    return render(request, "dashboard/demo_presentation.html")
-
