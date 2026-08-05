@@ -138,22 +138,24 @@ def api_agent_telemetry(request):
         recommended_action = mdp_rec["recommended_action"]
 
         settings_obj = SystemSettings.objects.first()
-        priorities = settings_obj.lp_priorities if settings_obj else settings.QOS_PRIORITIES
-        min_bounds = settings.QOS_MIN_BANDWIDTH
-        max_bounds = settings.QOS_MAX_BANDWIDTH
+        raw_priorities = settings_obj.lp_priorities if (settings_obj and settings_obj.lp_priorities) else settings.QOS_PRIORITIES
+        raw_min = settings.QOS_MIN_BANDWIDTH
+        raw_max = settings.QOS_MAX_BANDWIDTH
         capacity = speed_monitor.CURRENT_CAPACITY
 
-        active_priorities = list(priorities)
+        active_priorities = list(raw_priorities) if (raw_priorities and len(raw_priorities) >= 4) else [1.0, 2.0, 0.5, 3.0]
         # Scale bounds dynamically as percentages of current link capacity (relative to 100 Mbps baseline)
         scale_ratio = capacity / 100000000.0
-        active_min_bounds = [float(val * scale_ratio) for val in min_bounds]
-        active_max_bounds = [float(val * scale_ratio) for val in max_bounds]
+        base_min = list(raw_min) if (raw_min and len(raw_min) >= 4) else [5e6, 15e6, 2e6, 10e6]
+        base_max = list(raw_max) if (raw_max and len(raw_max) >= 4) else [40e6, 60e6, 30e6, 50e6]
+        active_min_bounds = [float(val * scale_ratio) for val in base_min]
+        active_max_bounds = [float(val * scale_ratio) for val in base_max]
 
-        if recommended_action == "Prioritize Critical Services":
+        if recommended_action == "Prioritize Critical Services" and len(active_priorities) >= 4:
             active_priorities[3] = float(active_priorities[3] * 2.0)
             active_min_bounds[3] = float(active_min_bounds[3] * 1.5)
             active_priorities[2] = float(active_priorities[2] * 0.5)
-        elif recommended_action == "Reroute Traffic":
+        elif recommended_action == "Reroute Traffic" and len(active_priorities) >= 3:
             active_priorities[0] = float(active_priorities[0] * 1.5)
             active_priorities[1] = float(active_priorities[1] * 0.5)
             active_priorities[2] = float(active_priorities[2] * 0.2)
