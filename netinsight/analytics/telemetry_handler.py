@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from datetime import timedelta
 
 from django.db import close_old_connections
 from django.db.models import Sum
@@ -93,11 +94,32 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
             packet_loss=packet_loss
         )
 
-        # C. Gather HMM Observation Vector
-        latest_threat = ThreatHistory.objects.all().order_by("-timestamp").first()
-        threat_label = latest_threat.threat_type if latest_threat else "Normal"
+        # C. Gather HMM Observation Vector — Majority Vote from last 30s of threat records
+        # Prevents a single false positive from permanently poisoning HMM state
+        threat_label = "Normal"
+        recent_threats = ThreatHistory.objects.filter(
+            timestamp__gte=timezone.now() - timedelta(seconds=30)
+        ).values_list("threat_type", flat=True)
 
-        from datetime import timedelta
+        if recent_threats.exists():
+            threat_counts = {}
+            total = 0
+            for t in recent_threats:
+                threat_counts[t] = threat_counts.get(t, 0) + 1
+                total += 1
+
+            normal_count = threat_counts.get("Normal", 0)
+            # If 80%+ of recent records are Normal, report Normal to HMM
+            if total > 0 and (normal_count / total) >= 0.8:
+                threat_label = "Normal"
+            else:
+                # Use the most frequent non-Normal threat
+                non_normal = {k: v for k, v in threat_counts.items() if k != "Normal"}
+                if non_normal:
+                    threat_label = max(non_normal, key=non_normal.get)
+                else:
+                    threat_label = "Normal"
+
         online_cutoff = timezone.now() - timedelta(seconds=15)
         online_agents = Agent.objects.filter(last_seen__gte=online_cutoff)
         total_sockets = online_agents.aggregate(total_sockets=Sum("active_connections"))["total_sockets"] or 0

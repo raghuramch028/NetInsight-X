@@ -29,6 +29,10 @@ class TestAnalyticsEngine(TestCase):
     def setUp(self):
         db_manager.init_db()
         db_manager.clear_db()
+        # Clear Django ORM tables for test isolation (needed with --keepdb)
+        from netinsight.dashboard.models import MetricRecord, PacketRecord
+        MetricRecord.objects.all().delete()
+        PacketRecord.objects.all().delete()
         self.engine = AnalyticsEngine()
 
     def tearDown(self):
@@ -115,7 +119,7 @@ class TestAnalyticsEngine(TestCase):
         self.assertEqual(top_ip_row["total_bytes"], 2500)
 
         # Test general summary
-        summary = self.engine.get_general_summary(window_seconds=10)
+        summary = self.engine.get_general_summary(window_seconds=60)
         self.assertEqual(summary["total_packets"], 6)
         self.assertEqual(summary["total_bytes"], 3200)
         self.assertAlmostEqual(summary["avg_packet_size"], 3200.0 / 6, places=2)

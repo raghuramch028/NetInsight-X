@@ -78,7 +78,7 @@ class TestClosedLoopScenarios(unittest.TestCase):
         pkt = {
             "src_ip": "192.168.1.100", "dst_ip": "10.0.0.1",
             "src_port": 60000, "dst_port": 5004, "protocol": "UDP",
-            "size": 100, "timestamp": time.time(), "packet_rate": 1500.0, "conn_frequency": 25.0
+            "size": 100, "timestamp": time.time(), "packet_rate": 1500.0, "conn_frequency": 5.0
         }
         threat = self.classifier.classify_packet(pkt)
         self.assertIn(threat, ["DDoS", "DoS", "Mirai"])
@@ -99,7 +99,7 @@ class TestClosedLoopScenarios(unittest.TestCase):
         pkt = {
             "src_ip": "192.168.1.200", "dst_ip": "10.0.0.5",
             "src_port": 40000, "dst_port": 22, "protocol": "TCP",
-            "size": 64, "timestamp": time.time(), "packet_rate": 25.0, "conn_frequency": 30.0
+            "size": 64, "timestamp": time.time(), "packet_rate": 60.0, "conn_frequency": 60.0
         }
         threat = self.classifier.classify_packet(pkt)
         self.assertIn(threat, ["Reconnaissance", "Brute Force"])

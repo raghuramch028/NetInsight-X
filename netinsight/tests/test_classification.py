@@ -107,31 +107,31 @@ class TestTrafficClassification(TestCase):
         self.classifier.clf = None
         self.classifier.scaler = None
 
-        # Test DDoS rule: high packet rate, small size
+        # Test DDoS rule: high packet rate (>1000 pps), small size (<200 bytes)
         pkt_ddos = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
             "size": 64,
             "protocol": "TCP",
             "timestamp": 30000.0,
-            "packet_rate": 120.0,
+            "packet_rate": 1500.0,
             "conn_frequency": 5.0
         }
         self.assertEqual(self.classifier.classify_packet(pkt_ddos), "DDoS")
 
-        # Test DoS rule: high packet rate, larger size
+        # Test DoS rule: high packet rate (>500 pps), larger size
         pkt_dos = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
             "size": 500,
             "protocol": "TCP",
             "timestamp": 30000.0,
-            "packet_rate": 120.0,
+            "packet_rate": 600.0,
             "conn_frequency": 5.0
         }
         self.assertEqual(self.classifier.classify_packet(pkt_dos), "DoS")
 
-        # Test Mirai rule: UDP port 5004, high packet rate, high connection frequency
+        # Test Mirai rule: UDP, high packet rate (>300 pps), high connection frequency (>30)
         pkt_mirai = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
@@ -139,12 +139,12 @@ class TestTrafficClassification(TestCase):
             "protocol": "UDP",
             "timestamp": 30000.0,
             "dst_port": 5004,
-            "packet_rate": 60.0,
-            "conn_frequency": 20.0
+            "packet_rate": 400.0,
+            "conn_frequency": 35.0
         }
         self.assertEqual(self.classifier.classify_packet(pkt_mirai), "Mirai")
 
-        # Test Brute Force rule: Port 22 (SSH), packet_rate > 10.0
+        # Test Brute Force rule: Port 22 (SSH), packet_rate > 50.0
         pkt_brute = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
@@ -152,7 +152,7 @@ class TestTrafficClassification(TestCase):
             "protocol": "TCP",
             "timestamp": 30000.0,
             "dst_port": 22,
-            "packet_rate": 15.0,
+            "packet_rate": 60.0,
             "conn_frequency": 2.0
         }
         self.assertEqual(self.classifier.classify_packet(pkt_brute), "Brute Force")

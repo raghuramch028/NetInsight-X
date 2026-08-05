@@ -155,29 +155,34 @@ class TrafficClassifier:
                 conn_frequency = 2.0
 
         # --- Hybrid IDS Override Rules ---
+        # These thresholds are calibrated for REAL attacks, not normal browsing/streaming.
+        # Normal web browsing: 5-50 pps, YouTube HD: 50-200 pps, Windows Update: 30-150 pps
+        # Real DDoS attack: 5,000-50,000+ pps with tiny uniform packets
         dst_port = packet_dict.get("dst_port", 0)
         src_port = packet_dict.get("src_port", 0)
 
-        # 1. DDoS / DoS detection (high packet rate from single host, small/uniform packet sizes)
-        if packet_rate > 100.0:
-            if size < 200:
-                return "DDoS"
+        # 1. DDoS / DoS detection — requires SUSTAINED high-volume flooding
+        #    DDoS: 1000+ pps with small packets (<200 bytes) = volumetric flood
+        #    DoS:  500+ pps with any packet size = application-layer flood
+        if packet_rate > 1000.0 and size < 200:
+            return "DDoS"
+        if packet_rate > 500.0:
             return "DoS"
 
-        # 2. Mirai attack (high UDP packet rate or connection frequency to specific target ports)
-        if proto_str == "UDP" and (dst_port in [5004, 1935] or src_port in [5004, 1935] or packet_rate > 50.0) and conn_frequency > 15.0:
+        # 2. Mirai botnet — high UDP flood to IoT/streaming ports with extreme connection fan-out
+        if proto_str == "UDP" and packet_rate > 300.0 and conn_frequency > 30.0:
             return "Mirai"
 
-        # 3. Brute Force detection (high TCP connection attempts to admin ports SSH/Telnet/RDP)
-        if (dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]) and packet_rate > 10.0:
+        # 3. Brute Force — rapid TCP connection attempts to admin ports (SSH/Telnet/RDP/SMB)
+        if (dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]) and packet_rate > 50.0:
             return "Brute Force"
 
-        # 4. Reconnaissance / Port Scan (high connection frequency to many different IPs/ports)
-        if conn_frequency > 20.0 or (packet_rate > 5.0 and conn_frequency > 10.0):
+        # 4. Reconnaissance / Port Scan — scanning 50+ unique destinations
+        if conn_frequency > 50.0 or (packet_rate > 30.0 and conn_frequency > 25.0):
             return "Reconnaissance"
 
-        # 5. Other Attacks
-        if proto_str == "ICMP" and packet_rate > 20.0:
+        # 5. ICMP Flood
+        if proto_str == "ICMP" and packet_rate > 100.0:
             return "Other Attacks"
 
         # --- SVM Machine Learning Inference ---

@@ -202,8 +202,29 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     X = df[FEATURE_COLUMNS].values
     y = df["label"].values
 
-    # Oversample the entire dataset to ensure balanced classes in training and validation
-    X, y = oversample_data(X, y, target_count=4000)
+    # Balanced sampling: Keep all Normal samples, cap attack classes proportionally
+    # Target: ~60% Normal, ~40% Attacks (reflects real-world traffic distribution)
+    normal_mask = y == 0
+    attack_mask = ~normal_mask
+    normal_count = int(normal_mask.sum())
+
+    X_normal = X[normal_mask]
+    y_normal = y[normal_mask]
+    X_attack = X[attack_mask]
+    y_attack = y[attack_mask]
+
+    # Cap total attack samples to 2/3 of Normal count (ensures 60/40 split)
+    max_attack_total = int(normal_count * 0.67)
+    if len(X_attack) > max_attack_total:
+        rng = np.random.RandomState(42)
+        attack_indices = rng.choice(len(X_attack), size=max_attack_total, replace=False)
+        X_attack = X_attack[attack_indices]
+        y_attack = y_attack[attack_indices]
+
+    X = np.vstack([X_normal, X_attack])
+    y = np.concatenate([y_normal, y_attack])
+
+    logger.info(f"Training set composition: {int(normal_count)} Normal + {len(y_attack)} Attack samples = {len(y)} total")
 
     # Stratify split to ensure balanced classes in validation
     X_train, X_test, y_train, y_test = train_test_split(
@@ -224,6 +245,7 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
         colsample_bytree=0.8,
         random_state=42
     )
+    # Use class_weight via sample_weight for balanced learning
     sample_weights = compute_sample_weight(class_weight="balanced", y=y_train)
     clf.fit(X_train_scaled, y_train, sample_weight=sample_weights)
 
