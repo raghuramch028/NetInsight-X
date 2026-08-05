@@ -102,4 +102,4 @@ If official UNSW-NB15 CSV files are not found in `data/`, a deterministic synthe
 ## 4. Deployment Notes
 
 * `DEBUG=False` requires `python manage.py collectstatic --noinput` so WhiteNoise can serve static files.
-* Production deployments can run using Gunicorn (`gunicorn netinsight.config.wsgi:application`) or inside a Docker container (`docker run -p 8000:7860 ...`).
+* Production deployments can run using Gunicorn (`gunicorn netinsight.config.wsgi:application`) or direct local execution.
