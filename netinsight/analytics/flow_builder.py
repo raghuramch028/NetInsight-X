@@ -78,11 +78,11 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
         # Calculate packet rate — require minimum 2s of flow duration for meaningful rate
         # For new/short flows, use raw packet count to avoid inflating rate
         # (e.g. 1 packet / 0.001s = 1000 pps false alarm)
-        if flow.duration >= 2.0:
-            packet_rate = float(flow.packet_count) / flow.duration
-        else:
-            # For very short flows, use packet count directly (conservative estimate)
-            packet_rate = float(flow.packet_count)
+        packet_rate = (
+            float(flow.packet_count) / flow.duration
+            if flow.duration >= 2.0
+            else float(flow.packet_count)
+        )
 
         # Construct packet payload dictionary for classification compatibility
         classify_payload = {

@@ -115,10 +115,11 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
             else:
                 # Use the most frequent non-Normal threat
                 non_normal = {k: v for k, v in threat_counts.items() if k != "Normal"}
-                if non_normal:
-                    threat_label = max(non_normal, key=non_normal.get)
-                else:
-                    threat_label = "Normal"
+                threat_label = (
+                    max(non_normal, key=non_normal.get)
+                    if non_normal
+                    else "Normal"
+                )
 
         online_cutoff = timezone.now() - timedelta(seconds=15)
         online_agents = Agent.objects.filter(last_seen__gte=online_cutoff)
