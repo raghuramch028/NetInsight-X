@@ -15,8 +15,8 @@ Parses raw Scapy packets and extracts IP fields, performing passive approximatio
   * `get_average_inter_packet_delay() -> float`: Returns the rolling average inter-packet arrival delay (fallback latency approximation).
   * `get_estimated_loss_rate() -> float`: Returns the estimated percentage packet loss computed from TCP sequence duplicate retransmissions.
 
-### 1.2 `LiveMonitor` (in `monitor.py`)
-Spawns background threads to capture network packets or run a simulated traffic replay loop, saving packets and calculating windowed metrics.
+### 1.2 `LiveMonitor` (in `monitor.py`) [Legacy]
+Spawns background threads to capture network packets or run a simulated traffic replay loop, saving packets and calculating windowed metrics. Note: The live production architecture now uses `Agent -> REST -> Django ORM` (`api_register_agent`, `api_agent_telemetry`). This module and `db_manager.py` are legacy offline benchmarking modules.
 
 * **Methods:**
   * `__init__()`: Sets up the thread-safe packet queue and resets capture counts.

@@ -147,3 +147,32 @@ class TestDashboardViews(TestCase):
         self.assertIsNone(record.pk, "Prepared record should be unsaved for bulk_create")
         self.assertEqual(record.agent, agent)
 
+    def test_agent_token_validation(self):
+        """Verifies _validate_agent_token returns False when X-Agent-Token is mismatched or missing."""
+        from django.test import RequestFactory
+        from netinsight.dashboard.views import _validate_agent_token
+
+        factory = RequestFactory()
+
+        original_token = getattr(settings, "NETINSIGHT_AGENT_TOKEN", None)
+        original_debug = settings.DEBUG
+
+        try:
+            settings.NETINSIGHT_AGENT_TOKEN = "secret_token"
+            settings.DEBUG = False
+
+            # Test when token is missing
+            request = factory.post("/api/v1/agents/")
+            self.assertFalse(_validate_agent_token(request))
+
+            # Test when token is mismatched
+            request = factory.post("/api/v1/agents/", HTTP_X_AGENT_TOKEN="wrong_token")
+            self.assertFalse(_validate_agent_token(request))
+
+            # Test when token matches
+            request = factory.post("/api/v1/agents/", HTTP_X_AGENT_TOKEN="secret_token")
+            self.assertTrue(_validate_agent_token(request))
+        finally:
+            settings.NETINSIGHT_AGENT_TOKEN = original_token
+            settings.DEBUG = original_debug
+

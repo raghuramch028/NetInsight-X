@@ -38,7 +38,7 @@ CLASS_LABELS = {
 
 # Mirror URL of preprocessed intrusion dataset subset (approx 2.8MB)
 DATASET_URL = "https://raw.githubusercontent.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/main/data/CICIDS2017_sample_km.csv"
-DATASET_SHA256 = "c08975edab9426f59ccbd2dbf0c13e55c17983c27be5722b95b8ee9ee5b13689" # Checksum or validation
+DATASET_SHA256 = "c08975edab9426f59ccbd2dbf0c13e55c17983c27be5722b95b8ee9ee5b13689"[:64]
 
 def _model_paths() -> tuple[Path, Path, Path]:
     model_path = Path(settings.SVM_MODEL_PATH)

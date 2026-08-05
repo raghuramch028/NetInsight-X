@@ -52,15 +52,8 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
                 protocol=protocol
             )
 
-        # 4. Feature Extraction & SVM Threat Classification
-
-        # Estimate connection frequency (unique destinations visited by the agent in last 10m)
-        window_start = pkt_ts - 600.0
-        unique_dests = PacketRecord.objects.filter(
-            agent=agent,
-            src_ip=src_ip,
-            timestamp__gte=window_start
-        ).values("dst_ip").distinct().count()
+        # Feature Extraction & XGBoost Threat Classification
+        unique_dests = 1
 
         # Calculate packet rate normalized to time (packets per second)
         # Clamp minimum effective duration to 0.5s to avoid rate inflation on instant single packets

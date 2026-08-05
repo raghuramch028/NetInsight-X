@@ -134,8 +134,8 @@ Numerical verification evaluates these conditions against a tight tolerance boun
 ## 4. Operational State Prediction & MDP Recommendations (Module 4)
 
 ### 4.1 Markov Chain State Forecasting
-Network metrics are classified into four states: Normal ($0$), Busy ($1$), Congested ($2$), and Failure ($3$).
-The state transition probability matrix $P \in \mathbb{R}^{4 \times 4}$ represents the probability of moving from state $i$ to state $j$:
+Network metrics are classified into five operational states: Normal ($0$), Busy ($1$), Congested ($2$), Under Attack ($3$), and Recovering ($4$).
+The state transition probability matrix $P \in \mathbb{R}^{5 \times 5}$ represents the probability of moving from state $i$ to state $j$:
 $$P_{ij} = P(S_{t+1} = j \mid S_t = i) = \frac{N_{ij}}{\sum_k N_{ik}}$$
 Where $N_{ij}$ is the frequency count of state transition $(i \to j)$ recorded chronologically in `state_history`.
 - **k-Step Ahead Forecasting:**

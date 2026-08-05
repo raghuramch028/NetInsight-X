@@ -63,6 +63,13 @@ def _to_native_types(obj: Any) -> Any:
         return obj.item()
     return obj
 
+def _check_dashboard_auth(request):
+    """Returns HttpResponse 401 if NETINSIGHT_REQUIRE_AUTH is enabled and user is unauthenticated."""
+    if getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False):
+        if not request.user or not request.user.is_authenticated:
+            return JsonResponse({"error": "Authentication required to access dashboard endpoints"}, status=401)
+    return None
+
 def _validate_agent_token(request) -> bool:
     """Validates optional X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured.
     Uses hmac.compare_digest for constant-time comparison to prevent timing attacks."""

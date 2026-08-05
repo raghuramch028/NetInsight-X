@@ -175,6 +175,9 @@ DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 2
 # Demonstration / Replay Mode
 DEMO_MODE = os.environ.get("NETINSIGHT_DEMO_MODE", "True").lower() in ("true", "1", "yes")
 
+# Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
+NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
+
 # Configurable thresholds for network states (based on bandwidth utilization and packet loss)
 STATE_THRESHOLDS = {
     "NORMAL": {

@@ -151,12 +151,16 @@ class BandwidthOptimizer:
         """
         logger.info(f"Computing proportional fallback allocation (Status: {status})...")
         n_classes = len(priorities)
+        # Pad or slice min_bounds and max_bounds to ensure len == n_classes and prevent IndexError
+        m_min = list(min_bounds)[:n_classes] + [0.0] * max(0, n_classes - len(min_bounds))
+        M_max = list(max_bounds)[:n_classes] + [total_capacity] * max(0, n_classes - len(max_bounds))
+
         allocations = [0.0] * n_classes
-        sum_min = sum(min_bounds)
+        sum_min = sum(m_min)
 
         if sum_min <= total_capacity:
             # Phase 1: Allocate minimums
-            allocations = [float(m) for m in min_bounds]
+            allocations = [float(m) for m in m_min]
             remaining = total_capacity - sum_min
 
             # Phase 2: Allocate remaining proportionally to weights, respecting max limits
@@ -165,13 +169,13 @@ class BandwidthOptimizer:
                 for i in range(n_classes):
                     weight_ratio = priorities[i] / total_priority
                     added = weight_ratio * remaining
-                    max_addition = max_bounds[i] - allocations[i]
+                    max_addition = M_max[i] - allocations[i]
                     allocations[i] += min(added, max_addition)
         else:
             # Scale down minimum requirements proportionally to fit total capacity
             if sum_min > 0:
                 scale = total_capacity / sum_min
-                allocations = [float(m * scale) for m in min_bounds]
+                allocations = [float(m * scale) for m in m_min]
             else:
                 # All minimums are zero; distribute capacity equally
                 allocations = [total_capacity / max(n_classes, 1)] * n_classes

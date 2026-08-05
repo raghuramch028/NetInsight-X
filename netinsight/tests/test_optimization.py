@@ -104,5 +104,22 @@ class TestBandwidthOptimization(unittest.TestCase):
         # Check that dummy KKT status is optimal=False
         self.assertFalse(result["kkt_results"]["is_optimal"])
 
+    def test_solver_dimension_mismatch(self):
+        """Tests that solver handles mismatched array lengths without IndexError by executing fallback."""
+        priorities = [1.0, 2.0, 0.5, 3.0]
+        min_bounds = [5e6, 15e6] # Shorter than priorities
+        max_bounds = [40e6, 60e6, 30e6, 50e6]
+        capacity = 100e6
+
+        # This should handle the IndexError internally and return fallback
+        result = self.optimizer.solve_allocation(
+            priorities=priorities,
+            min_bounds=min_bounds,
+            max_bounds=max_bounds,
+            total_capacity=capacity
+        )
+
+        self.assertTrue(result["status"].startswith("fallback"))
+
 if __name__ == "__main__":
     unittest.main()

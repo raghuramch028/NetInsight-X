@@ -122,6 +122,18 @@ class TrafficClassifier:
 
             unique_dests = len({item[1] for item in history})
 
+            MAX_IP_CACHE = 2000
+            if len(self.ip_history) > MAX_IP_CACHE:
+                # Evict oldest 500 IP entries to prevent unbounded memory growth
+                stale_ips = [ip for ip, data in self.ip_history.items() if not data or (now - data[-1][0]) > win_dur]
+                for ip in stale_ips:
+                    del self.ip_history[ip]
+                if len(self.ip_history) > MAX_IP_CACHE:
+                    # Force prune oldest keys if still exceeding cap
+                    excess = len(self.ip_history) - (MAX_IP_CACHE - 500)
+                    for ip in list(self.ip_history.keys())[:excess]:
+                        del self.ip_history[ip]
+
             return float(packet_rate), float(unique_dests)
 
     def classify_packet(self, packet_dict: dict) -> str:

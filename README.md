@@ -22,6 +22,7 @@ NetInsight-X is an intelligent, high-performance distributed network management 
     > - **Macro-F1**: 67.1% — a more honest aggregate metric reflecting class-imbalanced performance.
     > Future work: SMOTE oversampling, larger balanced datasets (full CICIDS2017), or per-class threshold tuning.
 *   **Markov State Prediction:** Real-time forecasting across 5 operational states (*Normal, Busy, Congested, Under Attack, Recovering*) decoded from multi-metric sequences using the HMM Viterbi algorithm.
+*   **MDP Advisory Engine:** Expert advisory system using MDP Value Iteration over network states to recommend optimal responses to changing network conditions.
 *   **Convex QoS Optimization:** Formulates bandwidth allocation as a constrained Linear Program solved via interior-point methods, validating solutions against primal-dual Karush-Kuhn-Tucker (KKT) numerical conditions.
 *   **Interactive Topology Mapping:** Generates real-time, dynamic network visualization graphs using NetworkX and Vis.js (PyVis) embedded in the dashboard.
 *   **Comprehensive Audit Exporting:** Instant generation of system audit logs in PDF (compiled via ReportLab), flat CSV transactions, and JSON snapshots.

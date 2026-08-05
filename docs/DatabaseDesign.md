@@ -1,6 +1,6 @@
 # Database Design - NetInsight-X
 
-NetInsight-X uses SQLite to store real-time packet information, aggregate metrics, active device details, and state transitions.
+NetInsight-X uses SQLite (and PostgreSQL in production) to store real-time packet information, aggregate metrics, active device details, and state transitions. The live production architecture relies on Django ORM (`models.py`) for defining and interacting with this database schema.
 
 ---
 

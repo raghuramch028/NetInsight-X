@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import time
 
@@ -24,8 +25,8 @@ def set_current_capacity(val: float) -> None:
 
 def run_speed_test():
     """Streams up to 40MB from Cloudflare Edge with an 8-second cutoff to emulate Google's test."""
-    # Cloudflare API requesting up to 40 MB of data
-    url = "https://speed.cloudflare.com/__down?bytes=40000000"
+    # Cloudflare API requesting up to 10 MB of data
+    url = "https://speed.cloudflare.com/__down?bytes=10000000"
     try:
         start_time = time.perf_counter()
         # Stream download to track bytes chunk-by-chunk and allow early time cutoff
@@ -84,7 +85,7 @@ def speed_monitor_loop():
     time.sleep(5)
     run_speed_test()
     while True:
-        time.sleep(30)
+        time.sleep(int(os.environ.get("NETINSIGHT_SPEEDTEST_INTERVAL", "300")))
         run_speed_test()
 
 def start_speed_monitor():

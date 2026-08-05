@@ -10,6 +10,7 @@ from netinsight.config import settings
 from netinsight.database import db_manager
 from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
+from netinsight.prediction.hmm import HiddenMarkovModel
 
 
 class TestPredictionModule(TestCase):
@@ -118,6 +119,24 @@ class TestPredictionModule(TestCase):
         # and FAILURE should yield values reflecting state transitions
         self.assertGreater(rec_normal["action_values"][rec_normal["recommended_action"]], -50)
         self.assertGreater(rec_failure["action_values"][rec_failure["recommended_action"]], -50)
+
+    def test_hmm_viterbi_decoding(self):
+        """Tests HiddenMarkovModel.decode_states against a known sequence of observation vectors."""
+        hmm = HiddenMarkovModel()
+
+        # Sequence of observations matching Normal -> Busy -> Congested
+        obs_seq = [
+            {"util": 15.0, "latency": 0.012, "loss": 0.1, "packet_rate": 10.0, "sockets": 5.0, "threat_label": "Normal"},
+            {"util": 55.0, "latency": 0.045, "loss": 1.2, "packet_rate": 60.0, "sockets": 25.0, "threat_label": "Normal"},
+            {"util": 85.0, "latency": 0.150, "loss": 6.5, "packet_rate": 150.0, "sockets": 70.0, "threat_label": "Normal"}
+        ]
+
+        decoded_path = hmm.decode_states(obs_seq)
+
+        self.assertEqual(len(decoded_path), 3)
+        self.assertEqual(decoded_path[0], "Normal")
+        self.assertEqual(decoded_path[1], "Busy")
+        self.assertEqual(decoded_path[2], "Congested")
 
 if __name__ == "__main__":
     unittest.main()
