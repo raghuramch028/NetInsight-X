@@ -33,8 +33,8 @@ def get_mac_address() -> str:
 
 def get_current_ssid() -> str:
     """Queries the OS to find the current active Wi-Fi SSID. Supports Windows, Linux, and macOS."""
-    import subprocess
     import platform
+    import subprocess
     system = platform.system().lower()
     try:
         if system == "windows":

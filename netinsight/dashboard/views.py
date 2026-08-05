@@ -65,9 +65,8 @@ def _to_native_types(obj: Any) -> Any:
 
 def _check_dashboard_auth(request):
     """Returns HttpResponse 401 if NETINSIGHT_REQUIRE_AUTH is enabled and user is unauthenticated."""
-    if getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False):
-        if not request.user or not request.user.is_authenticated:
-            return JsonResponse({"error": "Authentication required to access dashboard endpoints"}, status=401)
+    if getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False) and (not request.user or not request.user.is_authenticated):
+        return JsonResponse({"error": "Authentication required to access dashboard endpoints"}, status=401)
     return None
 
 def _validate_agent_token(request) -> bool:
@@ -100,6 +99,7 @@ def _demo_telemetry_generator():
     """Background thread generating synthetic telemetry data for demo/demonstration mode."""
     import random
     import time as _time
+
     from django.db import close_old_connections
     close_old_connections()
     try:

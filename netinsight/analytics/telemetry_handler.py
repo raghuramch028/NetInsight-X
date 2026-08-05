@@ -1,6 +1,6 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 from django.db import close_old_connections

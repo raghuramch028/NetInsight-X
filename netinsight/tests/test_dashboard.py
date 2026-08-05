@@ -129,6 +129,7 @@ class TestDashboardViews(TestCase):
     def test_bulk_packet_preparation(self):
         """Verifies that prepare_packet_record builds unsaved PacketRecord instances for batch insert."""
         from django.utils import timezone
+
         from netinsight.analytics.flow_builder import prepare_packet_record
         from netinsight.dashboard.models import PacketRecord
         agent = Agent.objects.create(mac_address="00:aa:bb:cc:dd:ee", hostname="Agent Bulk", ip_address="192.168.1.10", last_seen=timezone.now())
@@ -150,6 +151,7 @@ class TestDashboardViews(TestCase):
     def test_agent_token_validation(self):
         """Verifies _validate_agent_token returns False when X-Agent-Token is mismatched or missing."""
         from django.test import RequestFactory
+
         from netinsight.dashboard.views import _validate_agent_token
 
         factory = RequestFactory()

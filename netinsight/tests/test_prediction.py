@@ -8,9 +8,9 @@ from django.test import TestCase
 
 from netinsight.config import settings
 from netinsight.database import db_manager
+from netinsight.prediction.hmm import HiddenMarkovModel
 from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
-from netinsight.prediction.hmm import HiddenMarkovModel
 
 
 class TestPredictionModule(TestCase):
