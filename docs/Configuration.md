@@ -11,8 +11,9 @@ These variables are read at runtime from the process environment or specified in
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `DJANGO_SECRET_KEY` | `django-insecure-netinsightx-academic-project-secret` | Django signing/CSRF secret. **Set a strong, random value in production.** |
-| `DEBUG` | `True` | Set to `False` in production to disable verbose error pages and reduce attack surface. |
+| `DEBUG` | `False` | Set to `False` in production to disable verbose error pages and reduce attack surface. |
 | `ALLOWED_HOSTS` | `*` | Comma-separated list of hostnames the server will accept. Set to your domain(s) in production. |
+| `NETINSIGHT_AGENT_TOKEN` | `None` | Optional API token for agent endpoint authentication. **Note: If unset, REST ingestion endpoints run in open dev mode. Set a secret token for production deployments.** |
 | `DATABASE_URL` or `NETINSIGHT_DB_PATH` | `netinsight/database/netinsight.db` | Path to the SQLite database file. `DATABASE_URL` supports `sqlite:///` prefixes. |
 | `NETINSIGHT_SVM_PATH` | `netinsight/classification/svm_model.joblib` | Path to the persisted SVM model. A sibling `scaler.joblib` is expected in the same directory. |
 | `NETINSIGHT_DEMO_MODE` | `True` | When `True`, simulated traffic is generated. Set `False` for live interface sniffing. |

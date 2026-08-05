@@ -127,7 +127,7 @@ Where $\lambda \ge 0$ is the vector of inequality Lagrange multipliers. The KKT 
 4. **Stationarity:** The gradient of the Lagrangian relative to decision values vanishes:
    $$\nabla_x L(x^*, \lambda^*) = -c + G^T \lambda^* = 0$$
 
-Numerical verification evaluates these conditions against a small tolerance boundary ($\epsilon = 10^{-5}$).
+Numerical verification evaluates these conditions against a tight tolerance boundary ($\epsilon = 10^{-5}$) computed on scaled Mbps decision variables ($x_i / 10^6$), ensuring scale-invariant numerical stability for interior-point solver verification.
 
 ---
 

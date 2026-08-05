@@ -24,7 +24,6 @@ def set_current_capacity(val: float) -> None:
 
 def run_speed_test():
     """Streams up to 40MB from Cloudflare Edge with an 8-second cutoff to emulate Google's test."""
-    global CURRENT_CAPACITY
     # Cloudflare API requesting up to 40 MB of data
     url = "https://speed.cloudflare.com/__down?bytes=40000000"
     try:

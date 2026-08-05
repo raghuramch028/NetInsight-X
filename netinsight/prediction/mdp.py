@@ -141,14 +141,21 @@ class MDPRecommendationEngine:
                 action_values.append(val)
             policy[s] = int(np.argmax(action_values))
 
+        self._cached_V = V
+        self._cached_policy = policy
         return V, policy
+
+    def invalidate_cache(self) -> None:
+        """Resets cached Value Iteration solution forcing re-computation on next recommendation."""
+        self._cached_V = None
+        self._cached_policy = None
 
     def get_recommendation(self, current_state_name: str) -> dict:
         """Solves the MDP policy and returns the advisory action for the current state."""
-        state_idx = self.STATE_MAP.get(current_state_name.upper(), 0)
+        state_idx = self.STATE_MAP.get(current_state_name, self.STATE_MAP.get(current_state_name.upper(), 0))
 
-        if self._cached_V is None:
-            self._cached_V, self._cached_policy = self.solve_value_iteration()
+        if self._cached_V is None or self._cached_policy is None:
+            self.solve_value_iteration()
         V, policy = self._cached_V, self._cached_policy
         opt_action_idx = int(policy[state_idx])
         recommended_action = self.ACTION_NAMES[opt_action_idx]

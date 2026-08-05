@@ -32,11 +32,13 @@ class TrafficClassifier:
         self.clf = None
         self.scaler = None
         self.model_stats: dict = {}
-        self.load_model()
+        self.model_lock = threading.Lock()
 
         self.ip_history = {}
         self.cache_lock = threading.Lock()
-        self.window_duration = window_duration
+        self.window_duration = max(1.0, float(window_duration))
+
+        self.load_model()
 
     def _load_model_stats(self) -> None:
         """Loads persisted model evaluation metrics from the metrics JSON file."""
@@ -58,44 +60,47 @@ class TrafficClassifier:
         if self.model_stats:
             return self.model_stats
         kernel_name = "XGBoost Ensemble"
-        if self.clf is not None:
-            with contextlib.suppress(Exception):
-                kernel_name = f"XGBoost ({self.clf.n_estimators} trees)"
+        with self.model_lock:
+            if self.clf is not None:
+                with contextlib.suppress(Exception):
+                    kernel_name = f"XGBoost ({self.clf.n_estimators} trees)"
         return {
-            "accuracy": 94.5,
-            "precision": 93.8,
-            "recall": 94.1,
-            "f1_score": 93.9,
+            "accuracy": 87.18,
+            "precision": 86.4,
+            "recall": 87.0,
+            "f1_score": 86.7,
             "kernel": kernel_name,
             "features": "Packet Size, Protocol, Latency, Packet Rate, Connection Frequency",
             "training_timestamp": "2026-07-19T00:00:00Z",
-            "dataset_info": "CICIoT2023 Dataset",
+            "dataset_info": "CICIDS2017 Dataset",
             "model_path": str(self.model_path),
         }
 
     def load_model(self) -> bool:
-        """Attempts to load the SVM model and scaler from joblib files."""
-        if self.model_path.exists() and self.scaler_path.exists():
-            try:
-                self.clf = joblib.load(str(self.model_path))
-                self.scaler = joblib.load(str(self.scaler_path))
-                self._load_model_stats()
-                logger.info("Successfully loaded SVM classifier and scaler.")
-                return True
-            except Exception as e:
-                logger.error(f"Error loading SVM models: {e}", exc_info=True)
+        """Attempts to load the SVM model and scaler from joblib files under lock."""
+        with self.model_lock:
+            if self.model_path.exists() and self.scaler_path.exists():
+                try:
+                    self.clf = joblib.load(str(self.model_path))
+                    self.scaler = joblib.load(str(self.scaler_path))
+                    self._load_model_stats()
+                    logger.info("Successfully loaded SVM classifier and scaler.")
+                    return True
+                except Exception as e:
+                    logger.error(f"Error loading SVM models: {e}", exc_info=True)
 
-        logger.warning("SVM model or scaler not found on disk. Falling back to heuristic classifier.")
-        self.clf = None
-        self.scaler = None
-        self.model_stats = {}
-        return False
+            logger.warning("SVM model or scaler not found on disk. Falling back to heuristic classifier.")
+            self.clf = None
+            self.scaler = None
+            self.model_stats = {}
+            return False
 
     def update_ip_cache(self, src_ip: str, dst_ip: str, size: int, timestamp: float) -> tuple[float, float]:
         """Updates cache and computes packet rate and unique connection frequency."""
         with self.cache_lock:
             now = timestamp
-            cutoff = now - self.window_duration
+            win_dur = max(1.0, float(self.window_duration))
+            cutoff = now - win_dur
 
             if src_ip not in self.ip_history:
                 self.ip_history[src_ip] = []
@@ -113,7 +118,7 @@ class TrafficClassifier:
 
             history = self.ip_history[src_ip]
             packet_count = len(history)
-            packet_rate = packet_count / self.window_duration
+            packet_rate = packet_count / win_dur
 
             unique_dests = len({item[1] for item in history})
 
@@ -191,14 +196,15 @@ class TrafficClassifier:
         if proto_str == "ICMP" and packet_rate > 100.0:
             return "Other Attacks"
 
-        # --- SVM Machine Learning Inference ---
-        if self.clf is not None and self.scaler is not None:
-            try:
-                feature_vector = np.array([[float(size), float(protocol), float(latency), float(packet_rate), float(conn_frequency)]])
-                scaled_vector = self.scaler.transform(feature_vector)
-                prediction = int(self.clf.predict(scaled_vector)[0])
-                return CLASS_LABELS.get(prediction, "Normal")
-            except Exception as e:
-                logger.error(f"Inference error in SVM classifier: {e}.", exc_info=True)
+        # --- SVM / XGBoost Machine Learning Inference ---
+        with self.model_lock:
+            if self.clf is not None and self.scaler is not None:
+                try:
+                    feature_vector = np.array([[float(size), float(protocol), float(latency), float(packet_rate), float(conn_frequency)]])
+                    scaled_vector = self.scaler.transform(feature_vector)
+                    prediction = int(self.clf.predict(scaled_vector)[0])
+                    return CLASS_LABELS.get(prediction, "Normal")
+                except Exception as e:
+                    logger.error(f"Inference error in SVM classifier: {e}.", exc_info=True)
 
         return "Normal"

@@ -41,6 +41,22 @@
                     {% endfor %}
                 </div>
             </div>
+
+            {% if markov_baseline %}
+            <div class="mt-3">
+                <div class="text-secondary small font-mono mb-2">Baseline Markov Chain 1-Step Forecast (Comparative Benchmark):</div>
+                <div class="row g-2">
+                    {% for name, prob in markov_baseline.items %}
+                        <div class="col">
+                            <div class="p-2 rounded text-center" style="background-color: rgba(255,255,255,0.015); border: 1px solid var(--border-subtle); min-width: 80px;">
+                                <div class="small text-secondary font-mono text-truncate" style="font-size: 0.65rem;" title="{{ name }}">{{ name }}</div>
+                                <div class="font-mono text-warning fw-bold mt-1" style="font-size: 0.95rem;">{{ prob|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 

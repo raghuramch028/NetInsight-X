@@ -17,13 +17,13 @@ hmm_model = HiddenMarkovModel()
 def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: list[dict]) -> None:
     """Orchestrates system telemetry ingestion, metrics aggregation, and HMM predictions."""
     try:
-        # 1. Update Agent stats synchronously (marks the device online instantly)
-        agent.cpu_usage = float(stats_data.get("cpu_usage", 0.0))
-        agent.memory_usage = float(stats_data.get("memory_usage", 0.0))
-        agent.disk_usage = float(stats_data.get("disk_usage", 0.0))
-        agent.bytes_sent = int(stats_data.get("bytes_sent", 0))
-        agent.bytes_recv = int(stats_data.get("bytes_recv", 0))
-        agent.active_connections = int(stats_data.get("active_connections", 0))
+        # 1. Update Agent stats synchronously with numerical bounds clamping
+        agent.cpu_usage = max(0.0, min(100.0, float(stats_data.get("cpu_usage", 0.0))))
+        agent.memory_usage = max(0.0, min(100.0, float(stats_data.get("memory_usage", 0.0))))
+        agent.disk_usage = max(0.0, min(100.0, float(stats_data.get("disk_usage", 0.0))))
+        agent.bytes_sent = max(0, int(stats_data.get("bytes_sent", 0)))
+        agent.bytes_recv = max(0, int(stats_data.get("bytes_recv", 0)))
+        agent.active_connections = max(0, int(stats_data.get("active_connections", 0)))
         agent.last_seen = timezone.now()
         agent.save()
 

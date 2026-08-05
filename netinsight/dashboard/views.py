@@ -396,7 +396,7 @@ def optimization_view(request):
     return render(request, "dashboard/optimization.html", context)
 
 def prediction_view(request):
-    """Renders HMM transitions matrix and MDP value recommendations."""
+    """Renders HMM transitions matrix, baseline Markov forecasts, and MDP value recommendations."""
     # Query latest state history
     state_record = StateHistory.objects.all().order_by("-timestamp").first()
     curr_state = state_record.network_state if state_record else "Normal"
@@ -404,6 +404,11 @@ def prediction_view(request):
     # Solve HMM Forecasts
     hmm_1step = hmm_predictor.predict_state_forecast(curr_state, steps=1)
     hmm_3step = hmm_predictor.predict_state_forecast(curr_state, steps=3)
+
+    # Solve baseline Markov Predictor forecast for comparative benchmark
+    from netinsight.prediction.markov import MarkovPredictor
+    markov_engine = MarkovPredictor()
+    markov_1step = markov_engine.predict_state_distribution(curr_state, k_steps=1)
 
     # Solve MDP Value iteration recommendation
     mdp_rec = mdp_engine.get_recommendation(curr_state)
@@ -424,6 +429,7 @@ def prediction_view(request):
         "matrix_rows": matrix_rows,
         "pred_1step": {k: v * 100.0 for k, v in hmm_1step["forecast"].items()},
         "pred_3step": {k: v * 100.0 for k, v in hmm_3step["forecast"].items()},
+        "markov_baseline": markov_1step.get("prediction", {}),
         "mdp": mdp_rec,
         "gamma": settings.MDP_DISCOUNT_FACTOR,
         "using_default_matrix": (StateHistory.objects.count() < 2)
@@ -477,6 +483,7 @@ def settings_view(request):
             settings_obj.latency_threshold = float(request.POST.get("latency_threshold", 0.15))
             settings_obj.svm_confidence_threshold = float(request.POST.get("svm_confidence_threshold", 0.80))
             settings_obj.save()
+            mdp_engine.invalidate_cache()
             logger.info("Successfully updated SystemSettings thresholds dynamically.")
             return redirect("dashboard:index")
         except Exception as e:
@@ -758,8 +765,8 @@ def reports_json_download(request):
             "threats": []
         }
 
-        # Query all agents
-        for a in Agent.objects.all():
+        # Query recent agents
+        for a in Agent.objects.all()[:200]:
             data["agents"].append({
                 "id": str(a.id),
                 "mac_address": a.mac_address,

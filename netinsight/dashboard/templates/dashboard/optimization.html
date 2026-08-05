@@ -34,6 +34,13 @@
 </div>
 {% endif %}
 
+{% if status != "optimal" %}
+<div class="alert alert-warning border-0 small font-mono mb-4" style="background-color: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2) !important;">
+    <i data-lucide="alert-octagon" style="width:14px;height:14px;vertical-align:-2px;" class="me-2"></i>
+    Infeasible Bounds Warning: Sum of minimum QoS guarantees exceeds link capacity ({{ total_capacity_mbps|floatformat:2 }} Mbps). Computed proportional fallback allocation.
+</div>
+{% endif %}
+
 <div class="row g-4 mb-4">
     <!-- Math and LP Formulation Details -->
     <div class="col-lg-8">
