@@ -37,6 +37,7 @@ from netinsight.dashboard.models import (
 from netinsight.optimization.solver import BandwidthOptimizer
 from netinsight.prediction.dse import DecisionSupportEngine
 from netinsight.prediction.hmm import HiddenMarkovModel
+from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ logger = logging.getLogger(__name__)
 analytics_engine = AnalyticsEngine()
 optimizer = BandwidthOptimizer()
 hmm_predictor = HiddenMarkovModel()
+markov_predictor = MarkovPredictor()
 mdp_engine = MDPRecommendationEngine()
 classifier = TrafficClassifier()
 dse_engine = DecisionSupportEngine()
@@ -406,9 +408,7 @@ def prediction_view(request):
     hmm_3step = hmm_predictor.predict_state_forecast(curr_state, steps=3)
 
     # Solve baseline Markov Predictor forecast for comparative benchmark
-    from netinsight.prediction.markov import MarkovPredictor
-    markov_engine = MarkovPredictor()
-    markov_1step = markov_engine.predict_state_distribution(curr_state, k_steps=1)
+    markov_1step = markov_predictor.predict_state_distribution(curr_state, k_steps=1)
 
     # Solve MDP Value iteration recommendation
     mdp_rec = mdp_engine.get_recommendation(curr_state)

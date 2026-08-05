@@ -111,7 +111,8 @@ class TestClosedLoopScenarios(unittest.TestCase):
         reg = self.client.post("/api/v1/agents/register", {
             "mac_address": self.mac, "hostname": self.hostname, "device_type": "Windows 11", "vendor": "Dell"
         }, content_type="application/json")
-        agent_id = reg.json().get("agent_id", 1)
+        self.assertEqual(reg.status_code, 200)
+        agent_id = reg.json()["agent_id"]
 
         payload = {
             "agent_id": agent_id,

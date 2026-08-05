@@ -26,14 +26,11 @@ If `data/UNSW_NB15_training-set.csv` and `data/UNSW_NB15_testing-set.csv` are no
 
 ---
 
-## 2. Running the Application Locally
+## 2. Architecture & Ingestion Flow
 
-```bash
-python manage.py migrate
-python manage.py runserver
-```
-
-The dashboard starts in `DEMO_MODE` by default, which simulates traffic so the UI is immediately usable without raw socket privileges.
+NetInsight-X uses a distributed edge agent architecture:
+- **Production Path:** Endpoint Agents (`agent/` or `agent_go/`) collect system metrics and Scapy packet headers locally, uploading telemetry over HTTP POST to `/api/v1/agents/telemetry`. `telemetry_handler.py` processes payloads asynchronously, logging metrics and training HMM state predictions via Django ORM.
+- **Legacy Standalone Mode:** `LiveMonitor` (`netinsight/capture/monitor.py`) and `db_manager.py` form a legacy single-machine local sniffer utility used for offline benchmarking.
 
 To test live capture on Linux/macOS, install `libpcap-dev` and run with `sudo`, or grant Python the `cap_net_raw` capability:
 

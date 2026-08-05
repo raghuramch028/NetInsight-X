@@ -75,14 +75,10 @@ def process_incoming_packet(agent, pkt_data: dict) -> None:
             timestamp__gte=window_start
         ).values("dst_ip").distinct().count()
 
-        # Calculate packet rate — require minimum 2s of flow duration for meaningful rate
-        # For new/short flows, use raw packet count to avoid inflating rate
-        # (e.g. 1 packet / 0.001s = 1000 pps false alarm)
-        packet_rate = (
-            float(flow.packet_count) / flow.duration
-            if flow.duration >= 2.0
-            else float(flow.packet_count)
-        )
+        # Calculate packet rate normalized to time (packets per second)
+        # Clamp minimum effective duration to 0.5s to avoid rate inflation on instant single packets
+        effective_duration = max(flow.duration, 0.5)
+        packet_rate = float(flow.packet_count) / effective_duration
 
         # Construct packet payload dictionary for classification compatibility
         classify_payload = {

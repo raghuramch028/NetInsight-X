@@ -69,8 +69,8 @@ func main() {
 		newPackets := packetSniffer.GetAndClearPackets()
 		packetsToSend := append(failedPackets, newPackets...)
 
-		// Cap transmission safety
-		maxSend := 30
+		// Cap transmission safety to 100 packets per telemetry payload (aligned with Python agent)
+		maxSend := 100
 		if len(packetsToSend) > maxSend {
 			log.Printf("Packet batch size (%d) exceeds limit (%d). Sampling latest.\n", len(packetsToSend), maxSend)
 			packetsToSend = packetsToSend[len(packetsToSend)-maxSend:]
@@ -85,8 +85,8 @@ func main() {
 			}
 		} else {
 			failedPackets = packetsToSend
-			if len(failedPackets) > 60 {
-				failedPackets = failedPackets[len(failedPackets)-60:]
+			if len(failedPackets) > 200 {
+				failedPackets = failedPackets[len(failedPackets)-200:]
 			}
 			log.Println("Telemetry upload failed. Retrying on next cycle...")
 		}

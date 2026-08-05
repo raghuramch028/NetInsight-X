@@ -37,13 +37,12 @@ class TelemetryCollector:
             # Count connections in ESTABLISHED or LISTEN states
             active = [c for c in connections if c.status in ("ESTABLISHED", "LISTEN")]
             return len(active)
-        except psutil.AccessDenied:
-            logger.warning("Access denied when reading psutil net_connections. Falling back to established sockets count.")
-            # Fallback estimation if not running with high privileges
-            return len(psutil.net_connections(kind="tcp"))
-        except Exception as e:
-            logger.error(f"Error querying active connections: {e}")
-            return 0
+        except (psutil.AccessDenied, Exception) as e:
+            logger.warning(f"Access denied or error querying net_connections ({e}). Falling back to process count.")
+            try:
+                return len(psutil.pids())
+            except Exception:
+                return 0
 
     def collect(self) -> dict:
         """Aggregates all host-level telemetry data into a serializable payload."""

@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import sqlite3
 from pathlib import Path
@@ -14,8 +15,11 @@ def get_connection() -> sqlite3.Connection:
     """
     db_file = Path(settings.DB_PATH)
     db_file.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_file))
+    conn = sqlite3.connect(str(db_file), timeout=10.0)
     conn.row_factory = sqlite3.Row
+    with contextlib.suppress(sqlite3.Error):
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
     return conn
 
 def init_db() -> None:

@@ -73,13 +73,17 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         total_tcp = active_packets.filter(protocol="TCP").count()
         retrans_count = 0
         if total_tcp > 0:
-            flows_active = FlowRecord.objects.filter(end_time__gte=window_start)
-            for flow in flows_active:
-                if flow.threat_label in ["DoS", "DDoS", "Mirai"]:
-                    retrans_count += int(flow.packet_count * 0.08)
-                elif flow.packet_count > 50:
-                    retrans_count += 1
+            attack_packets = FlowRecord.objects.filter(
+                end_time__gte=window_start,
+                threat_label__in=["DoS", "DDoS", "Mirai"]
+            ).aggregate(total=Sum("packet_count"))["total"] or 0
 
+            high_count_flows = FlowRecord.objects.filter(
+                end_time__gte=window_start,
+                packet_count__gt=50
+            ).exclude(threat_label__in=["DoS", "DDoS", "Mirai"]).count()
+
+            retrans_count = int(attack_packets * 0.08) + high_count_flows
             packet_loss = (float(retrans_count) / max(1, total_tcp)) * 100.0
         else:
             packet_loss = 0.0
