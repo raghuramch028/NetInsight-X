@@ -13,7 +13,7 @@ All notable changes to the NetInsight-X project will be documented in this file.
 - **EditorConfig:** Added standardized editor configs to align spacing across developer environments.
 
 ### Fixed
-- **Render Out-of-Memory Mitigations:** Reduced Gunicorn worker targets to 1 and implemented explicit figure clearing and garbage collection loops for Matplotlib graph conversions to stay under the 512MB RAM ceiling.
+- **Server Memory Mitigations:** Reduced Gunicorn worker targets to 1 and implemented explicit figure clearing and garbage collection loops for Matplotlib graph conversions to stay under low RAM ceilings.
 
 ---
 

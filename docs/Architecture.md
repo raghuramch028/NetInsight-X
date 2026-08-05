@@ -84,7 +84,7 @@ When active capture is disabled (`settings.DEMO_MODE = True`), the Sniffer threa
 
 ## 3. Security, Configuration, and Observability
 
-* **Environment-driven configuration:** `DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `NETINSIGHT_DB_PATH`, `NETINSIGHT_SVM_PATH`, `NETINSIGHT_DEMO_MODE`, and `NETINSIGHT_LOG_LEVEL` are read from the environment at startup, making the project deployable on Render and similar PaaS platforms without editing source files.
+* **Environment-driven configuration:** `DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `NETINSIGHT_DB_PATH`, `NETINSIGHT_SVM_PATH`, `NETINSIGHT_DEMO_MODE`, and `NETINSIGHT_LOG_LEVEL` are read from the environment at startup, making the project easily deployable via Docker or standard PaaS container environments without editing source files.
 * **Static file serving:** WhiteNoise serves collected static files in production; `python manage.py collectstatic --noinput` is part of the standard build flow.
 * **Structured logging:** A `LOGGING` dictionary routes `netinsight`, `django`, and `matplotlib` loggers through a single console handler. `print()` statements in backend modules have been replaced with `logging` calls.
 * **Thread safety and resource cleanup:** The capture pipeline uses a bounded `queue.Queue`, `threading.Lock` for shared window counters and caches, and `with` blocks around database connections to prevent connection leaks.

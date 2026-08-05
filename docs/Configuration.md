@@ -6,7 +6,7 @@ NetInsight-X separates runtime configuration into environment variables (recomme
 
 ## 1. Environment Variables
 
-These variables are read at runtime from the process environment. Render, Heroku, and other hosts should set them in the platform dashboard rather than editing files.
+These variables are read at runtime from the process environment or specified in a `.env` file.
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
@@ -23,7 +23,7 @@ These variables are read at runtime from the process environment. Render, Heroku
 ```bash
 DJANGO_SECRET_KEY=your-production-secret-key-here
 DEBUG=False
-ALLOWED_HOSTS=netinsight-gnt6.onrender.com,localhost
+ALLOWED_HOSTS=localhost,127.0.0.1
 NETINSIGHT_DB_PATH=/opt/netinsight/data/netinsight.db
 NETINSIGHT_SVM_PATH=/opt/netinsight/models/svm_model.joblib
 NETINSIGHT_DEMO_MODE=False
@@ -102,5 +102,4 @@ If official UNSW-NB15 CSV files are not found in `data/`, a deterministic synthe
 ## 4. Deployment Notes
 
 * `DEBUG=False` requires `python manage.py collectstatic --noinput` so WhiteNoise can serve static files.
-* The production entry point used by Render is `netinsight.config.wsgi:application` with Gunicorn.
-* `build.sh` runs `collectstatic` and `migrate` automatically on Render.
+* Production deployments can run using Gunicorn (`gunicorn netinsight.config.wsgi:application`) or inside a Docker container (`docker run -p 8000:7860 ...`).

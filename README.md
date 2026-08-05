@@ -2,7 +2,7 @@
 
 **NetInsight-X: An AI-Driven Distributed Network Monitoring, Traffic Analytics, and Decision Support System (DSS)**
 
-[![Live Demo](https://img.shields.io/badge/Render-Live%20Demo-blue?style=for-the-badge&logo=render&logoColor=white)](https://netinsight-gnt6.onrender.com)
+[![Live Demo](https://img.shields.io/badge/Interactive-Live%20Demo-blue?style=for-the-badge&logo=html5&logoColor=white)](presentation_demo.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
@@ -93,7 +93,7 @@ To connect and monitor edge devices:
     ```
 3.  Open `agent/config.py` in a text editor and update the target server endpoint:
     ```python
-    SERVER_URL = "https://netinsight-gnt6.onrender.com"  # Or http://localhost:8000 for local server
+    SERVER_URL = "http://localhost:8000"  # Or your server IP address
     ```
 4.  Run the agent from terminal as administrator:
     ```bash
@@ -132,8 +132,8 @@ NetInsight-X/
 │   └── dashboard/           # Django templates, styling, views & REST routes
 │
 ├── data/                    # Local storage for CSV training sets
-├── requirements.txt         # Package dependencies file
-└── build.sh                 # Automatic build script for Render deployment
+├── presentation_demo.html   # Standalone interactive demonstration suite
+└── requirements.txt         # Package dependencies file
 ```
 
 ---
