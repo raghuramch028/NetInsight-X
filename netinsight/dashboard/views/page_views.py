@@ -14,9 +14,15 @@ from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 import netinsight.dashboard.speed_monitor as speed_monitor
-from netinsight.analytics.engine import AnalyticsEngine
-from netinsight.classification.classifier import get_shared_classifier
 from netinsight.config import settings
+from netinsight.config.singletons import (
+    get_analytics_engine,
+    get_dse_engine,
+    get_hmm_predictor,
+    get_lp_optimizer,
+    get_mdp_engine,
+    get_traffic_classifier,
+)
 from netinsight.dashboard.models import (
     Agent,
     MetricRecord,
@@ -24,23 +30,18 @@ from netinsight.dashboard.models import (
     StateHistory,
     SystemSettings,
 )
-from netinsight.optimization.solver import BandwidthOptimizer
-from netinsight.prediction.dse import DecisionSupportEngine
-from netinsight.prediction.hmm import get_shared_hmm
 from netinsight.prediction.markov import MarkovPredictor
-from netinsight.prediction.mdp import MDPRecommendationEngine
 
 logger = logging.getLogger(__name__)
 
-# Singleton solvers and classifiers instances
-analytics_engine = AnalyticsEngine()
-optimizer = BandwidthOptimizer()
-
-hmm_predictor = get_shared_hmm()
+# Centralized thread-safe singleton references
+analytics_engine = get_analytics_engine()
+optimizer = get_lp_optimizer()
+hmm_predictor = get_hmm_predictor()
 markov_predictor = MarkovPredictor()
-mdp_engine = MDPRecommendationEngine()
-classifier = get_shared_classifier()
-dse_engine = DecisionSupportEngine()
+mdp_engine = get_mdp_engine()
+classifier = get_traffic_classifier()
+dse_engine = get_dse_engine()
 
 def _to_native_types(obj: Any) -> Any:
     """Recursively converts numpy/pandas scalars to plain Python types for JSON serialization."""
