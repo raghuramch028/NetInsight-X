@@ -47,11 +47,10 @@ class LLMClassifier:
 
         start_time = time.time()
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=20)
+            response = requests.post(url, headers=headers, json=payload, timeout=2.5)
             if response.status_code != 200 and payload["model"] != "meta/llama-3.1-70b-instruct":
-                # Fallback to high-speed NVIDIA NIM Llama 70B if requested model is busy or times out
                 payload["model"] = "meta/llama-3.1-70b-instruct"
-                response = requests.post(url, headers=headers, json=payload, timeout=20)
+                response = requests.post(url, headers=headers, json=payload, timeout=2.5)
 
             response.raise_for_status()
             data = response.json()

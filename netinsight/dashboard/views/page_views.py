@@ -421,8 +421,8 @@ def classification_view(request):
             "ttl": pkt.ttl,
             "agent_hostname": pkt.agent.hostname
         }
-        # Classify threat label dynamically
-        rec["classification"] = classifier.classify_packet(rec)
+        # Use pre-stored classification or fast heuristic rule for instant 0ms render
+        rec["classification"] = getattr(pkt, "classification", None) or classifier._classify_rule_based(rec)
         packets_list.append(rec)
 
     llm_active = bool(getattr(settings, "NVIDIA_API_KEY", None))

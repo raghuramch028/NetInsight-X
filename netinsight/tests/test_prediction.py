@@ -69,11 +69,13 @@ class TestPredictionModule(TestCase):
         """
         history_seq = ["Normal", "Busy", "Normal", "Busy", "Congested", "Under Attack", "Congested"]
 
-        # Save sequence into state_history table
         timestamp = 10000.0
+        from netinsight.dashboard.models import StateHistory
+        StateHistory.objects.all().delete()
         for state in history_seq:
             db_manager.save_state_history(timestamp, state, 0.0, 0.0, 0.015)
-            timestamp += 10.0 # 10s intervals
+            StateHistory.objects.create(timestamp=timestamp, network_state=state)
+            timestamp += 10.0
 
         P = self.predictor.estimate_transition_matrix()
 

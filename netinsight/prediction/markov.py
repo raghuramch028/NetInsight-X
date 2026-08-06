@@ -1,10 +1,8 @@
 import logging
 
 import numpy as np
-import pandas as pd
 
 from netinsight.config import settings
-from netinsight.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -63,25 +61,21 @@ class MarkovPredictor:
 
     def _estimate_transition_matrix(self) -> tuple[np.ndarray, bool]:
         """Internal implementation that also reports whether the default matrix was used."""
-        conn = db_manager.get_connection()
         try:
-            df = pd.read_sql_query(
-                "SELECT network_state FROM state_history ORDER BY timestamp ASC",
-                conn
-            )
+            from netinsight.dashboard.models import StateHistory
+            raw_states = list(StateHistory.objects.order_by("timestamp").values_list("network_state", flat=True))
 
-            if len(df) < 2:
+            if len(raw_states) < 2:
                 logger.info("Insufficient state history to estimate Markov transition matrix. Using default transitions.")
                 return self.default_transition_matrix, True
 
-            raw_states = df["network_state"].tolist()
             states = [self._canonicalize_state(s) for s in raw_states]
 
             # Count transitions across 5 states
             counts = np.zeros((5, 5))
             for i in range(len(states) - 1):
                 s_curr = states[i]
-                s_next = states[i+1]
+                s_next = states[i + 1]
 
                 if s_curr in self.STATE_INDEX and s_next in self.STATE_INDEX:
                     idx_curr = self.STATE_INDEX[s_curr]
@@ -98,12 +92,9 @@ class MarkovPredictor:
                     transition_matrix[i] = self.default_transition_matrix[i]
 
             return transition_matrix, False
-
         except Exception as e:
-            logger.error(f"Error estimating Markov transition matrix: {e}", exc_info=True)
+            logger.debug(f"Using default Markov transition matrix fallback: {e}")
             return self.default_transition_matrix, True
-        finally:
-            conn.close()
 
     def estimate_transition_matrix(self) -> np.ndarray:
         """Retrieves history from state_history table and computes the transition matrix.

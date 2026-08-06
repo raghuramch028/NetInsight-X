@@ -61,72 +61,43 @@ class TrafficClassifier:
 
             return float(packet_rate), float(unique_dests)
 
-    def classify_packet(self, packet_dict: dict) -> str:
-        """Performs hybrid LLM/heuristic inference on packet features.
-
-        Returns one of 7 canonical threat labels:
-            - Normal
-            - DoS
-            - DDoS
-            - Brute Force
-            - Reconnaissance
-            - Mirai
-            - Other Attacks
-        """
-        src_ip = packet_dict["src_ip"]
-        dst_ip = packet_dict["dst_ip"]
-        size = packet_dict["size"]
-        timestamp = packet_dict["timestamp"]
-        proto_str = packet_dict["protocol"]
-
-        # Safely extract and cast ports to int
+    def _classify_rule_based(self, packet_dict: dict) -> str:
+        """Executes fast, deterministic heuristic IDS rules on packet dictionary."""
+        src_ip = packet_dict.get("src_ip", "0.0.0.0")
+        dst_ip = packet_dict.get("dst_ip", "0.0.0.0")
+        size = int(packet_dict.get("size", 0))
+        timestamp = float(packet_dict.get("timestamp", 0.0))
+        proto_str = str(packet_dict.get("protocol", "TCP")).upper()
         dst_port = int(packet_dict.get("dst_port") or 0)
         src_port = int(packet_dict.get("src_port") or 0)
 
-        # Retrieve engineered features
         packet_rate = packet_dict.get("packet_rate")
         conn_frequency = packet_dict.get("conn_frequency")
 
         if packet_rate is None or conn_frequency is None:
             packet_rate, _ = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
+            conn_frequency = 2.0
 
-        # Align conn_frequency fallback with port density heuristics if uncomputed
-        if conn_frequency is None:
-            if dst_port in [80, 443]:
-                conn_frequency = 5.0
-            elif dst_port in [22, 23, 445, 3389]:
-                conn_frequency = 12.0
-            else:
-                conn_frequency = 2.0
-
-        # --- Hybrid IDS Override Rules ---
-        # These thresholds are calibrated for REAL attacks, not normal browsing/streaming.
-        # Normal web browsing: 5-50 pps, YouTube HD: 50-200 pps, Windows Update: 30-150 pps
-        # 1. DDoS / DoS detection — requires SUSTAINED high-volume flooding
-        #    DDoS: 1000+ pps with small packets (<200 bytes) = volumetric flood
-        #    DoS:  500+ pps with any packet size = application-layer flood
         if packet_rate > 1000.0 and size < 200:
             return "DDoS"
         if packet_rate > 500.0:
             return "DoS"
-
-        # 2. Mirai botnet — high UDP flood to IoT/streaming ports with extreme connection fan-out
         if proto_str == "UDP" and packet_rate > 300.0 and conn_frequency > 30.0:
             return "Mirai"
-
-        # 3. Brute Force — rapid TCP connection attempts to admin ports (SSH/Telnet/RDP/SMB)
         if (dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]) and packet_rate > 50.0:
             return "Brute Force"
-
-        # 4. Reconnaissance / Port Scan — scanning 50+ unique destinations
         if conn_frequency > 50.0 or (packet_rate > 30.0 and conn_frequency > 25.0):
             return "Reconnaissance"
-
-        # 5. ICMP Flood
         if proto_str == "ICMP" and packet_rate > 100.0:
             return "Other Attacks"
+        return "Normal"
 
-        # --- LLM Classification Inference ---
+    def classify_packet(self, packet_dict: dict) -> str:
+        """Performs hybrid LLM/heuristic inference on packet features."""
+        rule_label = self._classify_rule_based(packet_dict)
+        if rule_label != "Normal":
+            self.last_engine_used = "Heuristics"
+            return rule_label
         try:
             if hasattr(self.llm_classifier, 'classify_packet'):
                 llm_pred = self.llm_classifier.classify_packet(packet_dict)

@@ -30,7 +30,8 @@ class TestAnalyticsEngine(TestCase):
         db_manager.init_db()
         db_manager.clear_db()
         # Clear Django ORM tables for test isolation (needed with --keepdb)
-        from netinsight.dashboard.models import MetricRecord, PacketRecord
+        from netinsight.dashboard.models import Agent, MetricRecord, PacketRecord
+        Agent.objects.all().delete()
         MetricRecord.objects.all().delete()
         PacketRecord.objects.all().delete()
         self.engine = AnalyticsEngine()
