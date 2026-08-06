@@ -157,6 +157,28 @@ class TestTrafficClassification(TestCase):
         }
         self.assertEqual(self.classifier.classify_packet(pkt_brute), "Brute Force")
 
+    def test_llm_classifier_fallback(self):
+        """Verifies LLMClassifier returns None when unconfigured and falls back to XGBoost cleanly."""
+        from netinsight.classification.llm_classifier import LLMClassifier
+        llm = LLMClassifier()
+        import pandas as pd
+        df = pd.DataFrame([{"size": 64, "protocol": 6, "latency": 0.01, "packet_rate": 10.0, "conn_frequency": 1.0}])
+        self.assertIsNone(llm.classify_batch(df))
+
+        # TrafficClassifier fallback mechanism
+        pkt_normal = {
+            "src_ip": "192.168.1.50",
+            "dst_ip": "10.0.0.1",
+            "size": 64,
+            "protocol": "TCP",
+            "timestamp": 1000.0,
+            "packet_rate": 2.0,
+            "conn_frequency": 1.0
+        }
+        res = self.classifier.classify_packet(pkt_normal)
+        self.assertEqual(res, "Normal")
+        self.assertEqual(self.classifier.last_engine_used, "XGBoost")
+
 
 if __name__ == "__main__":
     unittest.main()

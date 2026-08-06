@@ -68,6 +68,9 @@ class TestAnalyticsEngine(TestCase):
 
         from netinsight.dashboard.models import Agent, PacketRecord
 
+        PacketRecord.objects.all().delete()
+        Agent.objects.all().delete()
+
         # Create active Agent database records first
         agent1 = Agent.objects.create(mac_address="00:11:22:33:44:55", hostname="Agent 1", ip_address="192.168.1.5", last_seen=timezone.now())
         agent2 = Agent.objects.create(mac_address="00:11:22:33:44:66", hostname="Agent 2", ip_address="192.168.1.10", last_seen=timezone.now())

@@ -7,6 +7,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
+from netinsight.classification.llm_classifier import LLMClassifier
 from netinsight.config import settings
 from netinsight.config.labels import CLASS_LABELS
 
@@ -24,6 +25,12 @@ class TrafficClassifier:
         self.scaler = None
         self.model_stats: dict = {}
         self.model_lock = threading.Lock()
+
+        self.llm_classifier = LLMClassifier()
+        self.last_engine_used = "XGBoost"
+        self.last_llm_latency_ms = 0.0
+        self.last_llm_provider = ""
+        self.last_llm_reasoning = ""
 
         self.ip_history = {}
         self.cache_lock = threading.Lock()
@@ -139,6 +146,21 @@ class TrafficClassifier:
             - Mirai
             - Other Attacks
         """
+        # Try LLM Classification first if method exists
+        try:
+            if hasattr(self.llm_classifier, 'classify_packet'):
+                llm_pred = self.llm_classifier.classify_packet(packet_dict)
+                if llm_pred is not None:
+                    self.last_engine_used = "LLM"
+                    self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
+                    self.last_llm_provider = getattr(self.llm_classifier, 'last_llm_provider', "")
+                    self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
+                    return llm_pred
+        except Exception as e:
+            logger.error(f"LLM Classification error: {e}")
+
+        self.last_engine_used = "XGBoost"
+
         src_ip = packet_dict["src_ip"]
         dst_ip = packet_dict["dst_ip"]
         size = packet_dict["size"]
@@ -211,6 +233,34 @@ class TrafficClassifier:
                     logger.error(f"Inference error in SVM classifier: {e}.", exc_info=True)
 
         return "Normal"
+
+    def classify_batch(self, features_df):
+        """Classifies a batch of features via LLM or fallback XGBoost."""
+        predictions = None
+        try:
+            if hasattr(self.llm_classifier, 'classify_batch'):
+                predictions = self.llm_classifier.classify_batch(features_df)
+        except Exception as e:
+            logger.error(f"LLM Batch Classification error: {e}")
+
+        if predictions is not None:
+            self.last_engine_used = "LLM"
+            self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
+            self.last_llm_provider = getattr(self.llm_classifier, 'last_llm_provider', "")
+            self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
+            return predictions
+
+        self.last_engine_used = "XGBoost"
+        # Run existing XGBoost classification seamlessly
+        with self.model_lock:
+            if self.clf is not None and self.scaler is not None:
+                try:
+                    scaled = self.scaler.transform(features_df)
+                    preds = self.clf.predict(scaled)
+                    return [CLASS_LABELS.get(int(p), "Normal") for p in preds]
+                except Exception as e:
+                    logger.error(f"Batch Inference error in SVM/XGBoost classifier: {e}.", exc_info=True)
+        return ["Normal"] * len(features_df)
 
 # Shared module singleton instance to ensure IP history cache is shared across threads/views
 _shared_classifier = None

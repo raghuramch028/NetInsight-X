@@ -9,24 +9,50 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="m-0 text-white font-bold h6">
-                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>XGBoost Model Profile
+                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>{{ engine_name|default:"XGBoost" }} Model Profile
                 </h4>
-                {% if model_loaded %}
-                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">Active</span>
+                {% if llm_active %}
+                    <span class="saas-badge font-mono" style="font-size:0.7rem; background-color: rgba(138, 43, 226, 0.2); color: #d8b4fe; border: 1px solid #a855f7;">
+                        <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>NVIDIA NIM / Gemini AI Active
+                    </span>
+                {% elif model_loaded %}
+                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">XGBoost Classifier Active</span>
                 {% else %}
-                    <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;">Heuristics</span>
+                    <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;">Heuristics Active</span>
                 {% endif %}
             </div>
             
+            {% if llm_active %}
+            <p class="text-secondary small mb-4">
+                The classification module is currently powered by a Large Language Model ({{ llm_provider }}), utilizing few-shot reasoning.
+            </p>
+            {% else %}
             <p class="text-secondary small mb-4">
                 The classification module is built using an XGBoost Classifier trained on the real benchmark CICIDS2017 / CICIoT2023 datasets.
             </p>
+            {% endif %}
 
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Classifier Type</span>
-                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">{{ stats.kernel|default:"XGBoost" }}</span>
+                    <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">
+                        {% if llm_active %}{{ llm_provider }}{% else %}{{ stats.kernel|default:"XGBoost" }}{% endif %}
+                    </span>
                 </li>
+                {% if llm_active %}
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                    <span class="text-secondary small font-mono">LLM Latency</span>
+                    <span class="font-mono text-warning fw-bold" style="font-size:0.8rem;">{{ llm_latency_ms|floatformat:1 }} ms</span>
+                </li>
+                {% if llm_reasoning %}
+                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                    <span class="text-secondary small font-mono">LLM Reasoning</span>
+                    <span class="font-mono text-info fw-bold" style="font-size:0.75rem; text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ llm_reasoning }}">
+                        {{ llm_reasoning }}
+                    </span>
+                </li>
+                {% endif %}
+                {% else %}
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Validation Accuracy</span>
                     <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">
@@ -39,6 +65,7 @@
                         {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
                     </span>
                 </li>
+                {% endif %}
                 <li class="list-group-item bg-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono">Inference Port</span>
                     <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE</span>

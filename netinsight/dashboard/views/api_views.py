@@ -337,6 +337,12 @@ def api_live_metrics(request):
         # Generate DSE advisory alerts
         latest["dse_alerts"] = dse_engine.evaluate_decisions()
 
+        latest["llm_active"] = bool(getattr(settings, "NVIDIA_API_KEY", None) or getattr(settings, "GEMINI_API_KEY", None))
+        latest["engine_name"] = getattr(classifier, "last_engine_used", "XGBoost")
+        latest["llm_latency_ms"] = getattr(classifier, "last_llm_latency_ms", 0.0)
+        latest["llm_reasoning"] = getattr(classifier, "last_llm_reasoning", "")
+        latest["llm_provider"] = getattr(classifier, "last_llm_provider", "")
+
         return JsonResponse(_to_native_types(latest))
     except Exception as e:
         logger.error(f"API live metrics error: {e}", exc_info=True)
