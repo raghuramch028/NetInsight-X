@@ -31,13 +31,13 @@ SECRET_KEY = os.environ.get(
     "django-insecure-netinsightx-academic-project-secret",
 )
 
+DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+
 if not DEBUG and (not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project-secret"):
     logging.getLogger(__name__).warning(
         "DJANGO_SECRET_KEY is not set. Using a hardcoded fallback key. "
         "Set DJANGO_SECRET_KEY in production."
     )
-
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS", "*")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
