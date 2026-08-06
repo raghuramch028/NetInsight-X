@@ -13,9 +13,9 @@ class TestTrafficClassification(TestCase):
         self.classifier = TrafficClassifier()
 
     def test_nvidia_deepseek_settings(self):
-        """Verifies NVIDIA DeepSeek API key and model settings are configured correctly."""
-        self.assertEqual(settings.NVIDIA_API_KEY, "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")
-        self.assertEqual(settings.NVIDIA_MODEL_NAME, "meta/llama-3.1-70b-instruct")
+        """Verifies NVIDIA DeepSeek API key and model settings exist."""
+        self.assertIsInstance(settings.NVIDIA_API_KEY, str)
+        self.assertEqual(settings.NVIDIA_MODEL_NAME, "deepseek-ai/deepseek-r1")
 
     def test_llm_classifier_initialization(self):
         """Verifies LLMClassifier initializes with NVIDIA DeepSeek API settings."""

@@ -4,7 +4,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from django.test import Client, TestCase
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "netinsight.config.settings")
@@ -177,4 +177,70 @@ class TestDashboardViews(TestCase):
         finally:
             settings.NETINSIGHT_AGENT_TOKEN = original_token
             settings.DEBUG = original_debug
+
+    def test_xss_escaping_in_agent_registration(self):
+        """Verifies malicious XSS scripts in agent hostname/metadata are HTML escaped."""
+        xss_payload = {
+            "mac_address": "00:11:22:33:44:55",
+            "hostname": "<script>alert('xss')</script>",
+            "device_type": "<b onmouseover=alert(1)>Generic</b>",
+            "vendor": "Generic <iframe src=evil.com></iframe>",
+            "ip_address": "192.168.1.10"
+        }
+        res = self.client.post("/api/v1/agents/register", data=xss_payload, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+
+        agent = Agent.objects.get(mac_address="00:11:22:33:44:55")
+        self.assertNotIn("<script>", agent.hostname)
+        self.assertIn("&lt;script&gt;", agent.hostname)
+        self.assertNotIn("<b onmouseover", agent.device_type)
+
+class TestConcurrency(TransactionTestCase):
+
+    def test_concurrent_telemetry_write_safety(self):
+        """Verifies concurrent multi-threaded telemetry writes execute safely without DB lock exceptions."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        agents = [
+            Agent.objects.create(
+                mac_address=f"00:AA:BB:CC:DD:{idx:02X}",
+                hostname=f"Thread-Host-{idx}",
+                device_type="Server",
+                ip_address=f"192.168.1.{10+idx}"
+            ) for idx in range(5)
+        ]
+
+        def send_telemetry(idx):
+            ag = agents[idx]
+            payload = {
+                "agent_id": str(ag.id),
+                "stats": {
+                    "cpu_usage": 15.0,
+                    "memory_usage": 40.0,
+                    "disk_usage": 20.0,
+                    "active_connections": 5,
+                    "bytes_sent": 1000,
+                    "bytes_recv": 2000,
+                },
+                "packets": [
+                    {
+                        "src_ip": f"192.168.1.{idx+1}",
+                        "dst_ip": "10.0.0.1",
+                        "src_port": 1234,
+                        "dst_port": 80,
+                        "protocol": "TCP",
+                        "size": 512,
+                        "timestamp": time.time()
+                    }
+                ]
+            }
+            client = Client()
+            return client.post("/api/v1/agents/telemetry", data=payload, content_type="application/json")
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(send_telemetry, i) for i in range(5)]
+            results = [f.result() for f in futures]
+
+        for res in results:
+            self.assertEqual(res.status_code, 200)
 

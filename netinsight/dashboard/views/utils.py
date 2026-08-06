@@ -28,12 +28,13 @@ def check_dashboard_auth(request):
 
 
 def validate_agent_token(request) -> bool:
-    """Validates optional X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured.
+    """Validates X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured.
     Uses hmac.compare_digest for constant-time comparison to prevent timing attacks."""
     token = getattr(settings, "NETINSIGHT_AGENT_TOKEN", None)
-    if token:
+    enforce = getattr(settings, "NETINSIGHT_ENFORCE_AGENT_TOKEN", False)
+    if token or enforce:
         auth_header = request.headers.get("X-Agent-Token") or request.META.get("HTTP_X_AGENT_TOKEN")
-        if not auth_header or not hmac.compare_digest(str(auth_header), str(token)):
+        if not auth_header or not token or not hmac.compare_digest(str(auth_header), str(token)):
             return False
     return True
 

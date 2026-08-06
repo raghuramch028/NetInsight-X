@@ -24,8 +24,12 @@ def set_current_capacity(val: float) -> None:
         _CURRENT_CAPACITY = float(val)
 
 def run_speed_test():
-    """Streams up to 40MB from Cloudflare Edge with an 8-second cutoff to emulate Google's test."""
-    # Cloudflare API requesting up to 10 MB of data
+    """Measures dynamic link capacity using configured external speed tests or local telemetry heuristics."""
+    enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", False)
+    if not enable_external:
+        _run_telemetry_fallback("External speed test disabled (NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST=False).")
+        return
+
     url = "https://speed.cloudflare.com/__down?bytes=10000000"
     try:
         start_time = time.perf_counter()
@@ -54,32 +58,34 @@ def run_speed_test():
                 return
         raise Exception(f"HTTP status {response.status_code}")
     except Exception as e:
-        logger.warning(f"[SPEED MONITOR] Active speed test timed out/failed ({e}). Attempting telemetry fallback.")
-        try:
-            import django.db
+        _run_telemetry_fallback(f"Active speed test timed out/failed ({e}).")
 
-            from netinsight.dashboard.models import MetricRecord
-            try:
-                # Retrieve last 40 metric records (approx 2 minutes of traffic)
-                records = MetricRecord.objects.all().order_by("-timestamp")[:40]
-                if records.exists():
-                    max_throughput = max(r.throughput for r in records)
-                    if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
-                        speed_bps = max_throughput * 1.2
-                        speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-                        set_current_capacity(speed_bps)
-                        logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
-                    else:
-                        set_current_capacity(10000000.0) # 10 Mbps
-                        logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
+def _run_telemetry_fallback(reason: str):
+    """Calculates capacity from recent telemetry throughput or defaults safely."""
+    logger.info(f"[SPEED MONITOR] {reason} Using local telemetry fallback.")
+    try:
+        import django.db
+
+        from netinsight.dashboard.models import MetricRecord
+        try:
+            records = MetricRecord.objects.all().order_by("-timestamp")[:40]
+            if records.exists():
+                max_throughput = max(r.throughput for r in records)
+                if max_throughput > 100000.0:
+                    speed_bps = max_throughput * 1.2
+                    speed_bps = max(2000000.0, min(100000000.0, speed_bps))
+                    set_current_capacity(speed_bps)
+                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
                 else:
-                    set_current_capacity(10000000.0) # 10 Mbps
-                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
-            finally:
-                # Close DB connections to prevent leaks in background threads
-                django.db.close_old_connections()
-        except Exception as fallback_err:
-            logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
+                    set_current_capacity(10000000.0)
+                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
+            else:
+                set_current_capacity(10000000.0)
+                logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
+        finally:
+            django.db.close_old_connections()
+    except Exception as fallback_err:
+        logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
 
 def speed_monitor_loop():
     """Infinite loop executing speed tests every 30 seconds."""

@@ -35,7 +35,17 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         agent.bytes_recv = max(0, int(stats_data.get("bytes_recv", 0)))
         agent.active_connections = max(0, int(stats_data.get("active_connections", 0)))
         agent.last_seen = timezone.now()
-        agent.save()
+
+        for attempt in range(5):
+            try:
+                agent.save()
+                break
+            except Exception as ex:
+                if "locked" in str(ex).lower() and attempt < 4:
+                    time.sleep(0.05 * (attempt + 1))
+                    close_old_connections()
+                else:
+                    raise
 
         # 2. Spin off heavy queries and analysis to a background thread to prevent client timeouts
         _telemetry_pool.submit(_async_telemetry_worker, agent.id, stats_data, packets_list)
@@ -47,21 +57,25 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
 def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[dict]) -> None:
     """Handles heavy processing tasks asynchronously without blocking client uploads."""
     close_old_connections()
-    try:
-        agent = None
-        for attempt in range(5):
-            try:
-                agent = Agent.objects.get(id=agent_id)
+    for attempt in range(5):
+        try:
+            _execute_async_telemetry_worker(agent_id, stats_data, packets_list)
+            break
+        except Exception as ex:
+            if "locked" in str(ex).lower() and attempt < 4:
+                time.sleep(0.05 * (attempt + 1))
+                close_old_connections()
+            else:
+                logger.error(f"Error in async telemetry worker thread: {ex}", exc_info=True)
                 break
-            except Exception as ex:
-                if "locked" in str(ex).lower() and attempt < 4:
-                    time.sleep(0.05 * (attempt + 1))
-                    close_old_connections()
-                else:
-                    raise ex
+        finally:
+            close_old_connections()
 
-        if not agent:
-            return
+
+def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[dict]) -> None:
+    agent = Agent.objects.get(id=agent_id)
+    if not agent:
+        return
 
         now_ts = time.time()
 
@@ -202,8 +216,3 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         StateHistory.objects.filter(timestamp__lt=retention_cutoff).delete()
         retention_cutoff_dt = timezone.now() - timedelta(hours=24)
         ThreatHistory.objects.filter(timestamp__lt=retention_cutoff_dt).delete()
-
-    except Exception as e:
-        logger.error(f"Error in async telemetry worker thread: {e}", exc_info=True)
-    finally:
-        close_old_connections()

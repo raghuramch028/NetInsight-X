@@ -390,6 +390,7 @@ def classification_view(request):
         "recent_packets": packets_list,
         "llm_active": llm_active,
         "engine_name": "NVIDIA DeepSeek AI",
+        "model_name": getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1"),
         "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", 0.0),
         "llm_reasoning": getattr(classifier, "last_llm_reasoning", ""),
         "llm_provider": "NVIDIA DeepSeek AI",

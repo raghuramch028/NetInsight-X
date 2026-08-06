@@ -44,6 +44,7 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 
 # Optional secret API token for agent endpoint authentication
 NETINSIGHT_AGENT_TOKEN = os.environ.get("NETINSIGHT_AGENT_TOKEN", None)
+NETINSIGHT_ENFORCE_AGENT_TOKEN = os.environ.get("NETINSIGHT_ENFORCE_AGENT_TOKEN", "False").lower() in ("true", "1", "yes")
 
 if not DEBUG and "*" in ALLOWED_HOSTS:
     logging.getLogger(__name__).warning(
@@ -137,6 +138,10 @@ if _DATABASE_URL:
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
                 "NAME": DB_PATH,
+                "OPTIONS": {
+                    "timeout": 30.0,
+                    "init_command": "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
+                },
             }
         }
 else:
@@ -145,6 +150,10 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": DB_PATH,
+            "OPTIONS": {
+                "timeout": 30.0,
+                "init_command": "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
+            },
         }
     }
 
@@ -215,8 +224,8 @@ MDP_REWARDS = {
 }
 
 # LLM Classification Configuration
-NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "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")
-NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "meta/llama-3.1-70b-instruct")
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
+NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
 
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
