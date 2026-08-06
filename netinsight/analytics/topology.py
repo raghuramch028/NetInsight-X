@@ -1,3 +1,4 @@
+import html
 import logging
 import os
 from datetime import timedelta
@@ -51,16 +52,8 @@ def generate_topology_pyvis() -> str:
             ax = int(radius * math.cos(angle))
             ay = int(radius * math.sin(angle))
 
-            agent_label = f"{agent.hostname}\n({agent.ip_address})"
-            agent_title = (
-                f"Hostname: {agent.hostname}\n"
-                f"IP: {agent.ip_address}\n"
-                f"MAC: {agent.mac_address}\n"
-                f"Status: Online\n"
-                f"CPU: {agent.cpu_usage}%\n"
-                f"RAM: {agent.memory_usage}%\n"
-                f"Active Connections: {agent.active_connections}"
-            )
+            agent_label = html.escape(f"{agent.hostname}\n({agent.ip_address})")
+            agent_title = html.escape(f"{agent_label} ({agent.device_type})")
 
             G.add_node(
                 agent.mac_address,

@@ -59,23 +59,25 @@ def run_speed_test():
             import django.db
 
             from netinsight.dashboard.models import MetricRecord
-            # Retrieve last 40 metric records (approx 2 minutes of traffic)
-            records = MetricRecord.objects.all().order_by("-timestamp")[:40]
-            if records.exists():
-                max_throughput = max(r.throughput for r in records)
-                if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
-                    speed_bps = max_throughput * 1.2
-                    speed_bps = max(2000000.0, min(100000000.0, speed_bps))
-                    set_current_capacity(speed_bps)
-                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
+            try:
+                # Retrieve last 40 metric records (approx 2 minutes of traffic)
+                records = MetricRecord.objects.all().order_by("-timestamp")[:40]
+                if records.exists():
+                    max_throughput = max(r.throughput for r in records)
+                    if max_throughput > 100000.0: # If there is active traffic > 100 Kbps
+                        speed_bps = max_throughput * 1.2
+                        speed_bps = max(2000000.0, min(100000000.0, speed_bps))
+                        set_current_capacity(speed_bps)
+                        logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
+                    else:
+                        set_current_capacity(10000000.0) # 10 Mbps
+                        logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
                 else:
                     set_current_capacity(10000000.0) # 10 Mbps
-                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
-            else:
-                set_current_capacity(10000000.0) # 10 Mbps
-                logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
-            # Close DB connections to prevent leaks in background threads
-            django.db.close_old_connections()
+                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
+            finally:
+                # Close DB connections to prevent leaks in background threads
+                django.db.close_old_connections()
         except Exception as fallback_err:
             logger.error(f"[SPEED MONITOR] Telemetry fallback failed: {fallback_err}")
 

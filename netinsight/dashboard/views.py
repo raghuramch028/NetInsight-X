@@ -1,6 +1,7 @@
 import base64
 import csv
 import hmac
+import html
 import io
 import json
 import logging
@@ -38,7 +39,6 @@ from netinsight.dashboard.models import (
 )
 from netinsight.optimization.solver import BandwidthOptimizer
 from netinsight.prediction.dse import DecisionSupportEngine
-from netinsight.prediction.hmm import HiddenMarkovModel
 from netinsight.prediction.markov import MarkovPredictor
 from netinsight.prediction.mdp import MDPRecommendationEngine
 
@@ -47,7 +47,9 @@ logger = logging.getLogger(__name__)
 # Singleton solvers and classifiers instances
 analytics_engine = AnalyticsEngine()
 optimizer = BandwidthOptimizer()
-hmm_predictor = HiddenMarkovModel()
+from netinsight.prediction.hmm import get_shared_hmm
+
+hmm_predictor = get_shared_hmm()
 markov_predictor = MarkovPredictor()
 mdp_engine = MDPRecommendationEngine()
 classifier = get_shared_classifier()
@@ -195,10 +197,10 @@ def api_register_agent(request):
     try:
         data = request.data
         mac_address = data.get("mac_address", "").lower().strip()
-        hostname = data.get("hostname", "Unknown Host")
-        device_type = data.get("device_type", "Client Node")
-        vendor = data.get("vendor", "Unknown Vendor")
-        ip_address = request.META.get("REMOTE_ADDR", "127.0.0.1")
+        hostname = html.escape(str(data.get("hostname", "Unknown-Host")).strip())
+        device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())
+        vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())
+        ip_address = html.escape(str(data.get("ip_address", "0.0.0.0")).strip())
 
         if not mac_address:
             return Response({"error": "MAC Address is required for registration"}, status=400)

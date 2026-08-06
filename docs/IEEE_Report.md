@@ -203,7 +203,8 @@ Incoming packets features $X = [\text{Packet Size}, \text{Protocol}, \text{Laten
 - Potentially Suspicious
 
 We use a non-linear gradient boosting ensemble to handle overlapping boundary parameters:
-$$K(x, x') = \exp(-\gamma \|x - x'\|^2)$$
+$$\mathcal{L}^{(t)} = \sum_{i=1}^{n} l\left(y_i, \hat{y}_i^{(t-1)} + f_t(x_i)\right) + \Omega(f_t)$$
+where $\Omega(f) = \gamma T + \frac{1}{2}\lambda \|w\|^2$ regularizes tree complexity.
 
 ---
 

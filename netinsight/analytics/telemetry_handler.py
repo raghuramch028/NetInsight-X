@@ -9,10 +9,10 @@ from django.utils import timezone
 
 from netinsight.analytics.flow_builder import prepare_packet_record
 from netinsight.dashboard.models import Agent, FlowRecord, MetricRecord, PacketRecord, StateHistory, ThreatHistory
-from netinsight.prediction.hmm import HiddenMarkovModel
+from netinsight.prediction.hmm import get_shared_hmm
 
 logger = logging.getLogger(__name__)
-hmm_model = HiddenMarkovModel()
+hmm_model = get_shared_hmm()
 
 # Bounded thread pool prevents unbounded thread creation under high agent load
 _telemetry_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="telemetry")

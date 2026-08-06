@@ -24,7 +24,6 @@ Spawns background threads to capture network packets or run a simulated traffic 
   * `stop()`: Halts the sniffing loops and database writing tasks, waiting for threads to join.
   * `packet_callback(packet)`: Scapy sniffer callback that queues packets.
   * `run_live_sniffer()`: Sniffer loop executor.
-  * `run_demo_replay()`: Simulation loop executor for Demonstration Mode.
   * `run_writer_worker()`: Worker consuming from the queue, batch-inserting into SQLite, and recording windowed metrics to `metrics` and `state_history` tables every 2 seconds.
   * `get_capture_rate() -> float`: Returns the percentage of successfully queued packets relative to total processed packets.
 

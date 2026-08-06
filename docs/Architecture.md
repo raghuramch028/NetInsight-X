@@ -30,12 +30,15 @@ NetInsight-X implements a layered architecture designed to isolate responsibilit
                                     |
                   +-----------------v----------------+
                   |          Storage Layer           |
-                  |             (SQLite)             |
+                  |           (Django ORM)           |
                   +-----------------+----------------+
                                     |
+                  +-----------------v----------------+
+                  |             REST API             |
                   +-----------------+----------------+
-                  |       Packet Capture Layer       |
-                  |         (Scapy Thread)           |
+                                    |
+                  +-----------------v----------------+
+                  |       Packet Capture Agent       |
                   +----------------------------------+
 ```
 

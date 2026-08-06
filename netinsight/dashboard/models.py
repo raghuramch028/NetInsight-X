@@ -38,6 +38,12 @@ class PacketRecord(models.Model):
     def __str__(self):
         return f"{self.protocol} {self.src_ip}:{self.src_port} -> {self.dst_ip}:{self.dst_port}"
 
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["agent", "timestamp"]),
+        ]
+
 class FlowRecord(models.Model):
     """Summarizes packet flows grouped by active IP flows for analysis and SVM classification."""
     id = models.BigAutoField(primary_key=True)
@@ -54,6 +60,12 @@ class FlowRecord(models.Model):
 
     def __str__(self):
         return f"Flow {self.flow_key} ({self.threat_label})"
+
+    class Meta:
+        ordering = ["-end_time"]
+        indexes = [
+            models.Index(fields=["agent", "flow_key", "end_time"]),
+        ]
 
 class MetricRecord(models.Model):
     """Stores calculated network-wide performance metrics."""

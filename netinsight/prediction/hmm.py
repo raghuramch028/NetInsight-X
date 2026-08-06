@@ -1,5 +1,6 @@
 import logging
 import math
+import threading
 import time
 
 import numpy as np
@@ -254,3 +255,15 @@ class HiddenMarkovModel:
             "forecast": {HIDDEN_STATES[i]: float(s_forecast[i]) for i in range(5)},
             "most_likely": HIDDEN_STATES[int(np.argmax(s_forecast))]
         }
+
+_shared_hmm = None
+_shared_hmm_lock = threading.Lock()
+
+def get_shared_hmm() -> HiddenMarkovModel:
+    """Returns the process-wide shared HiddenMarkovModel singleton instance."""
+    global _shared_hmm
+    if _shared_hmm is None:
+        with _shared_hmm_lock:
+            if _shared_hmm is None:
+                _shared_hmm = HiddenMarkovModel()
+    return _shared_hmm

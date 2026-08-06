@@ -131,19 +131,13 @@ def preprocess_intrusion_data(csv_path: Path) -> pd.DataFrame:
     else:
         df["packet_rate"] = (total_pkts / (flow_duration + 0.001)).clip(upper=10000.0)
 
-    # 5. Feature: conn_frequency -> mapped to connections density (modeled from destination ports or local statistics)
-    if "Destination Port" in df_raw.columns:
-        # Map connection frequency by destination port density categories
-        def map_conn_density(port):
-            # Admin ports or scanner-heavy ports have higher density indicators
-            if port in [80, 443]:
-                return 5.0 # Normal high traffic
-            if port in [22, 23, 445, 3389]:
-                return 12.0 # Threat targeting
-            return 2.0 # Scant or local
-        df["conn_frequency"] = df_raw["Destination Port"].apply(map_conn_density)
+    # 5. Feature: conn_frequency -> normalized flow density or connection count
+    if "Total Fwd Packets" in df_raw.columns and "Total Backward Packets" in df_raw.columns:
+        df["conn_frequency"] = (df_raw["Total Fwd Packets"].astype(float) + df_raw["Total Backward Packets"].astype(float)) / 2.0
+    elif "Destination Port" in df_raw.columns:
+        df["conn_frequency"] = df_raw["Destination Port"].astype(float) / 1000.0
     else:
-        df["conn_frequency"] = 2.0
+        df["conn_frequency"] = 1.0
 
     # 6. Target Labels mapping
     labels = []
