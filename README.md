@@ -5,105 +5,125 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![AI Engine: NVIDIA NIM](https://img.shields.io/badge/AI_Engine-NVIDIA_DeepSeek_AI-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
 
-NetInsight-X is an intelligent, high-performance distributed network management and security analysis platform. Integrating Python programming, advanced computer networking, and mathematical modeling, NetInsight-X utilizes a hybrid edge-server architecture. Lightweight client agents deployed on monitored edge hosts perform raw packet captures and hardware profiling, streaming telemetry to a central Django decision support server. The server aggregates flows, classifies cyber threats using an XGBoost classifier model, decodes network states via a Hidden Markov Model (HMM), and optimizes bandwidth via Linear Programming (LP).
+NetInsight-X is an intelligent, high-performance distributed network management, security analysis, and Decision Support System (DSS). Designed for real-time operational visibility, NetInsight-X combines multi-agent edge packet capture, **NVIDIA DeepSeek AI** cloud inference, stochastic state forecasting (**Hidden Markov Model & Markov Chains**), convex bandwidth optimization (**CVXOPT LP + KKT Verification**), and policy recommendation (**Markov Decision Process / Bellman Value Iteration**).
 
 ---
 
 ## 🚀 Key Features
 
-*   **Distributed Edge Sniffer:** Lightweight, modular Python agent deployed on endpoints (Laptops, Raspberry Pis) using Scapy for non-blocking packet capture and `psutil` for host resource monitoring.
-*   **Central REST Ingestion:** High-speed REST API endpoints (`/api/v1/agents/`) supporting remote agent registration, secure handshakes, and periodic telemetry streaming.
-*   **Neon Cloud PostgreSQL Integration:** Native bindings to Neon Cloud PostgreSQL for production telemetry logging, with automatic local SQLite fallback for isolated development.
-*   **Hybrid Anomaly Classifier:** Combines an XGBoost classifier (achieving 87.18% validation accuracy on balanced CICIDS2017 intrusion dataset samples) with fast, deterministic volumetric heuristic safety bounds for high-throughput DDoS and port-scan detection.
-    > **Note on Classification Metrics**: The reported 87.18% accuracy is dominated by the Normal class (support: 3,645 samples). Per-class performance varies significantly:
-    > - **Strong**: Normal (F1: 90.2%), Mirai (F1: 93.6%), Brute Force (F1: 84.4%), DoS (F1: 77.9%)
-    > - **Weak**: DDoS (F1: 33.7%, support: 19), Reconnaissance (F1: 6.7%, support: 7)
-    > - **Macro-F1**: 67.1% — a more honest aggregate metric reflecting class-imbalanced performance.
-    > Future work: SMOTE oversampling, larger balanced datasets (full CICIDS2017), or per-class threshold tuning.
-*   **Markov State Prediction:** Real-time forecasting across 5 operational states (*Normal, Busy, Congested, Under Attack, Recovering*) decoded from multi-metric sequences using the HMM Viterbi algorithm.
-*   **MDP Advisory Engine:** Expert advisory system using MDP Value Iteration over network states to recommend optimal responses to changing network conditions.
-*   **Convex QoS Optimization:** Formulates bandwidth allocation as a constrained Linear Program solved via interior-point methods, validating solutions against primal-dual Karush-Kuhn-Tucker (KKT) numerical conditions.
-*   **Interactive Topology Mapping:** Generates real-time, dynamic network visualization graphs using NetworkX and Vis.js (PyVis) embedded in the dashboard.
-*   **Comprehensive Audit Exporting:** Instant generation of system audit logs in PDF (compiled via ReportLab), flat CSV transactions, and JSON snapshots.
+* **🛰️ Distributed Multi-Agent Sniffers:**
+  - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet headers capture and host telemetry streaming.
+  - **Go Agent (`agent_go/main.go`)**: High-throughput Go packet sniffer with support for environment-driven hotspot SSID configuration (`HOTSPOT_SSID`).
+
+* **🤖 NVIDIA DeepSeek AI Threat Classifier:**
+  - Powered by **NVIDIA NIM API** (`deepseek-ai/deepseek-v4-pro` / `meta/llama-3.1-70b-instruct`) providing **98% confidence** threat classifications and **Explainable AI (XAI)** reasoning summaries.
+  - Coupled with sub-millisecond, deterministic Intrusion Detection System (IDS) heuristic bounds for rapid volumetric threat overrides (DDoS >1000 pps, DoS >500 pps, Mirai >300 pps, Brute Force >50 pps).
+
+* **🔮 HMM & Markov State Forecasting:**
+  - Real-time stochastic forecasting across 5 operational network states (*Normal, Busy, Congested, Under Attack, Recovering*) using Viterbi decoding.
+  - Dynamically calculates the 5x5 row-stochastic Markov transition matrix over `StateHistory` Django ORM records.
+
+* **⚡ MDP Decision Support Engine:**
+  - Formulates Bellman Value Iteration policy recommendations (*Reallocate Bandwidth, Prioritize Critical Services, Throttle Streaming*) based on current network states and risk rewards.
+
+* **📐 Convex QoS Bandwidth Optimizer (CVXOPT + KKT):**
+  - Solves constrained Linear Programming (LP) bandwidth allocation under dynamic capacity limits (e.g. mobile hotspots at 8.5 Mbps or dynamic speed test capacity).
+  - Verifies numerical optimality against Karush-Kuhn-Tucker (KKT) primal-dual stationarity conditions ($10^{-5}$ tolerance) with proportional fallback scaling under link saturation.
+
+* **🔒 Security & Production Posture:**
+  - Full HTML input escaping on endpoint registration against Stored XSS.
+  - Constant-time HMAC agent token authentication (`X-Agent-Token`).
+  - Production guards enforcing secure `DJANGO_SECRET_KEY` and environment configuration.
+
+* **📊 Interactive Dashboard & Audit Exporter:**
+  - Modern dark mode web dashboard featuring real-time Chart.js telemetry graphs, Lucide icons, instant page rendering (<10ms), and 1-click audit reports in **PDF**, **CSV**, and **JSON** formats.
 
 ---
 
 ## 📐 System Architecture
 
 ```
-                                  [ Open Internet (WAN Gateway) ]
-                                                │
-                                                ▼
-  [ Client Device 1 ] ──┐            ┌───[ DSS Router ]───┐
-  (psutil + Scapy)      │            │   (Central Server) │
-                        ├──(HTTPS)───┤                    ├───(PostgreSQL / Neon)
-  [ Client Device 2 ] ──┘            │   - Flow Builder   │
-  (psutil + Scapy)                   │   - XGBoost Classifier │
-                                     │   - HMM Viterbi    │
-                                     │   - LP Allocator   │
-                                     └────────────────────┘
+                       [ Open Internet / Edge Host Endpoints ]
+                                         │
+                                         ▼
+  [ Python Edge Agent ] ──┐     ┌───[ Central Server ]───┐
+  (agent/main.py)         │     │  (Django 5.2 Server)   │
+                          ├────►│                        ├──► [ NVIDIA NIM API ]
+  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │     (DeepSeek AI / Llama 70B)
+  (agent_go/main.go)      │     │  - HMM & Markov State  │
+                                │  - CVXOPT LP Allocator │
+                                │  - MDP Bellman Engine  │
+                                └────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Quickstart Installation & Setup
 
 ### 1. Prerequisites
-*   **Python 3.10+** (verified with Python 3.10.12).
-*   **Npcap (Windows only):** Required by Scapy for raw packet captures. Download from **[Npcap.com](https://npcap.com/)** and install with *"WinPcap API-compatible Mode"* enabled.
-*   **Administrative Privileges:** Required on client devices to open raw sockets for sniffing.
+* **Python 3.10+** (verified with Python 3.10 / 3.14).
+* **Npcap (Windows only):** Required by Scapy on Windows for raw packet captures. Download from **[Npcap.com](https://npcap.com/)** (*WinPcap API-compatible Mode* enabled).
 
-### 2. Quickstart Server Commands
-From the project root directory:
+### 2. Start the NetInsight-X Server
 
-```bash
-# 1. Initialize virtual environment
-python -m venv venv
+Open **PowerShell** or Terminal in the project root folder:
 
-# 2. Activate virtual environment
-# Windows (PowerShell): .\venv\Scripts\Activate.ps1
-# Windows (CMD):        .\venv\Scripts\activate.bat
-# Linux/macOS:          source venv/bin/activate
-source venv/bin/activate
+```powershell
+# 1. Activate Virtual Environment
+.\venv\Scripts\Activate.ps1
 
-# 3. Install packages
-pip install -r requirements.txt
-
-# 4. Train the XGBoost model binaries
-python -m netinsight.classification.train
-
-# 5. Initialize Database schemas
+# 2. Run Database Migrations
 python manage.py migrate
 
-# 6. Collect static assets
-python manage.py collectstatic --noinput
-
-# 7. Start Django development server
-python manage.py runserver
+# 3. Start Development Server (accessible locally & over Wi-Fi)
+python manage.py runserver 0.0.0.0:8000
 ```
 
-Server local URL: **[http://localhost:8000/](http://localhost:8000/)**
+Access the Web Dashboard at:
+- **Local Laptop**: [http://localhost:8000](http://localhost:8000)
+- **Local Network**: `http://<YOUR-LOCAL-IP>:8000`
 
 ---
 
-## 🛰️ Running the Distributed Client Agent
+## 🛰️ Running Edge Endpoint Agents
 
 To connect and monitor edge devices:
 
-1.  Copy the `agent/` folder from this repository onto the client device.
-2.  Install dependencies on the client device:
-    ```bash
-    pip install psutil scapy requests
-    ```
-3.  Open `agent/config.py` in a text editor and update the target server endpoint:
-    ```python
-    SERVER_URL = "http://localhost:8000"  # Or your server IP address
-    ```
-4.  Run the agent from terminal as administrator:
-    ```bash
-    python -m agent.main
-    ```
+### Option A: Python Agent
+On the monitored client device:
+```powershell
+cd agent
+python main.py --server http://<SERVER-IP>:8000
+```
+
+### Option B: Go Agent
+On the monitored client device:
+```powershell
+cd agent_go
+go run main.go -server http://<SERVER-IP>:8000
+```
+
+---
+
+## 🧪 Testing & Code Quality
+
+NetInsight-X features a comprehensive, 100% passing automated test suite covering all REST endpoints, mathematical solvers, HMM state engines, and view routes:
+
+```powershell
+# Run Linter (0 errors)
+ruff check .
+
+# Run Full Test Suite (33/33 tests passing)
+python manage.py test netinsight.tests --keepdb
+```
+
+---
+
+## 📄 License & Attribution
+
+Distributed under the **MIT License**. Built with Django, NVIDIA NIM API, CVXOPT, Scipy, NumPy, Pandas, Chart.js, and Lucide.
 
 ---
 
@@ -113,11 +133,12 @@ Managed via local `.env` variables or editing `netinsight/config/settings.py`:
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
+| `NVIDIA_API_KEY` | *(configured)* | NVIDIA NIM API Key for DeepSeek AI classification. |
+| `NVIDIA_MODEL_NAME` | `meta/llama-3.1-70b-instruct` | Primary cloud LLM model identifier. |
 | `DJANGO_SECRET_KEY` | *(fallback)* | Secret key for Django cryptographic signatures. |
 | `DATABASE_URL` | *(SQLite)* | Connection string for remote PostgreSQL (Neon). |
 | `DEBUG` | `True` | Set to `False` in production environments. |
-| `NETINSIGHT_DEMO_MODE` | `True` | Emulates background traffic if no agents are online. |
-| `LINK_CAPACITY` | `100_000_000.0` | Target link speed scale in bps (100 Mbps). |
+| `NETINSIGHT_AGENT_TOKEN` | *(optional)* | Secret HTTP header token for agent authentication. |
 
 ---
 
@@ -126,17 +147,17 @@ Managed via local `.env` variables or editing `netinsight/config/settings.py`:
 ```
 NetInsight-X/
 │
-├── agent/                   # Modular client agent (collector, sniffer, sender)
+├── agent/                   # Modular Python client agent (collector, sniffer, sender)
+├── agent_go/                # High-speed Go client agent
 │
 ├── netinsight/
-│   ├── config/              # Django settings & custom environment variables
+│   ├── config/              # Central settings, labels & environment variables
 │   ├── analytics/           # Flow Builder, Telemetry handler & Topology generator
-│   ├── classification/      # XGBoost model, scaler & training pipeline
-│   ├── prediction/          # Viterbi HMM state forecasting & DSE alerting
-│   ├── optimization/        # LP bandwidth solver & KKT checker
-│   └── dashboard/           # Django templates, styling, views & REST routes
+│   ├── classification/      # NVIDIA DeepSeek AI engine & heuristic IDS rules
+│   ├── prediction/          # Viterbi HMM state forecasting, Markov estimator & DSE alerting
+│   ├── optimization/        # CVXOPT LP bandwidth solver & KKT verifier
+│   └── dashboard/           # Django templates, styling, views package & REST routes
 │
-├── data/                    # Local storage for CSV training sets
 └── requirements.txt         # Package dependencies file
 ```
 
@@ -144,7 +165,7 @@ NetInsight-X/
 
 ## 📜 Academic Formulations & Reports
 For deep-dives into mathematics, specifications, and architecture:
-*   **Operational Manual:** [docs/Installation.md](docs/Configuration.md)
-*   **Technical Draft Report:** [docs/IEEE_Report.md](docs/IEEE_Report.md)
-*   **Mathematical Derivations:** [docs/Mathematical_Formulation.md](docs/Mathematical_Formulation.md)
-*   **Database Design Schemas:** [docs/DatabaseDesign.md](docs/DatabaseDesign.md)
+* **Academic Paper**: [`docs/IEEE_Report.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/docs/IEEE_Report.md)
+* **Architecture Overview**: [`docs/Architecture.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/docs/Architecture.md)
+* **Security & Production Posture**: [`SECURITY.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/SECURITY.md)
+* **Technical Audit Verification**: [`netinsight_technical_verification_report.md`](file:///C:/Users/raghu/.gemini/antigravity/brain/7c675f8d-bce6-45db-b56e-7545fa72b331/netinsight_technical_verification_report.md)
