@@ -37,7 +37,7 @@ if not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project
         "Set DJANGO_SECRET_KEY in production."
     )
 
-DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS", "*")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
