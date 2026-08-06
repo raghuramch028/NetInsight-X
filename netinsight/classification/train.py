@@ -26,15 +26,7 @@ logger = logging.getLogger(__name__)
 # 5. conn_frequency (Connection density)
 FEATURE_COLUMNS = ["packet_size", "protocol", "latency", "packet_rate", "conn_frequency"]
 
-CLASS_LABELS = {
-    0: "Normal",
-    1: "DoS",
-    2: "DDoS",
-    3: "Brute Force",
-    4: "Reconnaissance",
-    5: "Mirai",
-    6: "Other Attacks"
-}
+from netinsight.config.labels import CLASS_LABELS
 
 # Mirror URL of preprocessed intrusion dataset subset (approx 2.8MB)
 DATASET_URL = "https://raw.githubusercontent.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/main/data/CICIDS2017_sample_km.csv"
@@ -63,7 +55,7 @@ def download_dataset(data_dir: Path) -> Path:
                 data = response.read()
 
             computed_hash = hashlib.sha256(data).hexdigest()
-            if computed_hash != DATASET_SHA256 and len(data) < 10000:
+            if computed_hash != DATASET_SHA256:
                 logger.warning(f"Dataset SHA-256 hash mismatch ({computed_hash}). Using synthetic sample data.")
                 raise ValueError("Hash mismatch")
 
@@ -239,6 +231,9 @@ def train_and_save_model(data_dir_str: str | None = None) -> dict:
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
+
+    # Oversample minority classes
+    X_train, y_train = oversample_data(X_train, y_train)
 
     # 2. Standardize Features
     scaler = StandardScaler()

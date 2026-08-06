@@ -1,8 +1,10 @@
 import logging
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -277,3 +279,11 @@ REST_FRAMEWORK = {
         "agent": "600/minute",
     },
 }
+
+# In production mode (DEBUG=False), enforce strict secret key and agent token requirements
+if not DEBUG and 'test' not in sys.argv:
+    if SECRET_KEY == "django-insecure-netinsightx-academic-project-secret" or len(SECRET_KEY) < 32:
+        raise ImproperlyConfigured("Insecure DJANGO_SECRET_KEY detected in production mode (DEBUG=False). Set DJANGO_SECRET_KEY in environment variables.")
+    if not NETINSIGHT_AGENT_TOKEN:
+        raise ImproperlyConfigured("NETINSIGHT_AGENT_TOKEN is required in production mode (DEBUG=False) to secure telemetry endpoints. Set NETINSIGHT_AGENT_TOKEN in environment variables.")
+

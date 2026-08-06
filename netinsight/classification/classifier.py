@@ -8,19 +8,10 @@ import joblib
 import numpy as np
 
 from netinsight.config import settings
+from netinsight.config.labels import CLASS_LABELS
 
 logger = logging.getLogger(__name__)
 
-# Upgraded CICIoT2023 threat classes
-CLASS_LABELS = {
-    0: "Normal",
-    1: "DoS",
-    2: "DDoS",
-    3: "Brute Force",
-    4: "Reconnaissance",
-    5: "Mirai",
-    6: "Other Attacks"
-}
 
 class TrafficClassifier:
     """Classifies network traffic into normal and threat categories using a trained SVM."""

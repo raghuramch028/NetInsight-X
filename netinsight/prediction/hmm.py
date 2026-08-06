@@ -5,30 +5,11 @@ import time
 
 import numpy as np
 
+from netinsight.config.labels import HIDDEN_STATES, STATE_INDEX, THREAT_LABELS
 from netinsight.dashboard.models import StateHistory
 
 logger = logging.getLogger(__name__)
 
-# Hidden States mapping
-HIDDEN_STATES = {
-    0: "Normal",
-    1: "Busy",
-    2: "Congested",
-    3: "Under Attack",
-    4: "Recovering"
-}
-STATE_INDEX = {v: k for k, v in HIDDEN_STATES.items()}
-
-# XGBoost Threat Labels mapping
-THREAT_LABELS = {
-    "Normal": 0,
-    "DoS": 1,
-    "DDoS": 2,
-    "Brute Force": 3,
-    "Reconnaissance": 4,
-    "Mirai": 5,
-    "Other Attacks": 6
-}
 
 class HiddenMarkovModel:
     """Manages Hidden Markov Model state predictions, emissions, and Viterbi decoding."""
@@ -129,7 +110,7 @@ class HiddenMarkovModel:
 
             # Discrete Threat label score from XGBoost
             threat_name = observation.get("threat_label", "Normal")
-            threat_idx = THREAT_LABELS.get(threat_name, 0)
+            threat_idx = next((k for k, v in THREAT_LABELS.items() if v == threat_name), 0)
             state_idx = STATE_INDEX[state_name]
             p_discrete = self.threat_emission[state_idx, threat_idx]
 
