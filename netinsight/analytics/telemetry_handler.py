@@ -8,7 +8,14 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from netinsight.analytics.flow_builder import prepare_packet_record
-from netinsight.dashboard.models import Agent, FlowRecord, MetricRecord, PacketRecord, StateHistory, ThreatHistory
+from netinsight.dashboard.models import (
+    Agent,
+    FlowRecord,
+    MetricRecord,
+    PacketRecord,
+    StateHistory,
+    ThreatHistory,
+)
 from netinsight.prediction.hmm import get_shared_hmm
 
 logger = logging.getLogger(__name__)

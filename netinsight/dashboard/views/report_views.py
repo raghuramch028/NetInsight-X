@@ -177,7 +177,13 @@ def reports_pdf_download(request):
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
 
         response = HttpResponse(content_type="application/pdf")
         response["Content-Disposition"] = 'attachment; filename="netinsight_health_report.pdf"'

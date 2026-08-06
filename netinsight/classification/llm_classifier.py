@@ -9,7 +9,7 @@ logger = logging.getLogger("netinsight")
 
 class LLMClassifier:
     def __init__(self):
-        self.nvidia_api_key = getattr(settings, "NVIDIA_API_KEY", "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")
+        self.nvidia_api_key = getattr(settings, "NVIDIA_API_KEY", "")
         self.nvidia_model_name = getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
         self.last_llm_latency_ms = 0
         self.last_llm_provider = "NVIDIA DeepSeek AI"
@@ -24,7 +24,8 @@ class LLMClassifier:
         )
 
     def classify_packet(self, packet_dict):
-        if not self.nvidia_api_key:
+        api_key = getattr(settings, "NVIDIA_API_KEY", None) or self.nvidia_api_key
+        if not api_key:
             return None
 
         url = "https://integrate.api.nvidia.com/v1/chat/completions"

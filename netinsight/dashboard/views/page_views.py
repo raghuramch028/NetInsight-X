@@ -9,7 +9,6 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_exempt
 
-import netinsight.dashboard.speed_monitor as speed_monitor
 from netinsight.config import settings
 from netinsight.config.singletons import (
     get_analytics_engine,
@@ -19,6 +18,7 @@ from netinsight.config.singletons import (
     get_mdp_engine,
     get_traffic_classifier,
 )
+from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.models import (
     Agent,
     MetricRecord,

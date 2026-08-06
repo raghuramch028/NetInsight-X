@@ -10,7 +10,6 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-import netinsight.dashboard.speed_monitor as speed_monitor
 from netinsight.analytics.telemetry_handler import handle_telemetry_ingestion
 from netinsight.analytics.topology import generate_topology_pyvis
 from netinsight.config import settings
@@ -22,6 +21,7 @@ from netinsight.config.singletons import (
     get_mdp_engine,
     get_traffic_classifier,
 )
+from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.models import (
     Agent,
     MetricRecord,

@@ -2,7 +2,13 @@ import logging
 
 from django.utils import timezone
 
-from netinsight.dashboard.models import Agent, MetricRecord, StateHistory, SystemSettings, ThreatHistory
+from netinsight.dashboard.models import (
+    Agent,
+    MetricRecord,
+    StateHistory,
+    SystemSettings,
+    ThreatHistory,
+)
 
 logger = logging.getLogger(__name__)
 
