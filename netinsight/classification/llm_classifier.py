@@ -47,17 +47,19 @@ class LLMClassifier:
 
         start_time = time.time()
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=5)
+            response = requests.post(url, headers=headers, json=payload, timeout=20)
+            if response.status_code != 200 and payload["model"] != "meta/llama-3.1-70b-instruct":
+                # Fallback to high-speed NVIDIA NIM Llama 70B if requested model is busy or times out
+                payload["model"] = "meta/llama-3.1-70b-instruct"
+                response = requests.post(url, headers=headers, json=payload, timeout=20)
+
             response.raise_for_status()
             data = response.json()
             content = data["choices"][0]["message"]["content"]
 
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-
-            result = json.loads(content.strip())
+            import re
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            result = json.loads(json_match.group(0)) if json_match else json.loads(content.strip())
 
             self.last_llm_latency_ms = (time.time() - start_time) * 1000
             self.last_llm_reasoning = result.get("reasoning", "")

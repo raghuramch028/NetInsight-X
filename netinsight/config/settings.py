@@ -216,7 +216,7 @@ MDP_REWARDS = {
 
 # LLM Classification Configuration
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "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")
-NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
+NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "meta/llama-3.1-70b-instruct")
 
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
