@@ -1,6 +1,6 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Traffic Classification (XGBoost Inference Engine){% endblock %}
+{% block page_title %}Traffic Classification (NVIDIA DeepSeek AI Inference Engine){% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
@@ -9,34 +9,26 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="m-0 text-white font-bold h6">
-                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>{{ engine_name|default:"XGBoost" }} Model Profile
+                    <i data-lucide="cpu" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>NVIDIA DeepSeek AI Profile
                 </h4>
                 {% if llm_active %}
                     <span class="saas-badge font-mono" style="font-size:0.7rem; background-color: rgba(138, 43, 226, 0.2); color: #d8b4fe; border: 1px solid #a855f7;">
-                        <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>NVIDIA NIM / Gemini AI Active
+                        <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>NVIDIA DeepSeek AI Active
                     </span>
-                {% elif model_loaded %}
-                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">XGBoost Classifier Active</span>
                 {% else %}
                     <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;">Heuristics Active</span>
                 {% endif %}
             </div>
             
-            {% if llm_active %}
             <p class="text-secondary small mb-4">
-                The classification module is currently powered by a Large Language Model ({{ llm_provider }}), utilizing few-shot reasoning.
+                The classification module is powered by <strong>NVIDIA DeepSeek AI</strong> (<code>deepseek-ai/deepseek-r1</code>), analyzing network flow patterns and heuristic security bounds in real time.
             </p>
-            {% else %}
-            <p class="text-secondary small mb-4">
-                The classification module is built using an XGBoost Classifier trained on the real benchmark CICIDS2017 / CICIoT2023 datasets.
-            </p>
-            {% endif %}
 
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
                     <span class="text-secondary small font-mono">Classifier Type</span>
                     <span class="font-mono text-primary fw-bold" style="font-size:0.8rem;">
-                        {% if llm_active %}{{ llm_provider }}{% else %}{{ stats.kernel|default:"XGBoost" }}{% endif %}
+                        {% if llm_active %}{{ llm_provider }}{% else %}Heuristics{% endif %}
                     </span>
                 </li>
                 {% if llm_active %}
@@ -52,19 +44,6 @@
                     </span>
                 </li>
                 {% endif %}
-                {% else %}
-                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
-                    <span class="text-secondary small font-mono">Validation Accuracy</span>
-                    <span class="font-mono text-success fw-bold" style="font-size:0.8rem;">
-                        {% if stats.accuracy is not None %}{{ stats.accuracy|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
-                    </span>
-                </li>
-                <li class="list-group-item bg-transparent border-secondary py-3 px-0 text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
-                    <span class="text-secondary small font-mono">F1-Score Metrics</span>
-                    <span class="font-mono text-info fw-bold" style="font-size:0.8rem;">
-                        {% if stats.f1_score is not None %}{{ stats.f1_score|floatformat:2 }}%{% else %}<span class="text-secondary">N/A</span>{% endif %}
-                    </span>
-                </li>
                 {% endif %}
                 <li class="list-group-item bg-0 py-3 px-0 text-white d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono">Inference Port</span>
@@ -112,7 +91,7 @@
             </div>
             
             <p class="text-secondary small mb-0">
-                <strong>Why XGBoost:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The eXtreme Gradient Boosting (XGBoost) model constructs sequential decision trees that learn directly from the classification residuals of prior trees, maximizing detection accuracy.
+                <strong>Why NVIDIA DeepSeek AI:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The LLM models reason over these features directly from the contextual classification rules without needing pre-trained residual trees.
             </p>
         </div>
     </div>

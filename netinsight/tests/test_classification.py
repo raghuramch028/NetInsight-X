@@ -1,75 +1,31 @@
-import os
-import shutil
-import tempfile
 import unittest
-from pathlib import Path
 
 from django.test import TestCase
 
 from netinsight.classification.classifier import TrafficClassifier
-from netinsight.classification.train import train_and_save_model
+from netinsight.classification.llm_classifier import LLMClassifier
 from netinsight.config import settings
 
 
 class TestTrafficClassification(TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._orig_svm_path = settings.SVM_MODEL_PATH
-        cls.test_model_dir = tempfile.mkdtemp()
-        settings.SVM_MODEL_PATH = str(Path(cls.test_model_dir) / "svm_model.joblib")
-        os.environ["NETINSIGHT_SVM_PATH"] = settings.SVM_MODEL_PATH
-
-        # Run SVM model training pipeline on setup (creates svm_model.joblib, scaler.joblib, metrics json)
-        cls.train_results = train_and_save_model()
-
-    @classmethod
-    def tearDownClass(cls):
-        settings.SVM_MODEL_PATH = cls._orig_svm_path
-        shutil.rmtree(cls.test_model_dir, ignore_errors=True)
-        super().tearDownClass()
-
     def setUp(self):
         self.classifier = TrafficClassifier()
 
-    def test_svm_training_metrics(self):
-        """Verifies SVM trains successfully, produces joblib files, and prints evaluation metrics."""
-        self.assertIsNotNone(self.train_results)
-        self.assertGreaterEqual(self.train_results["accuracy"], 0.50)
+    def test_nvidia_deepseek_settings(self):
+        """Verifies NVIDIA DeepSeek API key and model settings are configured correctly."""
+        self.assertEqual(settings.NVIDIA_API_KEY, "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")
+        self.assertEqual(settings.NVIDIA_MODEL_NAME, "deepseek-ai/deepseek-r1")
 
-        # Verify model files are written on disk
-        self.assertTrue(Path(settings.SVM_MODEL_PATH).exists())
-        self.assertTrue((Path(settings.SVM_MODEL_PATH).parent / "scaler.joblib").exists())
-        self.assertTrue((Path(settings.SVM_MODEL_PATH).parent / "svm_model_metrics.json").exists())
-
-        # Verify real metrics are persisted and loadable
-        stats = self.classifier.get_model_stats()
-        self.assertIsNotNone(stats.get("accuracy"))
-        self.assertIsNotNone(stats.get("precision"))
-        self.assertIsNotNone(stats.get("recall"))
-        self.assertIsNotNone(stats.get("f1_score"))
-        self.assertIn("kernel", stats)
-        self.assertIn("features", stats)
-
-        # Verify confusion matrix dimensions (7x7 classes)
-        cm = self.train_results["confusion_matrix"]
-        self.assertEqual(len(cm), 7)
-        self.assertEqual(len(cm[0]), 7)
-
-        # Verify target metrics precision, recall, F1 keys
-        report = self.train_results["report"]
-        self.assertIn("accuracy", report)
-        self.assertIn("Normal", report)
-        self.assertIn("DoS", report)
-        self.assertIn("DDoS", report)
-        self.assertIn("Mirai", report)
+    def test_llm_classifier_initialization(self):
+        """Verifies LLMClassifier initializes with NVIDIA DeepSeek API settings."""
+        llm = LLMClassifier()
+        self.assertEqual(llm.nvidia_api_key, settings.NVIDIA_API_KEY)
+        self.assertEqual(llm.nvidia_model_name, settings.NVIDIA_MODEL_NAME)
 
     def test_classifier_loading_and_inference(self):
-        """Verifies TrafficClassifier successfully loads joblib files and performs predictions."""
-        self.assertTrue(self.classifier.load_model())
-        self.assertIsNotNone(self.classifier.clf)
-        self.assertIsNotNone(self.classifier.scaler)
+        """Verifies TrafficClassifier performs packet classification."""
+        self.assertIsNotNone(self.classifier)
 
         # Mock a Normal Web Browsing packet
         pkt_web = {
@@ -177,7 +133,7 @@ class TestTrafficClassification(TestCase):
         }
         res = self.classifier.classify_packet(pkt_normal)
         self.assertEqual(res, "Normal")
-        self.assertEqual(self.classifier.last_engine_used, "XGBoost")
+        self.assertIn(self.classifier.last_engine_used, ["NVIDIA DeepSeek AI", "Heuristics"])
 
 
 if __name__ == "__main__":

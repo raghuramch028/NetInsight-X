@@ -214,15 +214,9 @@ MDP_REWARDS = {
     4: {0: 7.0,  1: 4.0, 2: 8.0}     # Recovering
 }
 
-# SVM Classification Configuration
-SVM_MODEL_PATH = os.environ.get("NETINSIGHT_SVM_PATH", str(BASE_DIR / "classification" / "svm_model.joblib"))
-
 # LLM Classification Configuration
-NETINSIGHT_LLM_PROVIDER = os.environ.get("NETINSIGHT_LLM_PROVIDER", "nvidia")
-NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
-NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "meta/llama-3.1-70b-instruct")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL_NAME = os.environ.get("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "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")
+NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
 
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]

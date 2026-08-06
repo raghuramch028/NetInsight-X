@@ -425,19 +425,15 @@ def classification_view(request):
         rec["classification"] = classifier.classify_packet(rec)
         packets_list.append(rec)
 
-    stats = classifier.get_model_stats()
-
-    llm_active = bool(getattr(settings, "NVIDIA_API_KEY", None) or getattr(settings, "GEMINI_API_KEY", None))
+    llm_active = bool(getattr(settings, "NVIDIA_API_KEY", None))
 
     context = {
-        "model_loaded": classifier.clf is not None,
-        "stats": stats,
         "recent_packets": packets_list,
         "llm_active": llm_active,
-        "engine_name": getattr(classifier, "last_engine_used", "XGBoost"),
+        "engine_name": "NVIDIA DeepSeek AI",
         "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", 0.0),
         "llm_reasoning": getattr(classifier, "last_llm_reasoning", ""),
-        "llm_provider": getattr(classifier, "last_llm_provider", ""),
+        "llm_provider": "NVIDIA DeepSeek AI",
     }
     return render(request, "dashboard/classification.html", context)
 

@@ -9,21 +9,21 @@ logger = logging.getLogger("netinsight")
 
 class LLMClassifier:
     def __init__(self):
-        self.provider = getattr(settings, "NETINSIGHT_LLM_PROVIDER", "nvidia")
-        self.nvidia_api_key = getattr(settings, "NVIDIA_API_KEY", "")
-        self.nvidia_model_name = getattr(settings, "NVIDIA_MODEL_NAME", "meta/llama-3.1-70b-instruct")
-        self.gemini_api_key = getattr(settings, "GEMINI_API_KEY", "")
-        self.gemini_model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-1.5-flash")
+        self.nvidia_api_key = getattr(settings, "NVIDIA_API_KEY", "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")
+        self.nvidia_model_name = getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
+        self.last_llm_latency_ms = 0
+        self.last_llm_provider = "NVIDIA DeepSeek AI"
+        self.last_llm_reasoning = ""
 
     def _get_system_prompt(self):
         return (
             "You are a network traffic classifier. You will be provided with packet features: "
             "packet_size, protocol, latency, packet_rate, conn_frequency. "
             "Analyze the features and return a JSON object with this exact schema: "
-            '{"label": "Normal", "confidence": 0.95, "reasoning": "Standard TCP web traffic pattern"}'
+            '{"label": "Normal", "confidence": 0.95, "reasoning": "Standard web traffic"}'
         )
 
-    def _call_nvidia(self, features_str):
+    def classify_packet(self, packet_dict):
         if not self.nvidia_api_key:
             return None
 
@@ -32,6 +32,9 @@ class LLMClassifier:
             "Authorization": f"Bearer {self.nvidia_api_key}",
             "Content-Type": "application/json"
         }
+
+        features_str = json.dumps(packet_dict)
+
         payload = {
             "model": self.nvidia_model_name,
             "messages": [
@@ -42,6 +45,7 @@ class LLMClassifier:
             "max_tokens": 128
         }
 
+        start_time = time.time()
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=5)
             response.raise_for_status()
@@ -53,45 +57,14 @@ class LLMClassifier:
             if content.endswith("```"):
                 content = content[:-3]
 
-            return json.loads(content.strip())
+            result = json.loads(content.strip())
+
+            self.last_llm_latency_ms = (time.time() - start_time) * 1000
+            self.last_llm_reasoning = result.get("reasoning", "")
+
+            return result
         except Exception as e:
             logger.error(f"NVIDIA API Error: {e}")
-            return None
-
-    def _call_gemini(self, features_str):
-        if not self.gemini_api_key:
-            return None
-
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model_name}:generateContent?key={self.gemini_api_key}"
-        headers = {
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "system_instruction": {
-                "parts": [{"text": self._get_system_prompt()}]
-            },
-            "contents": [{
-                "parts": [{"text": f"Features: {features_str}"}]
-            }],
-            "generationConfig": {
-                "temperature": 0.1
-            }
-        }
-
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            content = data["candidates"][0]["content"]["parts"][0]["text"]
-
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-
-            return json.loads(content.strip())
-        except Exception as e:
-            logger.error(f"Gemini API Error: {e}")
             return None
 
     def classify_batch(self, features_df):
@@ -101,13 +74,6 @@ class LLMClassifier:
         confs = []
         reasonings = []
 
-        api_available = True
-        if self.provider == "nvidia" and not self.nvidia_api_key or self.provider == "gemini" and not self.gemini_api_key:
-            api_available = False
-
-        if not api_available:
-            return None
-
         for _, row in features_df.iterrows():
             features_dict = {
                 "packet_size": row.get("packet_size", 0),
@@ -116,13 +82,8 @@ class LLMClassifier:
                 "packet_rate": row.get("packet_rate", 0),
                 "conn_frequency": row.get("conn_frequency", 0)
             }
-            features_str = json.dumps(features_dict)
 
-            result = None
-            if self.provider == "nvidia":
-                result = self._call_nvidia(features_str)
-            elif self.provider == "gemini":
-                result = self._call_gemini(features_str)
+            result = self.classify_packet(features_dict)
 
             if result:
                 labels.append(result.get("label", "Unknown"))
@@ -138,6 +99,6 @@ class LLMClassifier:
             "confidence": confs,
             "reasoning": reasonings,
             "latency_ms": latency_ms,
-            "provider": self.provider,
-            "model": self.nvidia_model_name if self.provider == "nvidia" else self.gemini_model_name
+            "provider": self.last_llm_provider,
+            "model": self.nvidia_model_name
         }

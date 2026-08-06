@@ -1,15 +1,7 @@
-import contextlib
-import json
 import logging
 import threading
-from pathlib import Path
-
-import joblib
-import numpy as np
 
 from netinsight.classification.llm_classifier import LLMClassifier
-from netinsight.config import settings
-from netinsight.config.labels import CLASS_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -18,80 +10,15 @@ class TrafficClassifier:
     """Classifies network traffic into normal and threat categories using a trained SVM."""
 
     def __init__(self, model_path: str | None = None, window_duration: float = 10.0):
-        self.model_path = Path(model_path or settings.SVM_MODEL_PATH)
-        self.scaler_path = self.model_path.parent / "scaler.joblib"
-
-        self.clf = None
-        self.scaler = None
-        self.model_stats: dict = {}
-        self.model_lock = threading.Lock()
-
         self.llm_classifier = LLMClassifier()
-        self.last_engine_used = "XGBoost"
+        self.last_engine_used = "NVIDIA DeepSeek AI"
         self.last_llm_latency_ms = 0.0
-        self.last_llm_provider = ""
+        self.last_llm_provider = "NVIDIA DeepSeek AI"
         self.last_llm_reasoning = ""
 
         self.ip_history = {}
         self.cache_lock = threading.Lock()
         self.window_duration = max(1.0, float(window_duration))
-
-        self.load_model()
-
-    def _load_model_stats(self) -> None:
-        """Loads persisted model evaluation metrics from the metrics JSON file."""
-        stats_path = self.model_path.parent / "svm_model_metrics.json"
-        if not stats_path.exists():
-            self.model_stats = {}
-            return
-        try:
-            with open(stats_path, encoding="utf-8") as f:
-                self.model_stats = json.load(f)
-            logger.info(f"Loaded SVM model metrics from {stats_path}")
-        except Exception as e:
-            logger.error(f"Error loading model metrics: {e}", exc_info=True)
-            self.model_stats = {}
-
-    def get_model_stats(self) -> dict:
-        """Returns the persisted model metrics, or a safe placeholder if unavailable."""
-        self._load_model_stats()
-        if self.model_stats:
-            return self.model_stats
-        kernel_name = "XGBoost Ensemble"
-        with self.model_lock:
-            if self.clf is not None:
-                with contextlib.suppress(Exception):
-                    kernel_name = f"XGBoost ({self.clf.n_estimators} trees)"
-        return {
-            "accuracy": 87.18,
-            "precision": 86.4,
-            "recall": 87.0,
-            "f1_score": 86.7,
-            "kernel": kernel_name,
-            "features": "Packet Size, Protocol, Latency, Packet Rate, Connection Frequency",
-            "training_timestamp": "2026-07-19T00:00:00Z",
-            "dataset_info": "CICIDS2017 Dataset",
-            "model_path": str(self.model_path),
-        }
-
-    def load_model(self) -> bool:
-        """Attempts to load the SVM model and scaler from joblib files under lock."""
-        with self.model_lock:
-            if self.model_path.exists() and self.scaler_path.exists():
-                try:
-                    self.clf = joblib.load(str(self.model_path))
-                    self.scaler = joblib.load(str(self.scaler_path))
-                    self._load_model_stats()
-                    logger.info("Successfully loaded SVM classifier and scaler.")
-                    return True
-                except Exception as e:
-                    logger.error(f"Error loading SVM models: {e}", exc_info=True)
-
-            logger.warning("SVM model or scaler not found on disk. Falling back to heuristic classifier.")
-            self.clf = None
-            self.scaler = None
-            self.model_stats = {}
-            return False
 
     def update_ip_cache(self, src_ip: str, dst_ip: str, size: int, timestamp: float) -> tuple[float, float]:
         """Updates cache and computes packet rate and unique connection frequency."""
@@ -135,7 +62,7 @@ class TrafficClassifier:
             return float(packet_rate), float(unique_dests)
 
     def classify_packet(self, packet_dict: dict) -> str:
-        """Performs hybrid SVM/heuristic inference on packet features.
+        """Performs hybrid LLM/heuristic inference on packet features.
 
         Returns one of 7 canonical threat labels:
             - Normal
@@ -146,21 +73,6 @@ class TrafficClassifier:
             - Mirai
             - Other Attacks
         """
-        # Try LLM Classification first if method exists
-        try:
-            if hasattr(self.llm_classifier, 'classify_packet'):
-                llm_pred = self.llm_classifier.classify_packet(packet_dict)
-                if llm_pred is not None:
-                    self.last_engine_used = "LLM"
-                    self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
-                    self.last_llm_provider = getattr(self.llm_classifier, 'last_llm_provider', "")
-                    self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
-                    return llm_pred
-        except Exception as e:
-            logger.error(f"LLM Classification error: {e}")
-
-        self.last_engine_used = "XGBoost"
-
         src_ip = packet_dict["src_ip"]
         dst_ip = packet_dict["dst_ip"]
         size = packet_dict["size"]
@@ -170,13 +82,6 @@ class TrafficClassifier:
         # Safely extract and cast ports to int
         dst_port = int(packet_dict.get("dst_port") or 0)
         src_port = int(packet_dict.get("src_port") or 0)
-
-        # Numeric protocol mapping
-        proto_map = {"TCP": 6.0, "UDP": 17.0, "ICMP": 1.0}
-        protocol = proto_map.get(str(proto_str).upper(), 0.0)
-
-        # Latency
-        latency = packet_dict.get("latency_est") or 0.015
 
         # Retrieve engineered features
         packet_rate = packet_dict.get("packet_rate")
@@ -221,16 +126,18 @@ class TrafficClassifier:
         if proto_str == "ICMP" and packet_rate > 100.0:
             return "Other Attacks"
 
-        # --- SVM / XGBoost Machine Learning Inference ---
-        with self.model_lock:
-            if self.clf is not None and self.scaler is not None:
-                try:
-                    feature_vector = np.array([[float(size), float(protocol), float(latency), float(packet_rate), float(conn_frequency)]])
-                    scaled_vector = self.scaler.transform(feature_vector)
-                    prediction = int(self.clf.predict(scaled_vector)[0])
-                    return CLASS_LABELS.get(prediction, "Normal")
-                except Exception as e:
-                    logger.error(f"Inference error in SVM classifier: {e}.", exc_info=True)
+        # --- LLM Classification Inference ---
+        try:
+            if hasattr(self.llm_classifier, 'classify_packet'):
+                llm_pred = self.llm_classifier.classify_packet(packet_dict)
+                if llm_pred is not None:
+                    self.last_engine_used = "NVIDIA DeepSeek AI"
+                    self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
+                    self.last_llm_provider = "NVIDIA DeepSeek AI"
+                    self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
+                    return llm_pred
+        except Exception as e:
+            logger.error(f"LLM Classification error: {e}")
 
         return "Normal"
 
@@ -244,22 +151,12 @@ class TrafficClassifier:
             logger.error(f"LLM Batch Classification error: {e}")
 
         if predictions is not None:
-            self.last_engine_used = "LLM"
+            self.last_engine_used = "NVIDIA DeepSeek AI"
             self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
-            self.last_llm_provider = getattr(self.llm_classifier, 'last_llm_provider', "")
+            self.last_llm_provider = "NVIDIA DeepSeek AI"
             self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
             return predictions
 
-        self.last_engine_used = "XGBoost"
-        # Run existing XGBoost classification seamlessly
-        with self.model_lock:
-            if self.clf is not None and self.scaler is not None:
-                try:
-                    scaled = self.scaler.transform(features_df)
-                    preds = self.clf.predict(scaled)
-                    return [CLASS_LABELS.get(int(p), "Normal") for p in preds]
-                except Exception as e:
-                    logger.error(f"Batch Inference error in SVM/XGBoost classifier: {e}.", exc_info=True)
         return ["Normal"] * len(features_df)
 
 # Shared module singleton instance to ensure IP history cache is shared across threads/views
