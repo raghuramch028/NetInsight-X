@@ -41,7 +41,21 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
     """Handles heavy processing tasks asynchronously without blocking client uploads."""
     close_old_connections()
     try:
-        agent = Agent.objects.get(id=agent_id)
+        agent = None
+        for attempt in range(5):
+            try:
+                agent = Agent.objects.get(id=agent_id)
+                break
+            except Exception as ex:
+                if "locked" in str(ex).lower() and attempt < 4:
+                    time.sleep(0.05 * (attempt + 1))
+                    close_old_connections()
+                else:
+                    raise ex
+
+        if not agent:
+            return
+
         now_ts = time.time()
 
         # A. Process and Classify all incoming packets
