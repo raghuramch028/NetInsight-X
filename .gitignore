@@ -44,3 +44,4 @@ netinsight/database/*.sqlite3
 # Root-level runtime files
 agent.log
 agent_id.txt
+offline_buffer.json
