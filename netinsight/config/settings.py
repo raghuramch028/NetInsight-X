@@ -31,7 +31,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-netinsightx-academic-project-secret",
 )
 
-if not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project-secret":
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == "django-insecure-netinsightx-academic-project-secret"):
     logging.getLogger(__name__).warning(
         "DJANGO_SECRET_KEY is not set. Using a hardcoded fallback key. "
         "Set DJANGO_SECRET_KEY in production."
