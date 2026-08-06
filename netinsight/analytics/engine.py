@@ -71,13 +71,19 @@ class AnalyticsEngine:
             return pd.DataFrame(columns=["timestamp", "throughput", "packet_rate", "bandwidth_util", "latency", "packet_loss"])
 
     def get_protocol_distribution(self, window_seconds: float = 60.0) -> pd.DataFrame:
-        """Computes the distribution of protocols within the given recent time window."""
+        """Computes the distribution of protocols within recent time window or overall database."""
         try:
             cutoff = time.time() - window_seconds
             queryset = PacketRecord.objects.filter(timestamp__gte=cutoff).values("protocol").annotate(
                 packet_count=Count("id"),
                 byte_count=Sum("size")
             )
+            if not queryset.exists():
+                queryset = PacketRecord.objects.values("protocol").annotate(
+                    packet_count=Count("id"),
+                    byte_count=Sum("size")
+                )
+
             df = pd.DataFrame(list(queryset))
             if df.empty:
                 return pd.DataFrame(columns=["protocol", "packet_count", "byte_count", "percentage"])
@@ -97,6 +103,13 @@ class AnalyticsEngine:
                 packet_count=Count("id"),
                 total_bytes=Sum("size")
             ).order_by("-total_bytes")[:limit]
+
+            if not queryset.exists():
+                queryset = PacketRecord.objects.values("src_ip").annotate(
+                    packet_count=Count("id"),
+                    total_bytes=Sum("size")
+                ).order_by("-total_bytes")[:limit]
+
             df = pd.DataFrame(list(queryset))
             if df.empty:
                 return pd.DataFrame(columns=["src_ip", "packet_count", "total_bytes", "percentage"])
@@ -109,16 +122,17 @@ class AnalyticsEngine:
             return pd.DataFrame(columns=["src_ip", "packet_count", "total_bytes", "percentage"])
 
     def get_active_devices_count(self, window_seconds: float = 15.0) -> int:
-        """Returns the number of unique active source devices in the recent window."""
+        """Returns the number of unique active source devices in the recent window or total registered agents."""
         try:
             cutoff = timezone.now() - timedelta(seconds=window_seconds)
-            return Agent.objects.filter(last_seen__gte=cutoff).count()
+            cnt = Agent.objects.filter(last_seen__gte=cutoff).count()
+            return cnt if cnt > 0 else Agent.objects.count()
         except Exception as e:
             logger.error(f"Error getting active devices count: {e}", exc_info=True)
             return 0
 
     def get_general_summary(self, window_seconds: float = 60.0) -> dict:
-        """Computes summary stats of traffic over the window."""
+        """Computes summary stats of traffic over window or overall database."""
         try:
             cutoff = time.time() - window_seconds
             stats = PacketRecord.objects.filter(timestamp__gte=cutoff).aggregate(
@@ -128,11 +142,19 @@ class AnalyticsEngine:
             )
             total_packets = stats.get("total_packets") or 0
             if total_packets == 0:
+                stats = PacketRecord.objects.all().aggregate(
+                    total_packets=Count("id"),
+                    total_bytes=Sum("size"),
+                    avg_packet_size=Avg("size")
+                )
+                total_packets = stats.get("total_packets") or 0
+
+            if total_packets == 0:
                 return {
                     "total_packets": 0,
                     "total_bytes": 0,
                     "avg_packet_size": 0.0,
-                    "active_devices": 0
+                    "active_devices": Agent.objects.count()
                 }
 
             return {
