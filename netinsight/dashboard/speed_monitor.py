@@ -60,9 +60,30 @@ def run_speed_test():
     except Exception as e:
         _run_telemetry_fallback(f"Active speed test timed out/failed ({e}).")
 
+def get_live_hardware_link_speed() -> float:
+    """Queries OS network interface adapters to detect live link speed (in bps)."""
+    try:
+        import psutil
+        stats = psutil.net_if_stats()
+        active_speeds = []
+        for name, iface in stats.items():
+            if iface.isup and iface.speed > 0 and "loopback" not in name.lower():
+                active_speeds.append((name, float(iface.speed) * 1_000_000.0))
+
+        if active_speeds:
+            # Prefer active Wi-Fi or primary interface speed
+            wifi_speeds = [s[1] for s in active_speeds if "wifi" in s[0].lower() or "wlan" in s[0].lower()]
+            if wifi_speeds:
+                return wifi_speeds[0]
+            return max(s[1] for s in active_speeds)
+    except Exception as e:
+        logger.debug(f"Hardware link speed query error: {e}")
+    return float(getattr(settings, "LINK_CAPACITY", 100_000_000.0))
+
+
 def _run_telemetry_fallback(reason: str):
-    """Calculates capacity from recent telemetry throughput or defaults safely."""
-    logger.info(f"[SPEED MONITOR] {reason} Using local telemetry fallback.")
+    """Calculates capacity from recent telemetry throughput or live hardware interface speed."""
+    logger.info(f"[SPEED MONITOR] {reason} Checking live hardware link speed...")
     try:
         import django.db
 
@@ -72,18 +93,18 @@ def _run_telemetry_fallback(reason: str):
             if records.exists():
                 max_throughput = max(r.throughput for r in records)
                 if max_throughput > 100000.0:
-                    speed_bps = max_throughput * 1.2
-                    speed_bps = max(2000000.0, min(100000000.0, speed_bps))
+                    speed_bps = max_throughput * 1.25
+                    speed_bps = max(2000000.0, min(1000000000.0, speed_bps))
                     set_current_capacity(speed_bps)
-                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
+                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Live Monitor: Set capacity to {speed_bps / 1e6:.2f} Mbps from active traffic.")
                 else:
-                    default_cap = getattr(settings, "LINK_CAPACITY", 100000000.0)
-                    set_current_capacity(default_cap)
-                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set baseline link capacity to {default_cap / 1e6:.1f} Mbps.")
+                    hw_speed = get_live_hardware_link_speed()
+                    set_current_capacity(hw_speed)
+                    logger.info(f"[DYNAMIC CAPACITY] Live Interface Detection: Detected hardware link capacity {hw_speed / 1e6:.1f} Mbps.")
             else:
-                default_cap = getattr(settings, "LINK_CAPACITY", 100000000.0)
-                set_current_capacity(default_cap)
-                logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set baseline link capacity to {default_cap / 1e6:.1f} Mbps.")
+                hw_speed = get_live_hardware_link_speed()
+                set_current_capacity(hw_speed)
+                logger.info(f"[DYNAMIC CAPACITY] Live Interface Detection: Detected hardware link capacity {hw_speed / 1e6:.1f} Mbps.")
         finally:
             django.db.close_old_connections()
     except Exception as fallback_err:
