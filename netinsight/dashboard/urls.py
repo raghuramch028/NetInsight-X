@@ -5,6 +5,9 @@ from netinsight.dashboard import views
 app_name = "dashboard"
 
 urlpatterns = [
+    # Health check (no auth — for load balancers / orchestration platforms)
+    path("healthz", views.api_health_check, name="api_health_check"),
+
     # Dashboard HTML Pages
     path("", views.index_view, name="index"),
     path("analytics/", views.analytics_view, name="analytics"),

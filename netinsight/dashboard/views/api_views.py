@@ -1,6 +1,8 @@
 import html
 import json
 import logging
+import os
+import re
 import threading
 import time as _time
 from datetime import timedelta
@@ -8,6 +10,8 @@ from datetime import timedelta
 import matplotlib
 
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_ipv46_address
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -27,13 +31,15 @@ from netinsight.config.singletons import (
 from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.models import (
     Agent,
-    MetricRecord,
     PacketRecord,
     StateHistory,
     SystemSettings,
 )
 from netinsight.dashboard.views.utils import (
     apply_mdp_overrides as _apply_mdp_overrides,
+)
+from netinsight.dashboard.views.utils import (
+    require_dashboard_auth as _require_dashboard_auth,
 )
 from netinsight.dashboard.views.utils import (
     to_native_types as _to_native_types,
@@ -45,6 +51,25 @@ from netinsight.prediction.markov import MarkovPredictor
 
 logger = logging.getLogger(__name__)
 
+_MAC_ADDRESS_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
+
+
+def _is_valid_mac(mac: str) -> bool:
+    return bool(_MAC_ADDRESS_RE.match(mac))
+
+
+def _clean_ip_or_default(raw_ip: str, default: str = "0.0.0.0") -> str:
+    """Validates an IP address string, falling back to a safe default on malformed input rather
+    than writing an unvalidated string into the ip_address field (GenericIPAddressField isn't
+    enforced by save()/bulk_create() — only by full_clean(), which this API doesn't call)."""
+    candidate = (raw_ip or "").strip()
+    try:
+        validate_ipv46_address(candidate)
+        return candidate
+    except ValidationError:
+        return default
+
+
 # Centralized thread-safe singleton references
 analytics_engine = get_analytics_engine()
 optimizer = get_lp_optimizer()
@@ -55,93 +80,28 @@ classifier = get_traffic_classifier()
 mdp_engine = get_mdp_engine()
 markov_predictor = MarkovPredictor()
 
+# =====================================================================
+# Health Check
+# =====================================================================
 
-def _demo_telemetry_generator():
-    """Background thread generating synthetic telemetry data for demo/demonstration mode."""
-    import random
-    import time as _time
+def api_health_check(request):
+    """Lightweight liveness/readiness probe for load balancers, container orchestrators, or
+    uptime monitoring. Deliberately not gated by dashboard or agent auth (standard practice for
+    health endpoints) and returns no sensitive information — only basic DB connectivity status."""
+    from django.db import connections
+    from django.db.utils import Error as DjangoDBError
 
-    from django.db import close_old_connections
-    close_old_connections()
+    db_ok = True
     try:
-        _time.sleep(3)  # Wait for Django to fully boot
-        # Create a synthetic demo agent
-        demo_agent, _ = Agent.objects.get_or_create(
-            mac_address="de:mo:00:00:00:01",
-            defaults={
-                "hostname": "Demo-Agent-1",
-                "device_type": "Demo Node",
-                "vendor": "NetInsight Demo",
-                "ip_address": "192.168.1.100"
-            }
-        )
-        states = ["Normal", "Normal", "Normal", "Busy", "Busy", "Congested"]
-        protocols = ["TCP", "TCP", "TCP", "UDP", "UDP", "ICMP"]
-        while True:
-            close_old_connections()
-            now_ts = _time.time()
-            demo_agent.cpu_usage = round(random.uniform(15, 65), 1)
-            demo_agent.memory_usage = round(random.uniform(30, 75), 1)
-            demo_agent.disk_usage = round(random.uniform(20, 50), 1)
-            demo_agent.active_connections = random.randint(5, 40)
-            demo_agent.bytes_sent = random.randint(100000, 5000000)
-            demo_agent.bytes_recv = random.randint(500000, 15000000)
-            demo_agent.last_seen = timezone.now()
-            demo_agent.save()
-            # Generate synthetic packets
-            for _ in range(random.randint(3, 8)):
-                PacketRecord.objects.create(
-                    src_ip=f"192.168.1.{random.randint(2, 254)}",
-                    dst_ip=f"10.0.0.{random.randint(1, 50)}",
-                    src_port=random.randint(1024, 65535),
-                    dst_port=random.choice([80, 443, 53, 22, 8080]),
-                    protocol=random.choice(protocols),
-                    size=random.randint(64, 1500),
-                    timestamp=now_ts,
-                    ttl=random.choice([64, 128]),
-                    agent=demo_agent
-                )
-            # Generate synthetic metric
-            throughput = random.uniform(1e6, 8e6)
-            MetricRecord.objects.create(
-                timestamp=now_ts,
-                throughput=throughput,
-                packet_rate=random.uniform(50, 300),
-                bandwidth_util=random.uniform(5, 60),
-                latency=random.uniform(0.005, 0.080),
-                packet_loss=random.uniform(0, 2.0)
-            )
-            # Generate synthetic state
-            StateHistory.objects.create(
-                timestamp=now_ts,
-                network_state=random.choice(states),
-                bandwidth_utilization=random.uniform(0.05, 0.60),
-                packet_loss=random.uniform(0, 0.02),
-                latency=random.uniform(0.005, 0.080)
-            )
-            # Prune old demo data (keep last 5 minutes)
-            cutoff = now_ts - 300
-            PacketRecord.objects.filter(timestamp__lt=cutoff, agent=demo_agent).delete()
-            _time.sleep(3)
-    except Exception as e:
-        logger.error(f"Demo telemetry generator error: {e}", exc_info=True)
-    finally:
-        close_old_connections()
+        connections["default"].cursor()
+    except DjangoDBError:
+        db_ok = False
 
-_demo_lock = threading.Lock()
-_demo_thread_started = False
+    return JsonResponse(
+        {"status": "ok" if db_ok else "degraded", "database": db_ok},
+        status=200 if db_ok else 503,
+    )
 
-def ensure_monitor_started():
-    """Starts demo telemetry generator if DEMO_MODE is active. Thread-safe check-and-set."""
-    import threading
-    global _demo_thread_started
-    if settings.DEMO_MODE and not _demo_thread_started:
-        with _demo_lock:
-            if not _demo_thread_started:
-                _demo_thread_started = True
-                t = threading.Thread(target=_demo_telemetry_generator, daemon=True, name="DemoTelemetryGen")
-                t.start()
-                logger.info("[DEMO MODE] Synthetic telemetry generator started.")
 
 # =====================================================================
 # REST APIs for Agents Ingestion
@@ -155,14 +115,24 @@ def api_register_agent(request):
 
     try:
         data = request.data
-        mac_address = data.get("mac_address", "").lower().strip()
-        hostname = html.escape(str(data.get("hostname", "Unknown-Host")).strip())
-        device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())
-        vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())
-        ip_address = html.escape(str(data.get("ip_address", "0.0.0.0")).strip())
+        mac_address = str(data.get("mac_address", "")).lower().strip()
+        # Escaped THEN truncated to the model's max_length: SQLite doesn't enforce CharField
+        # max_length at the DB level, but Postgres (this project's optional production backend,
+        # via DATABASE_URL) enforces varchar(n) and would raise a hard DB error on overflow
+        # since this endpoint doesn't call Django's full_clean() validators.
+        hostname = html.escape(str(data.get("hostname", "Unknown-Host")).strip())[:255]
+        device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())[:100]
+        vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())[:255]
+        ip_address = html.escape(_clean_ip_or_default(str(data.get("ip_address", "0.0.0.0"))))
 
         if not mac_address:
             return Response({"error": "MAC Address is required for registration"}, status=400)
+
+        if not _is_valid_mac(mac_address):
+            return Response(
+                {"error": "mac_address must be a valid MAC address, e.g. 'aa:bb:cc:dd:ee:ff'"},
+                status=400,
+            )
 
         # Agent identity keyed strictly by MAC address (hostname collisions are allowed)
 
@@ -190,8 +160,10 @@ def api_register_agent(request):
         return Response({"agent_id": str(agent.id), "status": "registered"}, status=200)
 
     except Exception as e:
+        # Log full detail server-side; never echo raw exception text (potential internal
+        # implementation/DB detail) back to an unauthenticated-by-default caller.
         logger.error(f"Error registering agent: {e}", exc_info=True)
-        return Response({"error": f"Internal server error: {e}"}, status=500)
+        return Response({"error": "Internal server error while registering agent."}, status=500)
 
 @api_view(["POST"])
 def api_agent_telemetry(request):
@@ -259,12 +231,13 @@ def api_agent_telemetry(request):
 
     except Exception as e:
         logger.error(f"Error processing telemetry upload: {e}", exc_info=True)
-        return Response({"error": f"Internal server error: {e}"}, status=500)
+        return Response({"error": "Internal server error while processing telemetry."}, status=500)
 
 # =====================================================================
 # Dashboard HTML Template Views
 # =====================================================================
 
+@_require_dashboard_auth
 def api_live_metrics(request):
     """API endpoint returning active metrics, active agents online count, and DSE alerts."""
     try:
@@ -321,6 +294,7 @@ def api_live_metrics(request):
         logger.error(f"API live metrics error: {e}", exc_info=True)
         return JsonResponse({"error": "Unable to fetch live metrics"}, status=500)
 
+@_require_dashboard_auth
 def api_live_packets(request):
     """API endpoint returning latest 20 packet records as JSON."""
     try:
@@ -352,46 +326,100 @@ def api_live_packets(request):
     except Exception as e:
         logger.error(f"API packets error: {e}", exc_info=True)
         return JsonResponse({"packets": [], "error": str(e)}, status=500)
+@_require_dashboard_auth
 def api_topology_graph(request):
     """Serves the interactive PyVis graph HTML directly for iframe inclusion."""
     html_graph = generate_topology_pyvis()
     return HttpResponse(html_graph, content_type="text/html")
 
 
-def api_stream_metrics(request):
-    """Server-Sent Events (SSE) real-time streaming endpoint for sub-second live metrics."""
+# --- SSE concurrency guard -----------------------------------------------------------------
+# api_stream_metrics() holds a request thread/worker open for as long as the browser tab stays
+# on the page. On a synchronous WSGI server (gunicorn's default sync worker class, which is what
+# this project's README documents), an unbounded number of concurrent SSE connections can
+# starve every worker, making the entire server (including agent ingestion) unresponsive.
+# This bounds concurrent streams and caps each stream's lifetime so a worker is always
+# eventually reclaimed; EventSource clients auto-reconnect after the stream closes.
+_SSE_MAX_CONNECTIONS = int(os.environ.get("NETINSIGHT_MAX_SSE_CONNECTIONS", "4"))
+_SSE_MAX_DURATION_SECONDS = int(os.environ.get("NETINSIGHT_SSE_MAX_DURATION", "300"))
+_sse_semaphore = threading.BoundedSemaphore(_SSE_MAX_CONNECTIONS)
+
+
+@_require_dashboard_auth
+async def api_stream_metrics(request):
+    """Server-Sent Events (SSE) real-time streaming endpoint for sub-second live metrics.
+
+    This is a genuine `async def` Django view (native async view support, Django 4.1+): under
+    an ASGI server (uvicorn/daphne — see README "Production Deployment Notes"), each connection
+    parks on `await asyncio.sleep(1.0)` between updates instead of blocking an OS thread for its
+    entire lifetime, so many concurrent viewers no longer pin one worker each. Under a plain
+    WSGI server, Django's `async_to_sync` adapter still runs this correctly (safe fallback,
+    identical behavior/bound to before) — the concurrency win specifically requires ASGI.
+
+    Concurrency is additionally bounded by NETINSIGHT_MAX_SSE_CONNECTIONS (default 4) and each
+    stream self-terminates after NETINSIGHT_SSE_MAX_DURATION seconds (default 300) as
+    defense-in-depth regardless of deployment mode — a slow/leaked client still can't hold a
+    slot forever, and callers beyond the cap get a 503 with Retry-After instead of hanging.
+    """
+    import asyncio
+
+    from asgiref.sync import sync_to_async
     from django.http import StreamingHttpResponse
 
-    def event_stream():
-        while True:
-            try:
-                latest = analytics_engine.get_latest_metrics()
-                now = timezone.now()
-                active_cutoff = now - timedelta(seconds=15)
-                active_agents = Agent.objects.filter(last_seen__gte=active_cutoff)
-                active_devices_count = active_agents.count()
+    if not _sse_semaphore.acquire(blocking=False):
+        logger.warning(
+            f"SSE connection limit reached ({_SSE_MAX_CONNECTIONS}). Rejecting new stream connection."
+        )
+        response = JsonResponse(
+            {"error": "Live stream capacity reached. Retry shortly or use polling APIs instead."},
+            status=503,
+        )
+        response["Retry-After"] = "5"
+        return response
 
-                if active_devices_count == 0:
-                    latest["throughput"] = 0.0
-                    latest["packet_rate"] = 0.0
-                    latest["bandwidth_util"] = 0.0
-                    latest["latency"] = 0.0
-                    latest["packet_loss"] = 0.0
+    get_latest_metrics_async = sync_to_async(analytics_engine.get_latest_metrics, thread_sensitive=False)
 
-                now_ts = _time.time()
-                state_record = StateHistory.objects.all().order_by("-timestamp").first()
-                is_fresh_state = state_record and (now_ts - state_record.timestamp) < 30.0
-                state_name = state_record.network_state if is_fresh_state and active_devices_count > 0 else "Normal"
-                latest["network_state"] = state_name
-                latest["active_devices_count"] = active_devices_count
-                latest["mdp_recommendation"] = mdp_engine.get_recommendation(state_name)
+    async def event_stream():
+        stream_start = _time.time()
+        try:
+            while True:
+                if (_time.time() - stream_start) > _SSE_MAX_DURATION_SECONDS:
+                    logger.info("SSE stream reached max duration; closing to free the connection slot.")
+                    return
 
-                payload = json.dumps(_to_native_types(latest))
-                yield f"data: {payload}\n\n"
-                _time.sleep(1.0)
-            except Exception as e:
-                logger.error(f"SSE stream error: {e}")
-                _time.sleep(1.0)
+                try:
+                    latest = await get_latest_metrics_async()
+                    now = timezone.now()
+                    active_cutoff = now - timedelta(seconds=15)
+                    active_devices_count = await Agent.objects.filter(last_seen__gte=active_cutoff).acount()
+
+                    if active_devices_count == 0:
+                        latest["throughput"] = 0.0
+                        latest["packet_rate"] = 0.0
+                        latest["bandwidth_util"] = 0.0
+                        latest["latency"] = 0.0
+                        latest["packet_loss"] = 0.0
+
+                    now_ts = _time.time()
+                    state_record = await StateHistory.objects.all().order_by("-timestamp").afirst()
+                    is_fresh_state = state_record and (now_ts - state_record.timestamp) < 30.0
+                    state_name = (
+                        state_record.network_state if is_fresh_state and active_devices_count > 0 else "Normal"
+                    )
+                    latest["network_state"] = state_name
+                    latest["active_devices_count"] = active_devices_count
+                    # CPU-only (numpy value iteration over a fixed 5-state MDP) — no I/O, safe to
+                    # call directly without sync_to_async.
+                    latest["mdp_recommendation"] = mdp_engine.get_recommendation(state_name)
+
+                    payload = json.dumps(_to_native_types(latest))
+                    yield f"data: {payload}\n\n"
+                    await asyncio.sleep(1.0)
+                except Exception as e:
+                    logger.error(f"SSE stream error: {e}")
+                    await asyncio.sleep(1.0)
+        finally:
+            _sse_semaphore.release()
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

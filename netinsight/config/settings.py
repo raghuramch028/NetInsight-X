@@ -290,6 +290,26 @@ REST_FRAMEWORK = {
     },
 }
 
+# ==========================================
+# Transport Security (opt-in)
+# ==========================================
+# Off by default: local/LAN demo deployments (this project's documented default use case) run
+# over plain HTTP, and forcing HTTPS/secure cookies there would just lock users out. Set
+# NETINSIGHT_FORCE_HTTPS=True when this server sits behind TLS termination (a reverse proxy,
+# load balancer, or platform-level HTTPS) to enable standard Django transport-security hardening.
+NETINSIGHT_FORCE_HTTPS = os.environ.get("NETINSIGHT_FORCE_HTTPS", "False").lower() in ("true", "1", "yes")
+
+if NETINSIGHT_FORCE_HTTPS:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.environ.get("NETINSIGHT_SSL_REDIRECT", "True").lower() in ("true", "1", "yes")
+    SECURE_HSTS_SECONDS = int(os.environ.get("NETINSIGHT_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # When behind a reverse proxy that terminates TLS, trust its forwarded-proto header so
+    # Django knows the original request was HTTPS (avoids a redirect loop behind the proxy).
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # In production mode (DEBUG=False), enforce strict secret key and agent token requirements
 if not DEBUG and 'test' not in sys.argv:
     if SECRET_KEY == "django-insecure-netinsightx-academic-project-secret" or len(SECRET_KEY) < 32:

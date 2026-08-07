@@ -2,12 +2,18 @@ import logging
 import threading
 
 from netinsight.classification.llm_classifier import LLMClassifier
+from netinsight.config.labels import CLASS_LABELS
 
 logger = logging.getLogger(__name__)
 
+_KNOWN_LABELS = frozenset(CLASS_LABELS.values())
+
 
 class TrafficClassifier:
-    """Classifies network traffic into normal and threat categories using a trained SVM."""
+    """Classifies network traffic into normal and threat categories using deterministic
+    heuristic IDS rules with an NVIDIA cloud LLM fallback for traffic the rules can't label."""
+
+    _DEFAULT_CONFIDENCE_THRESHOLD = 0.80
 
     def __init__(self, model_path: str | None = None, window_duration: float = 10.0):
         self.llm_classifier = LLMClassifier()
@@ -15,10 +21,25 @@ class TrafficClassifier:
         self.last_llm_latency_ms = 0.0
         self.last_llm_provider = "NVIDIA DeepSeek AI"
         self.last_llm_reasoning = ""
+        self.last_llm_confidence: float | None = None
 
         self.ip_history = {}
         self.cache_lock = threading.Lock()
         self.window_duration = max(1.0, float(window_duration))
+
+    def _get_confidence_threshold(self) -> float:
+        """Reads SystemSettings.svm_confidence_threshold (admin-configurable via the Settings
+        page). Local import avoids a module-level dependency from classification -> dashboard
+        at import time; falls back to a fixed default if the settings row or DB isn't available
+        (e.g. this classifier used outside a full Django request context)."""
+        try:
+            from netinsight.dashboard.models import SystemSettings
+            settings_obj = SystemSettings.objects.first()
+            if settings_obj is not None and settings_obj.svm_confidence_threshold is not None:
+                return float(settings_obj.svm_confidence_threshold)
+        except Exception as e:
+            logger.debug(f"Could not read confidence threshold from SystemSettings: {e}")
+        return self._DEFAULT_CONFIDENCE_THRESHOLD
 
     def update_ip_cache(self, src_ip: str, dst_ip: str, size: int, timestamp: float) -> tuple[float, float]:
         """Updates cache and computes packet rate and unique connection frequency."""
@@ -103,35 +124,40 @@ class TrafficClassifier:
             return rule_label
         try:
             if hasattr(self.llm_classifier, 'classify_packet'):
+                # classify_packet() returns a dict ({"label", "confidence", "reasoning"}) or None,
+                # never a bare label string. The label must be extracted and validated here before
+                # use — passing the raw dict through corrupts any CharField/threat_label consumer.
                 llm_pred = self.llm_classifier.classify_packet(packet_dict)
-                if llm_pred is not None:
-                    self.last_engine_used = "NVIDIA DeepSeek AI"
-                    self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
-                    self.last_llm_provider = "NVIDIA DeepSeek AI"
-                    self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
-                    return llm_pred
+                if isinstance(llm_pred, dict):
+                    label = llm_pred.get("label")
+                    confidence = llm_pred.get("confidence")
+                    confidence = float(confidence) if isinstance(confidence, (int, float)) else None
+
+                    if isinstance(label, str) and label in _KNOWN_LABELS:
+                        # Suppress low-confidence non-Normal LLM threat reports rather than
+                        # surfacing every borderline call as a security alert. svm_confidence_
+                        # threshold (Settings page) previously had no effect on classification at
+                        # all — this is what its own help text always claimed it did.
+                        if label != "Normal" and confidence is not None:
+                            threshold = self._get_confidence_threshold()
+                            if confidence < threshold:
+                                logger.info(
+                                    f"LLM classified '{label}' with confidence {confidence:.2f}, below "
+                                    f"the configured threshold {threshold:.2f}; suppressing to Normal."
+                                )
+                                label = "Normal"
+
+                        self.last_engine_used = "NVIDIA DeepSeek AI"
+                        self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
+                        self.last_llm_provider = "NVIDIA DeepSeek AI"
+                        self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
+                        self.last_llm_confidence = confidence
+                        return label
+                    logger.warning(f"LLM returned an unrecognized label {label!r}; falling back to Normal.")
         except Exception as e:
             logger.error(f"LLM Classification error: {e}")
 
         return "Normal"
-
-    def classify_batch(self, features_df):
-        """Classifies a batch of features via LLM or fallback XGBoost."""
-        predictions = None
-        try:
-            if hasattr(self.llm_classifier, 'classify_batch'):
-                predictions = self.llm_classifier.classify_batch(features_df)
-        except Exception as e:
-            logger.error(f"LLM Batch Classification error: {e}")
-
-        if predictions is not None:
-            self.last_engine_used = "NVIDIA DeepSeek AI"
-            self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
-            self.last_llm_provider = "NVIDIA DeepSeek AI"
-            self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
-            return predictions
-
-        return ["Normal"] * len(features_df)
 
 # Shared module singleton instance to ensure IP history cache is shared across threads/views
 _shared_classifier = None

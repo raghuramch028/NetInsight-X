@@ -160,6 +160,11 @@ class NetInsightAgent:
             # Gather host stats
             stats = self.collector.collect()
 
+            # Report the previous cycle's measured round-trip time so the server can use a real
+            # latency figure instead of a hardcoded constant. None on the very first cycle.
+            if self.sender.last_rtt_seconds is not None:
+                stats["rtt_seconds"] = self.sender.last_rtt_seconds
+
             # Get new packets and combine with previously failed packets
             new_packets = self.sniffer.get_and_clear_packets()
             failed_packets = []
@@ -213,6 +218,18 @@ class NetInsightAgent:
             time.sleep(sleep_time)
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="NetInsight-X Python Edge Agent")
+    parser.add_argument(
+        "--server", default=None,
+        help="Central NetInsight-X server URL, e.g. http://192.168.1.10:8000 "
+             "(overrides NETINSIGHT_SERVER_URL / SERVER_URL env vars)"
+    )
+    args = parser.parse_args()
+    if args.server:
+        config.set_server_url(args.server)
+
     agent = NetInsightAgent()
     try:
         agent.run()

@@ -120,7 +120,14 @@ def speed_monitor_loop():
         run_speed_test()
 
 def start_speed_monitor():
-    """Launches the background daemon thread."""
+    """Launches the background daemon thread, guarded by a cross-process singleton lock so a
+    multi-worker gunicorn deployment doesn't run N redundant speed tests / capacity writers."""
+    from netinsight.dashboard.process_lock import acquire_singleton_lock
+
+    if not acquire_singleton_lock("speed_monitor"):
+        logger.info("Another process already owns the speed-monitor task; skipping in this process.")
+        return
+
     logger.info("Initializing dynamic network capacity speed monitor...")
     t = threading.Thread(target=speed_monitor_loop, daemon=True)
     t.start()

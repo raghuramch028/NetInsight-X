@@ -114,7 +114,8 @@ class TestTrafficClassification(TestCase):
         self.assertEqual(self.classifier.classify_packet(pkt_brute), "Brute Force")
 
     def test_llm_classifier_fallback(self):
-        """Verifies LLMClassifier returns None when unconfigured and falls back to XGBoost cleanly."""
+        """Verifies LLMClassifier returns None when unconfigured and TrafficClassifier falls back
+        to the heuristic rules cleanly."""
         from netinsight.classification.llm_classifier import LLMClassifier
         llm = LLMClassifier()
         import pandas as pd
@@ -134,6 +135,136 @@ class TestTrafficClassification(TestCase):
         res = self.classifier.classify_packet(pkt_normal)
         self.assertEqual(res, "Normal")
         self.assertIn(self.classifier.last_engine_used, ["NVIDIA DeepSeek AI", "Heuristics"])
+
+    def test_llm_success_path_returns_string_label_not_dict(self):
+        """Regression test: TrafficClassifier.classify_packet() previously returned the raw dict
+        from LLMClassifier ({"label":..,"confidence":..,"reasoning":..}) instead of the label
+        string, which would corrupt any string consumer (e.g. FlowRecord.threat_label)."""
+        from unittest.mock import MagicMock, patch
+
+        clf = TrafficClassifier()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"label": "Normal", "confidence": 0.95, "reasoning": "Standard web traffic"}'
+                }
+            }]
+        }
+        mock_response.raise_for_status.return_value = None
+
+        pkt = {
+            "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
+            "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
+        }
+
+        with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
+             patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
+            result = clf.classify_packet(pkt)
+
+        self.assertIsInstance(result, str)
+        self.assertEqual(result, "Normal")
+        self.assertEqual(clf.last_engine_used, "NVIDIA DeepSeek AI")
+
+    def test_llm_malformed_response_falls_back_to_normal_safely(self):
+        """Verifies a malformed LLM response (missing/invalid 'label') never propagates as a
+        classification result — it must fail closed to 'Normal', not raise or return garbage."""
+        from unittest.mock import MagicMock, patch
+
+        clf = TrafficClassifier()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": '{"confidence": 0.5, "reasoning": "no label field"}'}}]
+        }
+        mock_response.raise_for_status.return_value = None
+
+        pkt = {
+            "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
+            "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
+        }
+
+        with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
+             patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
+            result = clf.classify_packet(pkt)
+
+        self.assertEqual(result, "Normal")
+
+    def _mock_llm_response(self, label: str, confidence: float):
+        from unittest.mock import MagicMock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": f'{{"label": "{label}", "confidence": {confidence}, "reasoning": "test"}}'}}]
+        }
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    def test_low_confidence_llm_threat_is_suppressed_to_normal(self):
+        """svm_confidence_threshold (Settings page) previously had no effect on classification —
+        it was a persisted value nothing ever read. A non-Normal LLM label below the configured
+        threshold must now be suppressed rather than raised as a threat."""
+        from unittest.mock import patch
+
+        from netinsight.dashboard.models import SystemSettings
+        SystemSettings.objects.create(svm_confidence_threshold=0.80)
+
+        clf = TrafficClassifier()
+        pkt = {
+            "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
+            "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
+        }
+        mock_response = self._mock_llm_response("Reconnaissance", 0.55)  # below 0.80 threshold
+
+        with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
+             patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
+            result = clf.classify_packet(pkt)
+
+        self.assertEqual(result, "Normal")
+
+    def test_high_confidence_llm_threat_is_reported(self):
+        """A non-Normal LLM label at/above the configured threshold must still be reported."""
+        from unittest.mock import patch
+
+        from netinsight.dashboard.models import SystemSettings
+        SystemSettings.objects.create(svm_confidence_threshold=0.80)
+
+        clf = TrafficClassifier()
+        pkt = {
+            "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
+            "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
+        }
+        mock_response = self._mock_llm_response("Reconnaissance", 0.92)  # above 0.80 threshold
+
+        with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
+             patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
+            result = clf.classify_packet(pkt)
+
+        self.assertEqual(result, "Reconnaissance")
+        self.assertEqual(clf.last_llm_confidence, 0.92)
+
+    def test_missing_settings_row_uses_default_threshold(self):
+        """When no SystemSettings row exists yet, the classifier must fall back to a sane
+        default threshold rather than erroring or treating every LLM call as unconditionally
+        trusted."""
+        from unittest.mock import patch
+
+        from netinsight.dashboard.models import SystemSettings
+        self.assertFalse(SystemSettings.objects.exists())
+
+        clf = TrafficClassifier()
+        pkt = {
+            "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
+            "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
+        }
+        mock_response = self._mock_llm_response("DoS", 0.50)  # below the 0.80 default
+
+        with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
+             patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
+            result = clf.classify_packet(pkt)
+
+        self.assertEqual(result, "Normal")
 
 
 if __name__ == "__main__":

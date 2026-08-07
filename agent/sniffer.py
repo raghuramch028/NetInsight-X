@@ -37,11 +37,15 @@ class PacketSniffer:
 
             src_port = 0
             dst_port = 0
+            tcp_seq = None
 
             if packet.haslayer(TCP):
                 tcp_layer = packet[TCP]
                 src_port = int(tcp_layer.sport)
                 dst_port = int(tcp_layer.dport)
+                # TCP sequence number — lets the server detect true retransmissions (same
+                # segment sent twice) instead of only an approximate duplicate-packet heuristic.
+                tcp_seq = int(tcp_layer.seq)
             elif packet.haslayer(UDP):
                 udp_layer = packet[UDP]
                 src_port = int(udp_layer.sport)
@@ -55,7 +59,8 @@ class PacketSniffer:
                 "protocol": protocol,
                 "size": size,
                 "ttl": ttl,
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "tcp_seq": tcp_seq
             }
 
             with self.buffer_lock:

@@ -54,6 +54,24 @@ class TestDashboardViews(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200, f"Failed rendering view {view_name} at URL {url}")
 
+    def test_health_check_endpoint(self):
+        """The /healthz endpoint must be reachable without any authentication and report DB
+        connectivity — used by load balancers / orchestration platforms."""
+        response = self.client.get(reverse("dashboard:api_health_check"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertTrue(data["database"])
+
+    def test_health_check_ignores_dashboard_auth_gate(self):
+        original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
+        try:
+            settings.NETINSIGHT_REQUIRE_AUTH = True
+            response = self.client.get(reverse("dashboard:api_health_check"))
+            self.assertEqual(response.status_code, 200)
+        finally:
+            settings.NETINSIGHT_REQUIRE_AUTH = original
+
     def test_json_api_endpoints(self):
         """Verifies the JSON APIs for Chart.js and packet logs return expected structures."""
         # Create an active agent so the metrics logic runs
@@ -194,6 +212,110 @@ class TestDashboardViews(TestCase):
         self.assertNotIn("<script>", agent.hostname)
         self.assertIn("&lt;script&gt;", agent.hostname)
         self.assertNotIn("<b onmouseover", agent.device_type)
+
+    def test_register_agent_rejects_invalid_mac_address(self):
+        """Regression (Phase 4): mac_address was accepted as any non-empty string, even though
+        it is the agent's primary identity key. A malformed value must now be rejected."""
+        res = self.client.post(
+            "/api/v1/agents/register",
+            data={"mac_address": "not-a-mac-address", "hostname": "Bad-Mac-Host"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(Agent.objects.filter(hostname="Bad-Mac-Host").exists())
+
+    def test_register_agent_falls_back_on_invalid_ip(self):
+        """A malformed ip_address must not be written verbatim (GenericIPAddressField isn't
+        enforced by save()); it should fall back to a safe default instead."""
+        res = self.client.post(
+            "/api/v1/agents/register",
+            data={
+                "mac_address": "00:11:22:33:44:cc",
+                "hostname": "Bad-IP-Host",
+                "ip_address": "'; DROP TABLE agents; --",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        agent = Agent.objects.get(mac_address="00:11:22:33:44:cc")
+        self.assertEqual(agent.ip_address, "0.0.0.0")
+
+    def test_register_agent_truncates_overlong_fields(self):
+        """hostname/device_type/vendor must be truncated to their model max_length — SQLite
+        doesn't enforce CharField length, but Postgres (the optional production DB backend via
+        DATABASE_URL) does, and this endpoint doesn't call full_clean() to catch it earlier."""
+        res = self.client.post(
+            "/api/v1/agents/register",
+            data={
+                "mac_address": "00:11:22:33:44:dd",
+                "hostname": "H" * 500,
+                "device_type": "D" * 500,
+                "vendor": "V" * 500,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        agent = Agent.objects.get(mac_address="00:11:22:33:44:dd")
+        self.assertLessEqual(len(agent.hostname), 255)
+        self.assertLessEqual(len(agent.device_type), 100)
+        self.assertLessEqual(len(agent.vendor), 255)
+
+    def test_register_agent_error_response_does_not_leak_exception_text(self):
+        """Regression (Phase 4): internal exception text (potential DB/implementation detail)
+        was previously echoed straight back to any anonymous caller on a 500."""
+        from unittest.mock import patch
+
+        with patch(
+            "netinsight.dashboard.views.api_views.Agent.objects.get_or_create",
+            side_effect=RuntimeError("super secret internal detail"),
+        ):
+            res = self.client.post(
+                "/api/v1/agents/register",
+                data={"mac_address": "00:11:22:33:44:ee", "hostname": "Err-Host"},
+                content_type="application/json",
+            )
+        self.assertEqual(res.status_code, 500)
+        self.assertNotIn("super secret internal detail", res.json().get("error", ""))
+
+    def test_dashboard_auth_gate_blocks_when_required(self):
+        """Regression test: NETINSIGHT_REQUIRE_AUTH previously had no effect because
+        check_dashboard_auth() was never invoked by any view. Verifies it is now enforced."""
+        original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
+        try:
+            settings.NETINSIGHT_REQUIRE_AUTH = True
+
+            page_response = self.client.get(reverse("dashboard:index"))
+            self.assertEqual(page_response.status_code, 401)
+
+            api_response = self.client.get(reverse("dashboard:api_live_metrics"))
+            self.assertEqual(api_response.status_code, 401)
+        finally:
+            settings.NETINSIGHT_REQUIRE_AUTH = original
+
+    def test_dashboard_open_when_auth_not_required(self):
+        """Verifies the dashboard remains accessible when NETINSIGHT_REQUIRE_AUTH is False (default)."""
+        original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
+        try:
+            settings.NETINSIGHT_REQUIRE_AUTH = False
+            response = self.client.get(reverse("dashboard:index"))
+            self.assertEqual(response.status_code, 200)
+        finally:
+            settings.NETINSIGHT_REQUIRE_AUTH = original
+
+    def test_agent_ingestion_endpoints_unaffected_by_dashboard_auth_gate(self):
+        """Verifies NETINSIGHT_REQUIRE_AUTH (dashboard-user auth) does NOT gate the agent
+        ingestion endpoints, which are authenticated separately via validate_agent_token()."""
+        original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
+        try:
+            settings.NETINSIGHT_REQUIRE_AUTH = True
+            res = self.client.post(
+                "/api/v1/agents/register",
+                data={"mac_address": "00:aa:bb:cc:dd:99", "hostname": "Gate-Test"},
+                content_type="application/json",
+            )
+            self.assertEqual(res.status_code, 200)
+        finally:
+            settings.NETINSIGHT_REQUIRE_AUTH = original
 
 class TestConcurrency(TransactionTestCase):
 

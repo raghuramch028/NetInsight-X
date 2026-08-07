@@ -152,7 +152,14 @@ class MDPRecommendationEngine:
 
     def get_recommendation(self, current_state_name: str) -> dict:
         """Solves the MDP policy and returns the advisory action for the current state."""
-        state_idx = self.STATE_MAP.get(current_state_name, self.STATE_MAP.get(current_state_name.upper(), 0))
+        # Defensive: a non-string/empty/unrecognized state_name previously reached
+        # current_state_name.upper() unconditionally (Python evaluates default args eagerly),
+        # which raised AttributeError for any non-string input instead of falling back safely.
+        if not isinstance(current_state_name, str) or not current_state_name:
+            current_state_name = "Normal"
+        state_idx = self.STATE_MAP.get(current_state_name)
+        if state_idx is None:
+            state_idx = self.STATE_MAP.get(current_state_name.upper(), 0)
 
         if self._cached_V is None or self._cached_policy is None:
             self.solve_value_iteration()

@@ -122,6 +122,14 @@ class TestPredictionModule(TestCase):
         self.assertGreater(rec_normal["action_values"][rec_normal["recommended_action"]], -50)
         self.assertGreater(rec_failure["action_values"][rec_failure["recommended_action"]], -50)
 
+    def test_mdp_get_recommendation_handles_non_string_state_defensively(self):
+        """Regression (Phase 3): get_recommendation() previously called
+        current_state_name.upper() unconditionally as part of a dict.get() default argument,
+        which raised AttributeError for None or any non-string input instead of falling back."""
+        for bad_state in (None, 123, "", ["Normal"]):
+            rec = self.mdp_engine.get_recommendation(bad_state)
+            self.assertIn(rec["recommended_action"], self.mdp_engine.ACTION_NAMES.values())
+
     def test_hmm_viterbi_decoding(self):
         """Tests HiddenMarkovModel.decode_states against a known sequence of observation vectors."""
         hmm = HiddenMarkovModel()

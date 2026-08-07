@@ -21,6 +21,8 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         size = int(packet_dict["size"])
         ttl = int(packet_dict.get("ttl", 64))
         pkt_ts = float(packet_dict.get("timestamp", time.time()))
+        raw_tcp_seq = packet_dict.get("tcp_seq")
+        tcp_seq = int(raw_tcp_seq) if raw_tcp_seq is not None else None
 
         # 2. Build normalized bi-directional flow key
         flow_key = f"{min(src_ip, dst_ip)}_{max(src_ip, dst_ip)}_{min(src_port, dst_port)}_{max(src_port, dst_port)}_{protocol}"
@@ -65,24 +67,29 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
                 protocol=protocol
             )
 
-        # Feature Extraction & XGBoost Threat Classification
-        unique_dests = 1
+        # Feature Extraction & Threat Classification
 
         # Calculate packet rate normalized to time (packets per second)
         # Clamp minimum effective duration to 0.5s to avoid rate inflation on instant single packets
         effective_duration = max(flow.duration, 0.5)
         packet_rate = float(flow.packet_count) / effective_duration
 
-        # Construct packet payload dictionary for classification compatibility
+        # Construct packet payload dictionary for classification compatibility.
+        # conn_frequency is intentionally omitted (not hardcoded) here: TrafficClassifier's
+        # _classify_rule_based() treats a missing packet_rate/conn_frequency as "compute it from
+        # the real per-source-IP rolling cache" (update_ip_cache). A previous version hardcoded
+        # conn_frequency to 1.0, which permanently disabled the Mirai (conn_frequency > 30) and
+        # Reconnaissance (conn_frequency > 50) heuristic rules for all server-ingested traffic.
         classify_payload = {
             "src_ip": src_ip,
             "dst_ip": dst_ip,
+            "src_port": src_port,
+            "dst_port": dst_port,
             "size": int(flow.avg_packet_size),
             "timestamp": pkt_ts,
             "protocol": protocol,
             "latency_est": 0.015,  # Heuristic fallback on server
             "packet_rate": packet_rate,
-            "conn_frequency": float(unique_dests)
         }
 
         # Classify threat label using trained model
@@ -142,6 +149,7 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
             size=size,
             timestamp=pkt_ts,
             ttl=ttl,
+            tcp_seq=tcp_seq,
             agent=agent
         )
 

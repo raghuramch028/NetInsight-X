@@ -19,6 +19,10 @@ type PacketRecord struct {
 	Size      int     `json:"size"`
 	TTL       uint8   `json:"ttl"`
 	Timestamp float64 `json:"timestamp"`
+	// TCPSeq is the TCP sequence number (nil for non-TCP packets), letting the server detect
+	// true retransmissions (same segment sent twice) instead of only an approximate
+	// duplicate-packet heuristic.
+	TCPSeq *uint32 `json:"tcp_seq,omitempty"`
 }
 
 type PacketSniffer struct {
@@ -108,6 +112,7 @@ func (s *PacketSniffer) processPacket(packet gopacket.Packet) {
 	srcPort := 0
 	dstPort := 0
 	protocol := "OTHER"
+	var tcpSeq *uint32
 
 	tcpLayer := packet.Layer(layers.LayerTypeTCP)
 	if tcpLayer != nil {
@@ -115,6 +120,8 @@ func (s *PacketSniffer) processPacket(packet gopacket.Packet) {
 		srcPort = int(tcp.SrcPort)
 		dstPort = int(tcp.DstPort)
 		protocol = "TCP"
+		seq := tcp.Seq
+		tcpSeq = &seq
 	} else {
 		udpLayer := packet.Layer(layers.LayerTypeUDP)
 		if udpLayer != nil {
@@ -139,6 +146,7 @@ func (s *PacketSniffer) processPacket(packet gopacket.Packet) {
 		Size:      size,
 		TTL:       ttl,
 		Timestamp: float64(time.Now().UnixNano()) / 1e9,
+		TCPSeq:    tcpSeq,
 	}
 
 	s.bufferLock.Lock()

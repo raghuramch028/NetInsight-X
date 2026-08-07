@@ -40,3 +40,25 @@ jobs:
           NETINSIGHT_AGENT_INTERVAL: "3.0"
         run: |
           python manage.py test
+
+  build-go-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcap-dev
+
+      - name: Vet & Build agent_go
+        working-directory: agent_go
+        run: |
+          go vet ./...
+          go build ./...

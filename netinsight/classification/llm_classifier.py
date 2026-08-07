@@ -61,6 +61,12 @@ class LLMClassifier:
             json_match = re.search(r'\{.*\}', content, re.DOTALL)
             result = json.loads(json_match.group(0)) if json_match else json.loads(content.strip())
 
+            # Validate the model returned the documented schema before trusting it downstream.
+            # Malformed/partial JSON from the model must not silently propagate as a "label".
+            if not isinstance(result, dict) or not isinstance(result.get("label"), str) or not result["label"]:
+                logger.error(f"NVIDIA API returned malformed classification payload: {result!r}")
+                return None
+
             self.last_llm_latency_ms = (time.time() - start_time) * 1000
             self.last_llm_reasoning = result.get("reasoning", "")
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net"
 	"os"
@@ -28,8 +29,17 @@ func getMacAddress() string {
 }
 
 func main() {
+	// -server overrides SERVER_URL (and its default) so the documented invocation
+	// `go run main.go -server http://<SERVER-IP>:8000` actually takes effect.
+	serverFlag := flag.String("server", "", "Central NetInsight-X server URL, e.g. http://192.168.1.10:8000")
+	flag.Parse()
+	if *serverFlag != "" {
+		config.SetServerURL(*serverFlag)
+	}
+
 	log.Println("Starting NetInsight Go Agent...")
-	
+	log.Printf("Target server: %s\n", config.ServerURL)
+
 	// Create modules
 	agentSender := sender.NewTelemetrySender()
 	packetSniffer := sniffer.NewPacketSniffer()
@@ -64,6 +74,11 @@ func main() {
 	for range ticker.C {
 		// Collect stats
 		stats = collector.Collect()
+		// Report the previous cycle's measured round-trip time so the server can use a real
+		// latency figure instead of a hardcoded constant. Stays nil on the first cycle.
+		if agentSender.LastRTTSeconds != nil {
+			stats.RTTSeconds = agentSender.LastRTTSeconds
+		}
 
 		// Fetch packets
 		newPackets := packetSniffer.GetAndClearPackets()

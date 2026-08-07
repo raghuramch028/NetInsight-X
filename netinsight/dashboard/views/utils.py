@@ -1,6 +1,8 @@
 """Shared utility functions and authorization validators for NetInsight-X dashboard views."""
 
+import asyncio
 import hmac
+from functools import wraps
 from typing import Any
 
 import numpy as np
@@ -25,6 +27,41 @@ def check_dashboard_auth(request):
     if getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False) and (not request.user or not request.user.is_authenticated):
         return JsonResponse({"error": "Authentication required to access dashboard endpoints"}, status=401)
     return None
+
+
+def require_dashboard_auth(view_func):
+    """Decorator enforcing check_dashboard_auth() on a dashboard page or read-only API view.
+
+    NETINSIGHT_REQUIRE_AUTH previously had no effect because nothing invoked
+    check_dashboard_auth(). This decorator wires it into the actual request path.
+    Must NOT be applied to the agent-ingestion endpoints (api_register_agent,
+    api_agent_telemetry) — those are authenticated separately via validate_agent_token()
+    against edge-agent devices, not logged-in dashboard users.
+
+    Wraps both sync and async views: api_stream_metrics (the SSE endpoint) is an async view
+    under Django's native async view support, and Django's URL resolver decides whether to
+    await a view based on asyncio.iscoroutinefunction(), so the wrapper itself must be an
+    `async def` when wrapping an async view — returning an unawaited coroutine from a sync
+    wrapper would not be recognized as an async view.
+    """
+    if asyncio.iscoroutinefunction(view_func):
+        @wraps(view_func)
+        async def async_wrapper(request, *args, **kwargs):
+            auth_response = check_dashboard_auth(request)
+            if auth_response is not None:
+                return auth_response
+            return await view_func(request, *args, **kwargs)
+
+        return async_wrapper
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        auth_response = check_dashboard_auth(request)
+        if auth_response is not None:
+            return auth_response
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
 
 
 def validate_agent_token(request) -> bool:

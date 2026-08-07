@@ -3,7 +3,6 @@ import csv
 import io
 import json
 import logging
-import threading
 
 import matplotlib
 
@@ -16,7 +15,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from netinsight.config import settings
 from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
@@ -28,9 +26,11 @@ from netinsight.config.singletons import (
 from netinsight.dashboard.models import (
     Agent,
     MetricRecord,
-    PacketRecord,
     StateHistory,
     ThreatHistory,
+)
+from netinsight.dashboard.views.utils import (
+    require_dashboard_auth as _require_dashboard_auth,
 )
 from netinsight.dashboard.views.utils import (
     to_native_types as _to_native_types,
@@ -48,98 +48,11 @@ mdp_engine = get_mdp_engine()
 classifier = get_traffic_classifier()
 dse_engine = get_dse_engine()
 
-
-def _demo_telemetry_generator():
-    """Background thread generating synthetic telemetry data for demo/demonstration mode."""
-    import random
-    import time as _time
-
-    from django.db import close_old_connections
-    close_old_connections()
-    try:
-        _time.sleep(3)  # Wait for Django to fully boot
-        # Create a synthetic demo agent
-        demo_agent, _ = Agent.objects.get_or_create(
-            mac_address="de:mo:00:00:00:01",
-            defaults={
-                "hostname": "Demo-Agent-1",
-                "device_type": "Demo Node",
-                "vendor": "NetInsight Demo",
-                "ip_address": "192.168.1.100"
-            }
-        )
-        states = ["Normal", "Normal", "Normal", "Busy", "Busy", "Congested"]
-        protocols = ["TCP", "TCP", "TCP", "UDP", "UDP", "ICMP"]
-        while True:
-            close_old_connections()
-            now_ts = _time.time()
-            demo_agent.cpu_usage = round(random.uniform(15, 65), 1)
-            demo_agent.memory_usage = round(random.uniform(30, 75), 1)
-            demo_agent.disk_usage = round(random.uniform(20, 50), 1)
-            demo_agent.active_connections = random.randint(5, 40)
-            demo_agent.bytes_sent = random.randint(100000, 5000000)
-            demo_agent.bytes_recv = random.randint(500000, 15000000)
-            demo_agent.last_seen = timezone.now()
-            demo_agent.save()
-            # Generate synthetic packets
-            for _ in range(random.randint(3, 8)):
-                PacketRecord.objects.create(
-                    src_ip=f"192.168.1.{random.randint(2, 254)}",
-                    dst_ip=f"10.0.0.{random.randint(1, 50)}",
-                    src_port=random.randint(1024, 65535),
-                    dst_port=random.choice([80, 443, 53, 22, 8080]),
-                    protocol=random.choice(protocols),
-                    size=random.randint(64, 1500),
-                    timestamp=now_ts,
-                    ttl=random.choice([64, 128]),
-                    agent=demo_agent
-                )
-            # Generate synthetic metric
-            throughput = random.uniform(1e6, 8e6)
-            MetricRecord.objects.create(
-                timestamp=now_ts,
-                throughput=throughput,
-                packet_rate=random.uniform(50, 300),
-                bandwidth_util=random.uniform(5, 60),
-                latency=random.uniform(0.005, 0.080),
-                packet_loss=random.uniform(0, 2.0)
-            )
-            # Generate synthetic state
-            StateHistory.objects.create(
-                timestamp=now_ts,
-                network_state=random.choice(states),
-                bandwidth_utilization=random.uniform(0.05, 0.60),
-                packet_loss=random.uniform(0, 0.02),
-                latency=random.uniform(0.005, 0.080)
-            )
-            # Prune old demo data (keep last 5 minutes)
-            cutoff = now_ts - 300
-            PacketRecord.objects.filter(timestamp__lt=cutoff, agent=demo_agent).delete()
-            _time.sleep(3)
-    except Exception as e:
-        logger.error(f"Demo telemetry generator error: {e}", exc_info=True)
-    finally:
-        close_old_connections()
-
-_demo_lock = threading.Lock()
-_demo_thread_started = False
-
-def ensure_monitor_started():
-    """Starts demo telemetry generator if DEMO_MODE is active. Thread-safe check-and-set."""
-    import threading
-    global _demo_thread_started
-    if settings.DEMO_MODE and not _demo_thread_started:
-        with _demo_lock:
-            if not _demo_thread_started:
-                _demo_thread_started = True
-                t = threading.Thread(target=_demo_telemetry_generator, daemon=True, name="DemoTelemetryGen")
-                t.start()
-                logger.info("[DEMO MODE] Synthetic telemetry generator started.")
-
 # =====================================================================
 # REST APIs for Agents Ingestion
 # =====================================================================
 
+@_require_dashboard_auth
 def reports_view(request):
     """Visualizes Matplotlib reports charts in the dashboard panel."""
     plots = {}
@@ -171,6 +84,7 @@ def reports_view(request):
 # PDF, CSV, and JSON Document Exports
 # =====================================================================
 
+@_require_dashboard_auth
 def reports_pdf_download(request):
     """Generates and downloads a formatted PDF network health report using ReportLab."""
     try:
@@ -260,7 +174,7 @@ def reports_pdf_download(request):
         story.append(Spacer(1, 20))
 
         # 3. Threat History Audit
-        story.append(Paragraph("<b>3. Security Incidents Logs (XGBoost Threat Classification)</b>", styles["Heading2"]))
+        story.append(Paragraph("<b>3. Security Incidents Logs (Heuristic/LLM Threat Classification)</b>", styles["Heading2"]))
         threats = ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:10]
         threat_data = [["Timestamp", "Source Host", "Threat Classified", "Severity Level"]]
         for t in threats:
@@ -289,6 +203,7 @@ def reports_pdf_download(request):
         logger.error(f"Error compiling PDF report: {e}", exc_info=True)
         return HttpResponse(f"Error generating PDF: {e}", status=500)
 
+@_require_dashboard_auth
 def reports_csv_download(request):
     """Exports historical metrics and system operational states to CSV logs."""
     try:
@@ -317,6 +232,7 @@ def reports_csv_download(request):
         logger.error(f"Error compiling CSV report: {e}", exc_info=True)
         return HttpResponse(f"Error generating CSV: {e}", status=500)
 
+@_require_dashboard_auth
 def reports_json_download(request):
     """Exports structured audit logs to a JSON schema for external analysis."""
     try:

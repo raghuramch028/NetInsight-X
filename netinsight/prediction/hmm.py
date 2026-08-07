@@ -25,8 +25,8 @@ class HiddenMarkovModel:
             [0.30, 0.10, 0.05, 0.05, 0.50]   # Recovering ->
         ])
 
-        # 2. Discrete Threat Emission Matrix for XGBoost Labels (shape: 5x7)
-        # Rows: Hidden States, Columns: XGBoost Threat Labels
+        # 2. Discrete Threat Emission Matrix for classifier threat labels (shape: 5x7)
+        # Rows: Hidden States, Columns: Threat Labels (see config/labels.py CLASS_LABELS)
         self.threat_emission = np.array([
             [0.95, 0.01, 0.00, 0.01, 0.01, 0.01, 0.01],  # Normal expects Normal
             [0.90, 0.02, 0.00, 0.02, 0.02, 0.02, 0.02],  # Busy expects Normal
@@ -108,7 +108,7 @@ class HiddenMarkovModel:
             # Sum of log-probabilities (equivalent to log of product)
             log_p_continuous = log_p_util + log_p_latency + log_p_loss + log_p_rate + log_p_sockets
 
-            # Discrete Threat label score from XGBoost
+            # Discrete threat-label score from the traffic classifier
             threat_name = observation.get("threat_label", "Normal")
             threat_idx = next((k for k, v in THREAT_LABELS.items() if v == threat_name), 0)
             state_idx = STATE_INDEX[state_name]

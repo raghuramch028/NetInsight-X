@@ -12,6 +12,16 @@ class TelemetrySender:
 
     def __init__(self):
         self.agent_id = self.load_agent_id()
+        # Round-trip time of the most recent successful telemetry POST, in seconds. Reported on
+        # the *following* cycle's stats payload (rtt_seconds) since a request obviously can't
+        # report its own duration. Replaces a previous hardcoded server-side latency constant.
+        self.last_rtt_seconds: float | None = None
+
+    def _auth_headers(self) -> dict:
+        """Builds the X-Agent-Token header when NETINSIGHT_AGENT_TOKEN is configured locally."""
+        if config.AGENT_TOKEN:
+            return {"X-Agent-Token": config.AGENT_TOKEN}
+        return {}
 
     def load_agent_id(self) -> str | None:
         """Retrieves persistent agent ID from disk if available."""
@@ -50,7 +60,9 @@ class TelemetrySender:
         while True:
             logger.info(f"Attempting to register agent at {config.REGISTRATION_ENDPOINT}...")
             try:
-                response = requests.post(config.REGISTRATION_ENDPOINT, json=payload, timeout=10.0)
+                response = requests.post(
+                    config.REGISTRATION_ENDPOINT, json=payload, headers=self._auth_headers(), timeout=10.0
+                )
                 if response.status_code == 200 or response.status_code == 201:
                     data = response.json()
                     agent_id = data.get("agent_id")
@@ -60,6 +72,13 @@ class TelemetrySender:
                         return True
                     else:
                         logger.error("Registration response did not contain 'agent_id'.")
+                elif response.status_code == 401:
+                    logger.error(
+                        "Server rejected registration (401 Unauthorized). The server has agent-token "
+                        "enforcement enabled but this agent's NETINSIGHT_AGENT_TOKEN is missing or does not "
+                        "match. Set NETINSIGHT_AGENT_TOKEN in this agent's environment to the same value "
+                        "configured on the server."
+                    )
                 else:
                     logger.error(f"Server rejected registration (Status: {response.status_code}): {response.text}")
             except requests.RequestException as e:
@@ -81,7 +100,11 @@ class TelemetrySender:
         }
 
         try:
-            response = requests.post(config.TELEMETRY_ENDPOINT, json=payload, timeout=10.0)
+            request_start = time.time()
+            response = requests.post(
+                config.TELEMETRY_ENDPOINT, json=payload, headers=self._auth_headers(), timeout=10.0
+            )
+            self.last_rtt_seconds = time.time() - request_start
             if response.status_code == 200:
                 logger.info(f"Successfully uploaded telemetry (packets: {len(packets)}).")
                 data = response.json()
@@ -94,6 +117,12 @@ class TelemetrySender:
                     except Exception as e:
                         logger.error(f"Failed to delete invalid agent ID file: {e}")
                 self.agent_id = None
+                return False, None
+            elif response.status_code == 401:
+                logger.error(
+                    "Server rejected telemetry (401 Unauthorized). Check that NETINSIGHT_AGENT_TOKEN on this "
+                    "agent matches the server's configured token."
+                )
                 return False, None
             else:
                 logger.error(f"Server rejected telemetry payload (Status {response.status_code}): {response.text}")

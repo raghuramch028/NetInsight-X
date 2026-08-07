@@ -24,6 +24,10 @@ type Stats struct {
 	BytesSent         uint64  `json:"bytes_sent"`
 	BytesRecv         uint64  `json:"bytes_recv"`
 	ActiveConnections int     `json:"active_connections"`
+	// RTTSeconds is the previous cycle's measured telemetry-POST round-trip time, reported so the
+	// server can use real latency instead of a hardcoded constant. Left nil (omitted from the
+	// JSON payload) until the first successful telemetry upload completes.
+	RTTSeconds *float64 `json:"rtt_seconds,omitempty"`
 }
 
 func GetPrimaryIP() string {

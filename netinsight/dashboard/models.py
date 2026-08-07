@@ -34,6 +34,10 @@ class PacketRecord(models.Model):
     size = models.IntegerField()
     ttl = models.IntegerField()
     timestamp = models.FloatField(db_index=True)
+    # TCP sequence number (null for non-TCP packets, or packets from an agent build predating
+    # this field). Lets packet-loss estimation detect true retransmissions — the same segment
+    # captured twice — instead of only an approximate duplicate-packet heuristic.
+    tcp_seq = models.BigIntegerField(null=True, blank=True, default=None)
 
     def __str__(self):
         return f"{self.protocol} {self.src_ip}:{self.src_port} -> {self.dst_ip}:{self.dst_port}"
@@ -45,7 +49,7 @@ class PacketRecord(models.Model):
         ]
 
 class FlowRecord(models.Model):
-    """Summarizes packet flows grouped by active IP flows for analysis and SVM classification."""
+    """Summarizes packet flows grouped by active IP flows for analysis and threat classification."""
     id = models.BigAutoField(primary_key=True)
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name="flows")
     flow_key = models.CharField(max_length=255, db_index=True)
