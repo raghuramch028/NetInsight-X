@@ -27,11 +27,24 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
 
         # 3. Retrieve or create FlowRecord active within a 30s window
         cutoff_time = pkt_ts - 30.0
-        flow = FlowRecord.objects.filter(
-            agent=agent,
-            flow_key=flow_key,
-            end_time__gte=cutoff_time
-        ).order_by("-end_time").first()
+        from django.db import close_old_connections
+        flow = None
+        for attempt in range(5):
+            try:
+                flow = FlowRecord.objects.filter(
+                    agent=agent,
+                    flow_key=flow_key,
+                    end_time__gte=cutoff_time
+                ).order_by("-end_time").first()
+                break
+            except Exception as ex:
+                if "locked" in str(ex).lower() and attempt < 4:
+                    time.sleep(0.05 * (attempt + 1))
+                    close_old_connections()
+                elif "foreign key" in str(ex).lower():
+                    return None
+                else:
+                    raise
 
         if flow:
             flow.packet_count += 1
@@ -75,7 +88,20 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         # Classify threat label using trained model
         threat_label = classifier.classify_packet(classify_payload)
         flow.threat_label = threat_label
-        flow.save()
+
+        from django.db import close_old_connections
+        for attempt in range(5):
+            try:
+                flow.save()
+                break
+            except Exception as ex:
+                if "locked" in str(ex).lower() and attempt < 4:
+                    time.sleep(0.05 * (attempt + 1))
+                    close_old_connections()
+                elif "foreign key" in str(ex).lower():
+                    return None
+                else:
+                    raise
 
         # 5. Log Security Alerts in ThreatHistory if threat is not Normal
         if threat_label != "Normal":
@@ -90,11 +116,22 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
             ).exists()
 
             if not recent_alert:
-                ThreatHistory.objects.create(
-                    agent=agent,
-                    threat_type=threat_label,
-                    severity=severity
-                )
+                for attempt in range(5):
+                    try:
+                        ThreatHistory.objects.create(
+                            agent=agent,
+                            threat_type=threat_label,
+                            severity=severity
+                        )
+                        break
+                    except Exception as ex:
+                        if "locked" in str(ex).lower() and attempt < 4:
+                            time.sleep(0.05 * (attempt + 1))
+                            close_old_connections()
+                        elif "foreign key" in str(ex).lower():
+                            return None
+                        else:
+                            raise
 
         return PacketRecord(
             src_ip=src_ip,

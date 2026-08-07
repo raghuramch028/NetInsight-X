@@ -75,8 +75,11 @@ class TrafficClassifier:
         conn_frequency = packet_dict.get("conn_frequency")
 
         if packet_rate is None or conn_frequency is None:
-            packet_rate, _ = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
-            conn_frequency = 2.0
+            calc_rate, calc_freq = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
+            if packet_rate is None:
+                packet_rate = calc_rate
+            if conn_frequency is None:
+                conn_frequency = calc_freq
 
         if packet_rate > 1000.0 and size < 200:
             return "DDoS"

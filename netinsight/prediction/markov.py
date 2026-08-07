@@ -102,7 +102,7 @@ class MarkovPredictor:
         Formula:
             P_ij = N_ij / sum_k(N_ik)
         Returns:
-            np.ndarray: A 4x4 row-stochastic matrix.
+            np.ndarray: A 5x5 row-stochastic matrix.
         """
         return self._estimate_transition_matrix()[0]
 
