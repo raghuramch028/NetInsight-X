@@ -296,9 +296,11 @@ def api_live_metrics(request):
             latest["latency"] = 0.0
             latest["packet_loss"] = 0.0
 
-        # Determine network state dynamically
+        # Determine network state dynamically (enforce 30s freshness)
+        now_ts = _time.time()
         state_record = StateHistory.objects.all().order_by("-timestamp").first()
-        state_name = state_record.network_state if state_record and active_devices_count > 0 else "Normal"
+        is_fresh_state = state_record and (now_ts - state_record.timestamp) < 30.0
+        state_name = state_record.network_state if is_fresh_state and active_devices_count > 0 else "Normal"
         latest["network_state"] = state_name
 
         # Generate MDP recommendations
@@ -376,8 +378,10 @@ def api_stream_metrics(request):
                     latest["latency"] = 0.0
                     latest["packet_loss"] = 0.0
 
+                now_ts = _time.time()
                 state_record = StateHistory.objects.all().order_by("-timestamp").first()
-                state_name = state_record.network_state if state_record and active_devices_count > 0 else "Normal"
+                is_fresh_state = state_record and (now_ts - state_record.timestamp) < 30.0
+                state_name = state_record.network_state if is_fresh_state and active_devices_count > 0 else "Normal"
                 latest["network_state"] = state_name
                 latest["active_devices_count"] = active_devices_count
                 latest["mdp_recommendation"] = mdp_engine.get_recommendation(state_name)

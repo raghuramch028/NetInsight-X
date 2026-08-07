@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 from datetime import timedelta
 
 import matplotlib
@@ -183,9 +184,10 @@ def index_view(request):
     latest["throughput_mbps"] = latest["throughput"] / 1e6
     latest["latency_ms"] = latest["latency"] * 1000.0
 
-    # Retrieve current network state
+    # Retrieve current network state (enforce 30s freshness)
     state_record = StateHistory.objects.all().order_by("-timestamp").first()
-    state_name = state_record.network_state if state_record and online_agents_count > 0 else "Normal"
+    is_fresh_state = state_record and (time.time() - state_record.timestamp) < 30.0
+    state_name = state_record.network_state if is_fresh_state and online_agents_count > 0 else "Normal"
 
     # Solve MDP Recommendation Engine
     mdp_rec = mdp_engine.get_recommendation(state_name)
