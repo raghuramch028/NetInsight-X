@@ -181,7 +181,7 @@ CAPTURE_INTERFACE = os.environ.get("NETINSIGHT_INTERFACE", None)
 LINK_CAPACITY = float(os.environ.get("NETINSIGHT_LINK_CAPACITY", 100_000_000.0))  # 100 Mbps in bits/sec
 
 # Dashboard UI Configurations
-DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 2000)) # in milliseconds
+DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 1000)) # 1.0s sub-second refresh (in ms)
 
 # Demonstration / Replay Mode
 DEMO_MODE = os.environ.get("NETINSIGHT_DEMO_MODE", "True").lower() in ("true", "1", "yes")

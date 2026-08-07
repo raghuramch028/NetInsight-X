@@ -24,6 +24,7 @@ urlpatterns = [
     # Poll APIs for Chart.js Dashboard Updates
     path("api/live-metrics/", views.api_live_metrics, name="api_live_metrics"),
     path("api/live-packets/", views.api_live_packets, name="api_live_packets"),
+    path("api/v1/stream/metrics/", views.api_stream_metrics, name="api_stream_metrics"),
 
     # Reports exports API downloads
     path("reports/pdf/", views.reports_pdf_download, name="reports_pdf_download"),

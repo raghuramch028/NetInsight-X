@@ -611,7 +611,22 @@
             });
     }
 
-    // Set intervals
+    // Set intervals with real-time SSE stream support
+    if (typeof(EventSource) !== "undefined") {
+        try {
+            const evtSource = new EventSource("{% url 'dashboard:api_stream_metrics' %}");
+            evtSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    // Update UI using real-time SSE data
+                    document.getElementById('card-throughput').childNodes[0].nodeValue = (data.throughput / 1e6).toFixed(2) + " ";
+                    document.getElementById('card-packet-rate').childNodes[0].nodeValue = (data.packet_rate).toFixed(1) + " ";
+                } catch(e) {}
+            };
+        } catch(e) {
+            console.log('[NetInsight] EventSource fallback to polling.');
+        }
+    }
     setInterval(updateDashboard, refreshInterval);
     updateDashboard();
 </script>

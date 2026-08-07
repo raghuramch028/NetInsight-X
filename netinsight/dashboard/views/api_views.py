@@ -1,6 +1,9 @@
 import html
+import json
 import logging
 import threading
+import time as _time
+from datetime import timedelta
 
 import matplotlib
 
@@ -350,4 +353,43 @@ def api_topology_graph(request):
     """Serves the interactive PyVis graph HTML directly for iframe inclusion."""
     html_graph = generate_topology_pyvis()
     return HttpResponse(html_graph, content_type="text/html")
+
+
+def api_stream_metrics(request):
+    """Server-Sent Events (SSE) real-time streaming endpoint for sub-second live metrics."""
+    from django.http import StreamingHttpResponse
+
+    def event_stream():
+        while True:
+            try:
+                latest = analytics_engine.get_latest_metrics()
+                now = timezone.now()
+                active_cutoff = now - timedelta(seconds=15)
+                active_agents = Agent.objects.filter(last_seen__gte=active_cutoff)
+                active_devices_count = active_agents.count()
+
+                if active_devices_count == 0:
+                    latest["throughput"] = 0.0
+                    latest["packet_rate"] = 0.0
+                    latest["bandwidth_util"] = 0.0
+                    latest["latency"] = 0.0
+                    latest["packet_loss"] = 0.0
+
+                state_record = StateHistory.objects.all().order_by("-timestamp").first()
+                state_name = state_record.network_state if state_record and active_devices_count > 0 else "Normal"
+                latest["network_state"] = state_name
+                latest["active_devices_count"] = active_devices_count
+                latest["mdp_recommendation"] = mdp_engine.get_recommendation(state_name)
+
+                payload = json.dumps(_to_native_types(latest))
+                yield f"data: {payload}\n\n"
+                _time.sleep(1.0)
+            except Exception as e:
+                logger.error(f"SSE stream error: {e}")
+                _time.sleep(1.0)
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
 

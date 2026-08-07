@@ -11,7 +11,7 @@ REGISTRATION_ENDPOINT = f"{SERVER_URL}/api/v1/agents/register"
 TELEMETRY_ENDPOINT = f"{SERVER_URL}/api/v1/agents/telemetry"
 
 # Ingestion frequency settings (in seconds)
-TELEMETRY_INTERVAL = float(os.environ.get("NETINSIGHT_AGENT_INTERVAL", "3.0"))
+TELEMETRY_INTERVAL = float(os.environ.get("NETINSIGHT_AGENT_INTERVAL", "1.0"))
 
 # Bind Scapy sniffer to a specific adapter; if None, binds to default
 CAPTURE_INTERFACE = os.environ.get("NETINSIGHT_AGENT_INTERFACE", None)
