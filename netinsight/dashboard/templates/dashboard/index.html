@@ -94,7 +94,7 @@
                             {{ latest_metrics.throughput_mbps|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">Mbps</span>
                         </h2>
                     </div>
-                    <span class="small text-secondary font-mono">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
+                    <span class="small text-secondary font-mono" id="card-capacity">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
                 </div>
                 
                 <div class="progress" style="height: 6px; background-color: var(--bg-primary);">
@@ -377,6 +377,10 @@
                 document.getElementById('card-packet-rate').innerHTML = `${data.packet_rate.toFixed(1)} <span class="fs-6 text-secondary fw-normal">pps</span>`;
                 document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-secondary fw-normal">ms</span>`;
                 document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-secondary fw-normal">%</span>`;
+
+                const capMbps = parseFloat(data.link_capacity_mbps || 100.0).toFixed(1);
+                const capEl = document.getElementById('card-capacity');
+                if (capEl) capEl.innerText = `Capacity: ${capMbps} Mbps`;
 
                 // Update Progress bar
                 document.getElementById('capacity-progress').style.width = `${data.bandwidth_util}%`;

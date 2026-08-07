@@ -77,11 +77,13 @@ def _run_telemetry_fallback(reason: str):
                     set_current_capacity(speed_bps)
                     logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set capacity to {speed_bps / 1e6:.2f} Mbps based on recent throughput.")
                 else:
-                    set_current_capacity(10000000.0)
-                    logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: Low active traffic. Defaulting capacity to 10.0 Mbps.")
+                    default_cap = getattr(settings, "LINK_CAPACITY", 100000000.0)
+                    set_current_capacity(default_cap)
+                    logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set baseline link capacity to {default_cap / 1e6:.1f} Mbps.")
             else:
-                set_current_capacity(10000000.0)
-                logger.info("[DYNAMIC CAPACITY] Telemetry Fallback: No metrics found. Defaulting capacity to 10.0 Mbps.")
+                default_cap = getattr(settings, "LINK_CAPACITY", 100000000.0)
+                set_current_capacity(default_cap)
+                logger.info(f"[DYNAMIC CAPACITY] Telemetry Fallback: Set baseline link capacity to {default_cap / 1e6:.1f} Mbps.")
         finally:
             django.db.close_old_connections()
     except Exception as fallback_err:
