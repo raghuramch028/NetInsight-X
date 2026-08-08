@@ -317,22 +317,6 @@
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 20px rgba(223, 110, 84, 0.2);
         }
 
-        #demo-control-bar {
-            position: fixed;
-            bottom: 34px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 99999;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            padding: 10px 24px;
-            border-radius: 30px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-            display: none;
-            align-items: center;
-            gap: 16px;
-        }
-
         .widget-spotlight-active {
             border-color: var(--accent-terracotta) !important;
             box-shadow: 0 0 35px rgba(223, 110, 84, 0.35) !important;
@@ -354,23 +338,6 @@
             </svg>
             <div id="cursor-tooltip" class="cursor-tooltip-bubble">
                 Walkthrough Step Initializing...
-            </div>
-        </div>
-
-        <!-- Floating HUD Control Dock Bar -->
-        <div id="demo-control-bar">
-            <span id="hud-scenario-label" class="font-mono small text-dark fw-bold">SCENARIO DEMO ACTIVE</span>
-            <div class="d-flex align-items-center gap-2">
-                <button onclick="toggleScenarioSpeed()" id="btn-scenario-speed" class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 font-mono" style="font-size:0.75rem;" title="Toggle Tour Speed (1x / 2x)">1x</button>
-                <button onclick="toggleScenarioPause()" id="btn-scenario-pause" class="btn btn-sm btn-outline-dark rounded-circle p-2 d-flex align-items-center justify-content-center" title="Pause / Resume Tour">
-                    <i data-lucide="pause" style="width:14px;height:14px;"></i>
-                </button>
-                <button onclick="playGuidedScenarioDemo(currentDemoScenarioId || 1)" class="btn btn-sm btn-outline-dark rounded-circle p-2 d-flex align-items-center justify-content-center" title="Replay Scenario">
-                    <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
-                </button>
-                <button onclick="triggerPresentationScenario(0)" class="btn btn-sm btn-terracotta rounded-pill px-3 py-1 text-uppercase" style="font-size:0.75rem;">
-                    <i data-lucide="square" class="d-inline-block me-1 align-text-top" style="width:12px;height:12px;"></i>Exit Demo
-                </button>
             </div>
         </div>
 
@@ -444,6 +411,12 @@
                         <button onclick="triggerPresentationScenario(2);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
                             <i data-lucide="shield-alert"></i>
                             <span>Scenario 2: DDoS Attack</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="triggerPresentationScenario(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
+                            <i data-lucide="wifi-off"></i>
+                            <span>Scenario 3: Mobile Hotspot</span>
                         </button>
                     </li>
                     <li>

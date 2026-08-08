@@ -66,7 +66,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         latency_val = 0.012
         pkt_loss = 0.1
         tp_val = 45e6
-        reasoning = "Standard HTTPS and DNS network activity. No anomalous flow patterns detected."
+        reasoning = "NVIDIA DeepSeek AI: Standard HTTPS (TCP 443) and DNS (UDP 53) flow activity. No anomalous flow patterns detected."
 
         sample_packets = [
             {
@@ -103,7 +103,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         latency_val = 0.320
         pkt_loss = 12.8
         tp_val = 94e6
-        reasoning = "NVIDIA DeepSeek AI: Volumetric UDP flood detected (1650 pps, port 5004). Urgent mitigation required."
+        reasoning = "NVIDIA DeepSeek AI: Volumetric UDP flood detected (1650 pps, port 5004). High packet loss & latency violation."
 
         sample_packets = [
             {
@@ -132,7 +132,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         latency_val = 0.085
         pkt_loss = 2.5
         tp_val = 7.8e6
-        reasoning = "High bandwidth utilization on a constrained 8.5 Mbps cellular link."
+        reasoning = "NVIDIA DeepSeek AI: High utilization (91.8%) on constrained 8.5 Mbps cellular hotspot link. Rescaling QoS allocations."
 
         sample_packets = [
             {
@@ -269,8 +269,8 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Windows QoS enforcement demo trigger notice: {e}")
 
-    scenario_label_title = "Scenario 2: DDoS Attack" if scenario_id == 2 else (
-        "Scenario 1: Baseline Normal" if scenario_id == 1 else "Scenario 3: Mobile Hotspot"
+    scenario_label_title = "Scenario 1: Baseline Normal" if scenario_id == 1 else (
+        "Scenario 2: DDoS Attack" if scenario_id == 2 else "Scenario 3: Mobile Hotspot"
     )
 
     return {

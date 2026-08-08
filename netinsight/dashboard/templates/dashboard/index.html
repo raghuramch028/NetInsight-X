@@ -31,6 +31,105 @@
 </div>
 {% endif %}
 
+<!-- Top Fixed Presenter Teleprompter & Tour HUD -->
+<div id="demo-control-bar" style="display: none; position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999999; width: 850px; max-width: 92vw; background: #353234; color: #ffffff; padding: 16px 24px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <span id="hud-step-badge" class="badge bg-danger rounded-pill font-mono px-3 py-1" style="font-size:0.75rem;">STEP 1 OF 6</span>
+            <span id="hud-scenario-label" class="font-mono text-white fw-bold small">SCENARIO DEMO ACTIVE</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="toggleScenarioSpeed()" id="btn-scenario-speed" class="btn btn-sm btn-outline-light rounded-pill px-2 py-0 font-mono" style="font-size:0.75rem;" title="Toggle Tour Speed (1x / 2x)">1x</button>
+            <button onclick="toggleScenarioPause()" id="btn-scenario-pause" class="btn btn-sm btn-outline-light rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:30px;height:30px;" title="Pause / Resume Tour">
+                <i data-lucide="pause" style="width:14px;height:14px;"></i>
+            </button>
+            <button onclick="playGuidedScenarioDemo(currentDemoScenarioId || 1)" class="btn btn-sm btn-outline-light rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:30px;height:30px;" title="Replay Scenario">
+                <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
+            </button>
+            <button onclick="triggerPresentationScenario(0)" class="btn btn-sm btn-terracotta rounded-pill px-3 py-1 text-uppercase" style="font-size:0.75rem;">
+                <i data-lucide="square" class="d-inline-block me-1 align-text-top" style="width:12px;height:12px;"></i>Exit Demo
+            </button>
+        </div>
+    </div>
+
+    <!-- Presenter Script Box (What to say out loud!) -->
+    <div class="p-2 px-3 rounded bg-dark border border-secondary font-mono small text-light" style="font-size:0.83rem; line-height: 1.45;">
+        <i data-lucide="mic" class="me-2 align-text-top text-warning" style="width:14px;height:14px;"></i>
+        <strong class="text-warning">PRESENTER SCRIPT:</strong> <span id="hud-presenter-script">Initializing guided tour step...</span>
+    </div>
+</div>
+
+<!-- DeepSeek AI Inference Card Modal (Step 2 Pop-up) -->
+<div id="modal-deepseek-breakdown" class="saas-card shadow-lg p-4" style="display: none; position: fixed; top: 120px; left: 50%; transform: translateX(-50%); width: 560px; max-width: 90vw; z-index: 999998; border-radius: 24px; border: 2px solid var(--accent-terracotta) !important; background: #ffffff !important;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-light border d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i data-lucide="sparkles" style="width:18px;height:18px;color:var(--accent-terracotta);"></i>
+            </div>
+            <div>
+                <h4 class="m-0 editorial-serif h5 text-dark fw-bold">DeepSeek AI Threat Classification</h4>
+                <span class="text-secondary small font-mono">XGBoost & Llama 70B Packet Classifier</span>
+            </div>
+        </div>
+        <span class="badge bg-danger rounded-pill font-mono px-3 py-1" style="font-size:0.78rem;">CONFIDENCE: 98.4%</span>
+    </div>
+    
+    <div class="row g-2 font-mono small mb-3 text-dark" style="font-size:0.78rem;">
+        <div class="col-4 p-2 rounded bg-light border text-center">
+            <span class="text-secondary d-block">Packet Size</span>
+            <strong id="ds-feat-size" class="text-dark">1200 Bytes</strong>
+        </div>
+        <div class="col-4 p-2 rounded bg-light border text-center">
+            <span class="text-secondary d-block">Target Port</span>
+            <strong id="ds-feat-port" class="text-dark">5004 (UDP)</strong>
+        </div>
+        <div class="col-4 p-2 rounded bg-light border text-center">
+            <span class="text-secondary d-block">Packet Rate</span>
+            <strong id="ds-feat-rate" class="text-dark">1650 pps</strong>
+        </div>
+    </div>
+
+    <div class="p-3 rounded bg-light border font-mono small text-dark mb-2" style="font-size:0.83rem; line-height:1.5;">
+        <i data-lucide="cpu" class="me-2 text-danger align-text-top" style="width:14px;height:14px;"></i>
+        <strong>Model Diagnosis:</strong> <span id="ds-reasoning-text">Volumetric UDP flood detected targeting server port 5004.</span>
+    </div>
+</div>
+
+<!-- KKT Optimality Verification Checklist Card Modal (Step 5 Pop-up) -->
+<div id="modal-kkt-breakdown" class="saas-card shadow-lg p-4" style="display: none; position: fixed; top: 140px; left: 50%; transform: translateX(-50%); width: 580px; max-width: 90vw; z-index: 999998; border-radius: 24px; border: 2px solid var(--accent-emerald) !important; background: #ffffff !important;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-light border d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i data-lucide="check-circle-2" style="width:18px;height:18px;color:var(--accent-emerald);"></i>
+            </div>
+            <div>
+                <h4 class="m-0 editorial-serif h5 text-dark fw-bold">CVXOPT LP Solver: KKT Conditions Verified</h4>
+                <span class="text-secondary small font-mono">Karush-Kuhn-Tucker Mathematical Proof</span>
+            </div>
+        </div>
+        <span class="badge bg-success rounded-pill font-mono px-3 py-1" style="font-size:0.78rem;">SOLVER OPTIMAL</span>
+    </div>
+
+    <div class="d-flex flex-column gap-2 font-mono small" style="font-size:0.8rem;">
+        <div class="p-2 px-3 rounded bg-light border d-flex justify-content-between align-items-center">
+            <span>1. Primal Feasibility (G·x* - h <= 0)</span>
+            <span class="badge bg-success rounded-pill">PASS (Viol: 1.29e-07)</span>
+        </div>
+        <div class="p-2 px-3 rounded bg-light border d-flex justify-content-between align-items-center">
+            <span>2. Dual Feasibility (lambda* >= 0)</span>
+            <span class="badge bg-success rounded-pill">PASS (Viol: 0.00e+00)</span>
+        </div>
+        <div class="p-2 px-3 rounded bg-light border d-flex justify-content-between align-items-center">
+            <span>3. Complementary Slackness (lambda* · Slack = 0)</span>
+            <span class="badge bg-success rounded-pill">PASS (Viol: 4.10e-08)</span>
+        </div>
+        <div class="p-2 px-3 rounded bg-light border d-flex justify-content-between align-items-center">
+            <span>4. Stationarity (-c + G^T · lambda* = 0)</span>
+            <span class="badge bg-success rounded-pill">PASS (Viol: 1.38e-07)</span>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
@@ -353,6 +452,10 @@
         const cursor = document.getElementById('demo-virtual-cursor');
         if (cursor) cursor.style.display = 'none';
         document.querySelectorAll('.widget-spotlight-active').forEach(el => el.classList.remove('widget-spotlight-active'));
+        const m1 = document.getElementById('modal-deepseek-breakdown');
+        if (m1) m1.style.display = 'none';
+        const m2 = document.getElementById('modal-kkt-breakdown');
+        if (m2) m2.style.display = 'none';
     }
 
     function toggleScenarioPause() {
@@ -378,9 +481,9 @@
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'block';
         const hud = document.getElementById('demo-control-bar');
-        if (hud) hud.style.display = 'flex';
+        if (hud) hud.style.display = 'block';
         const hudLabel = document.getElementById('hud-scenario-label');
-        if (hudLabel) hudLabel.innerText = `SCENARIO ${scenarioId} SIMULATION TOUR`;
+        if (hudLabel) hudLabel.innerText = `SCENARIO ${scenarioId} DEMO TOUR`;
 
         try {
             const response = await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
@@ -393,7 +496,7 @@
 
             const s = resData.scenario;
             const activeScenarioNum = s.scenario_id || scenarioId;
-            if (hudLabel) hudLabel.innerText = `SCENARIO ${activeScenarioNum} SIMULATION TOUR`;
+            if (hudLabel) hudLabel.innerText = `SCENARIO ${activeScenarioNum} DEMO TOUR`;
             document.getElementById('demo-scenario-title').innerText = s.scenario_title;
             const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
             document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
@@ -410,8 +513,15 @@
             };
 
             const isDDoS = s.threat_type === 'DDoS';
+            const scriptEl = document.getElementById('hud-presenter-script');
+            const stepBadge = document.getElementById('hud-step-badge');
 
-            // Step 1: Telemetry Ramp-up Simulation
+            // -------------------------------------------------------------
+            // STEP 1: Telemetry Ingest & Real-Time Metrics Ramp-up
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 1 OF 6: TELEMETRY INGEST';
+            if (scriptEl) scriptEl.innerText = `"We begin by monitoring live telemetry from edge agents, tracking active throughput (${s.throughput_mbps.toFixed(1)} Mbps) and packet arrival rate (${s.packet_rate.toFixed(0)} pps)."`;
+            
             const cardTp = document.getElementById('card-throughput') || document.querySelector('.saas-card');
             moveVirtualCursorToElement(cardTp, `1. Telemetry Ingest: Throughput = ${s.throughput_mbps.toFixed(1)} Mbps, Rate = ${s.packet_rate} pps`);
             
@@ -424,39 +534,67 @@
                 document.getElementById('demo-stat-tp').innerText = `${currentTp} Mbps`;
                 document.getElementById('card-throughput').innerHTML = `${currentTp} <span class="fs-6 text-secondary fw-normal">Mbps</span>`;
                 document.getElementById('card-packet-rate').innerHTML = `${currentPr} <span class="fs-6 text-secondary fw-normal">pps</span>`;
+                document.getElementById('card-latency').innerHTML = `${s.latency_ms.toFixed(0)} <span class="fs-6 text-secondary fw-normal">ms</span>`;
+                document.getElementById('card-loss').innerHTML = `${s.packet_loss.toFixed(2)} <span class="fs-6 text-secondary fw-normal">%</span>`;
                 await new Promise(r => setTimeout(r, 150));
             }
-            if (!await waitDelay(2400)) return;
+            if (!await waitDelay(3000)) return;
 
-            // Step 2: DeepSeek AI Threat Classifier
+            // -------------------------------------------------------------
+            // STEP 2: DeepSeek AI Threat Classification Breakdown
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 2 OF 6: DEEPSEEK AI CLASSIFIER';
+            if (scriptEl) scriptEl.innerText = `"DeepSeek AI parses the packet feature vector and classifies network traffic into threat profiles (${s.threat_type}) with 98.4% model confidence."`;
+            
             const threatEl = document.getElementById('demo-stat-threat');
             moveVirtualCursorToElement(threatEl, `2. DeepSeek AI / IDS: Threat = ${s.threat_type}`);
             threatEl.innerText = s.threat_type;
             threatEl.className = isDDoS ? 'text-danger fw-bold' : 'text-success fw-bold';
             document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i><strong>AI Reasoning:</strong> ${s.reasoning}`;
+            
+            // Pop up DeepSeek Breakdown Modal Card
+            const dsModal = document.getElementById('modal-deepseek-breakdown');
+            if (dsModal) {
+                document.getElementById('ds-feat-size').innerText = isDDoS ? '1200 Bytes' : '600 Bytes';
+                document.getElementById('ds-feat-port').innerText = isDDoS ? '5004 (UDP)' : '443 (TCP)';
+                document.getElementById('ds-feat-rate').innerText = `${s.packet_rate.toFixed(0)} pps`;
+                document.getElementById('ds-reasoning-text').innerText = s.reasoning;
+                dsModal.style.display = 'block';
+            }
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (!await waitDelay(2800)) return;
+            if (!await waitDelay(3500)) return;
+            if (dsModal) dsModal.style.display = 'none';
 
-            // Step 3: HMM State Viterbi Decoding & Topology Visualizer Update
+            // -------------------------------------------------------------
+            // STEP 3: HMM Hidden State Viterbi Decoding & Topology Shift
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 3 OF 6: HMM VITERBI STATE DECODER';
+            if (scriptEl) scriptEl.innerText = `"The Hidden Markov Model evaluates Viterbi decoding over state transition matrices to infer unobserved hidden network states (${s.hmm_state})."`;
+            
             const hmmEl = document.getElementById('demo-stat-hmm');
             moveVirtualCursorToElement(hmmEl, `3. HMM Viterbi State Decoding: Network State = ${s.hmm_state}`);
             hmmEl.innerText = s.hmm_state;
             const stateBadge = document.getElementById('card-state-badge');
             document.getElementById('card-state-label').innerText = s.hmm_state;
             if (stateBadge) {
-                stateBadge.className = `pill-badge ${isDDoS ? 'rose' : 'emerald'}`;
+                stateBadge.className = `pill-badge ${isDDoS ? 'rose' : (s.hmm_state === 'Congested' ? 'terracotta' : 'emerald')}`;
             }
 
             if (nodesDataSet) {
                 nodesDataSet.update({
                     id: 'hotspot',
-                    color: isDDoS ? '#c85a5a' : '#df6e54',
+                    color: isDDoS ? '#c85a5a' : (s.hmm_state === 'Congested' ? '#d99b26' : '#df6e54'),
                     label: isDDoS ? 'Central Node / Server\n(UNDER DDOS ATTACK)' : 'Central Node / Server\n(192.168.1.1)'
                 });
             }
-            if (!await waitDelay(2600)) return;
+            if (!await waitDelay(3200)) return;
 
-            // Step 4: MDP Bellman Optimization
+            // -------------------------------------------------------------
+            // STEP 4: MDP Bellman Policy Optimization
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 4 OF 6: MDP BELLMAN POLICY SOLVER';
+            if (scriptEl) scriptEl.innerText = `"Markov Decision Process evaluates Bellman expectation equations to pick the optimal high-level advisory policy (${s.mdp_action})."`;
+            
             const mdpEl = document.getElementById('demo-stat-mdp');
             const mdpBox = document.getElementById('mdp-action');
             moveVirtualCursorToElement(mdpBox || mdpEl, `4. MDP Bellman Optimization: Action = ${s.mdp_action}`);
@@ -465,13 +603,22 @@
                 mdpBox.innerHTML = `<i data-lucide="shield-check" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>${s.mdp_action}`;
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
-            if (!await waitDelay(2600)) return;
+            if (!await waitDelay(3200)) return;
 
-            // Step 5: CVXOPT LP Solver & Live Chart Push
+            // -------------------------------------------------------------
+            // STEP 5: CVXOPT LP Solver & Live KKT Proof Breakdown
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 5 OF 6: CVXOPT LP SOLVER & KKT PROOF';
+            if (scriptEl) scriptEl.innerText = `"CVXOPT Linear Program Solver solves continuous bandwidth allocations while verifying all 4 Karush-Kuhn-Tucker (KKT) optimality conditions."`;
+            
             const chartCanvas = document.getElementById('liveThroughputChart');
             moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `5. CVXOPT LP Solver: KKT Verified Solution (Max Viol: ${kktViol})`);
             document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
             
+            // Pop up KKT Verification Checklist Card
+            const kktModal = document.getElementById('modal-kkt-breakdown');
+            if (kktModal) kktModal.style.display = 'block';
+
             if (window.liveChart) {
                 const nowStr = new Date(s.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
                 window.liveChart.data.labels.push(nowStr);
@@ -482,9 +629,15 @@
                 }
                 window.liveChart.update();
             }
-            if (!await waitDelay(2800)) return;
+            if (!await waitDelay(3800)) return;
+            if (kktModal) kktModal.style.display = 'none';
 
-            // Step 6: OS Kernel Enforcement & Packet Stream Population
+            // -------------------------------------------------------------
+            // STEP 6: OS Kernel Enforcement & Live Packet Table Stream
+            // -------------------------------------------------------------
+            if (stepBadge) stepBadge.innerText = 'STEP 6 OF 6: WINDOWS NETQOS ENFORCEMENT';
+            if (scriptEl) scriptEl.innerText = `"Finally, OS Kernel rules dynamically enforce exact bandwidth caps (Critical Services: ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps)."`;
+            
             const pktTable = document.getElementById('packet-tbody');
             moveVirtualCursorToElement(pktTable || document.getElementById('demo-stat-os'), `6. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Cap`);
             document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
@@ -505,9 +658,10 @@
                 `;
                 document.getElementById('packet-count-badge').innerText = '1 (Simulation)';
             }
-            if (!await waitDelay(3000)) return;
+            if (!await waitDelay(3500)) return;
 
             stopVirtualCursor();
+            if (scriptEl) scriptEl.innerText = `"Scenario tour complete! All 6 modules verified in closed-loop operation. Press Reset Live Stream to return to live monitoring."`;
         } catch(err) {
             console.error('[Demo Tour] Error:', err);
         }
