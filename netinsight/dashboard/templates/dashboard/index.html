@@ -3,8 +3,75 @@
 {% block page_title %}Real-Time Network Telemetry{% endblock %}
 
 {% block content %}
+<!-- Interactive Live Presentation Demo Controller Panel -->
+<div class="saas-card mb-4 p-4" style="background: linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%) !important; border: 1px solid rgba(59, 130, 246, 0.25) !important; box-shadow: 0 0 25px rgba(59, 130, 246, 0.08);">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-25 text-primary font-mono mb-1" style="border: 1px solid rgba(59,130,246,0.3); font-size:0.75rem;">
+                <i data-lucide="play-circle" class="d-inline-block me-1 align-text-top" style="width:14px;height:14px;"></i>EVALUATOR PRESENTATION MODE
+            </span>
+            <h3 class="h5 text-white font-bold m-0 mt-1">Live Interactive Presentation Demo Panel</h3>
+            <p class="text-secondary small m-0 mt-1" style="font-size: 0.85rem;">
+                Trigger 3 end-to-end evaluation scenarios to demonstrate all system components live without risk during presentation.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+            <button id="btn-scenario-1" onclick="runDemoScenario(1)" class="btn btn-sm btn-outline-success font-bold d-flex align-text-bottom gap-2 py-2 px-3">
+                <i data-lucide="check-circle-2" style="width:16px;height:16px;"></i>1: Baseline (100 Mbps)
+            </button>
+            <button id="btn-scenario-2" onclick="runDemoScenario(2)" class="btn btn-sm btn-outline-warning font-bold d-flex align-text-bottom gap-2 py-2 px-3">
+                <i data-lucide="wifi" style="width:16px;height:16px;"></i>2: Hotspot (8.5 Mbps)
+            </button>
+            <button id="btn-scenario-3" onclick="runDemoScenario(3)" class="btn btn-sm btn-outline-danger font-bold d-flex align-text-bottom gap-2 py-2 px-3">
+                <i data-lucide="shield-alert" style="width:16px;height:16px;"></i>3: DDoS Attack Incident
+            </button>
+            <button id="btn-scenario-reset" onclick="resetLiveMonitoring()" class="btn btn-sm btn-outline-secondary font-mono d-flex align-text-bottom gap-2 py-2 px-3">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Scenario Execution Timeline & Proof Card -->
+    <div id="demo-status-banner" class="p-3 rounded border bg-dark bg-opacity-50" style="border-color: var(--border-subtle) !important; display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span id="demo-scenario-title" class="font-bold text-white" style="font-size:0.9rem;"></span>
+            <span id="demo-kkt-proof" class="badge bg-success font-mono" style="font-size:0.75rem;">KKT OPTIMAL: 1.00e-07</span>
+        </div>
+        <div class="row g-2 text-center font-mono small mb-2" style="font-size:0.78rem;">
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">1. Telemetry Ingest</span>
+                <span id="demo-stat-tp" class="text-white fw-bold">45.0 Mbps</span>
+            </div>
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">2. Threat / DeepSeek AI</span>
+                <span id="demo-stat-threat" class="text-success fw-bold">Normal</span>
+            </div>
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">3. HMM State Viterbi</span>
+                <span id="demo-stat-hmm" class="text-info fw-bold">Normal</span>
+            </div>
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">4. MDP Policy Selection</span>
+                <span id="demo-stat-mdp" class="text-warning fw-bold">Reallocate</span>
+            </div>
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">5. CVXOPT LP Solver</span>
+                <span id="demo-stat-lp" class="text-success fw-bold">Optimal</span>
+            </div>
+            <div class="col-6 col-md-2 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                <span class="text-secondary d-block">6. Windows Kernel QoS</span>
+                <span id="demo-stat-os" class="text-primary fw-bold">NetQosPolicy</span>
+            </div>
+        </div>
+        <div id="demo-ai-reasoning" class="small text-secondary font-mono mt-1 p-2 rounded bg-dark" style="font-size: 0.8rem; border: 1px dashed rgba(255,255,255,0.1);">
+            <i data-lucide="sparkles" class="text-purple me-1 align-text-top" style="width:14px;height:14px;"></i>AI Reasoning: Scenario executing baseline network traffic parameters.
+        </div>
+    </div>
+</div>
+
 <!-- Welcome & Empty Agent Connections Banner -->
 {% if agents_count == 0 %}
+
 <div class="saas-card text-center py-5 mb-4" style="background-color: rgba(59,130,246,0.03); border: 1px dashed rgba(59,130,246,0.25) !important;">
     <div class="d-inline-block p-4 rounded-circle bg-dark bg-opacity-25 border border-secondary mb-3" style="border-color: var(--border-subtle) !important;">
         <i data-lucide="loader" class="text-primary" style="width:32px;height:32px;animation: spin 2s linear infinite;"></i>
@@ -633,7 +700,61 @@
             console.log('[NetInsight] EventSource fallback to polling.');
         }
     }
+    let isDemoModeActive = false;
+
+    function runDemoScenario(scenarioId) {
+        isDemoModeActive = true;
+        const banner = document.getElementById('demo-status-banner');
+        if (banner) banner.style.display = 'block';
+
+        fetch("{% url 'dashboard:api_trigger_scenario' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ scenario_id: scenarioId })
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === 'success' && resData.scenario) {
+                const s = resData.scenario;
+                
+                // Update Timeline Banner Elements
+                document.getElementById('demo-scenario-title').innerText = s.scenario_title;
+                const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
+                document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
+                document.getElementById('demo-stat-tp').innerText = `${s.throughput_mbps.toFixed(1)} Mbps`;
+                
+                const threatEl = document.getElementById('demo-stat-threat');
+                threatEl.innerText = s.threat_type;
+                threatEl.className = s.threat_type === 'Normal' ? 'text-success fw-bold' : 'text-danger fw-bold';
+                
+                document.getElementById('demo-stat-hmm').innerText = s.hmm_state;
+                document.getElementById('demo-stat-mdp').innerText = s.mdp_action;
+                document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
+                document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
+
+                document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="text-purple me-1 align-text-top" style="width:14px;height:14px;"></i>AI Reasoning: ${s.reasoning}`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                // Instantly update dashboard metrics
+                updateDashboard();
+            }
+        })
+        .catch(err => {
+            console.error('[Demo] Trigger scenario failed:', err);
+        });
+    }
+
+    function resetLiveMonitoring() {
+        isDemoModeActive = false;
+        const banner = document.getElementById('demo-status-banner');
+        if (banner) banner.style.display = 'none';
+        updateDashboard();
+    }
+
     setInterval(updateDashboard, refreshInterval);
     updateDashboard();
 </script>
 {% endblock %}
+
