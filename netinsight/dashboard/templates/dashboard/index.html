@@ -684,14 +684,126 @@
             });
     }
 
+    let isDemoPaused = false;
+    let demoStepTimeout = null;
+
+    function moveVirtualCursorToElement(targetEl, tooltipText) {
+        const cursor = document.getElementById('demo-virtual-cursor');
+        const tooltip = document.getElementById('cursor-tooltip');
+        if (!cursor || !targetEl) return;
+
+        // Remove spotlight from all previous elements
+        document.querySelectorAll('.widget-spotlight-active').forEach(el => el.classList.remove('widget-spotlight-active'));
+
+        const rect = targetEl.getBoundingClientRect();
+        const targetX = rect.left + rect.width / 2;
+        const targetY = rect.top + rect.height / 3;
+
+        cursor.style.display = 'block';
+        cursor.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+        if (tooltip) tooltip.innerText = tooltipText;
+
+        targetEl.classList.add('widget-spotlight-active');
+    }
+
+    function stopVirtualCursor() {
+        const cursor = document.getElementById('demo-virtual-cursor');
+        if (cursor) cursor.style.display = 'none';
+        document.querySelectorAll('.widget-spotlight-active').forEach(el => el.classList.remove('widget-spotlight-active'));
+    }
+
+    async function playGuidedScenarioDemo(scenarioId) {
+        isDemoPaused = true; // PAUSE REAL-TIME BACKGROUND POLLING & SSE CALLS!
+        if (demoStepTimeout) clearTimeout(demoStepTimeout);
+
+        const banner = document.getElementById('demo-status-banner');
+        if (banner) banner.style.display = 'block';
+
+        try {
+            const response = await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ scenario_id: scenarioId })
+            });
+            const resData = await response.json();
+            if (!resData.scenario) return;
+
+            const s = resData.scenario;
+            document.getElementById('demo-scenario-title').innerText = s.scenario_title;
+            const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
+            document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
+
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+            // Step 1: Telemetry Ingestion Card
+            const cardTp = document.getElementById('card-throughput') || document.querySelector('.saas-card');
+            moveVirtualCursorToElement(cardTp, `1. Telemetry Ingest: Throughput = ${s.throughput_mbps.toFixed(1)} Mbps, Packet Rate = ${s.packet_rate} pps`);
+            document.getElementById('demo-stat-tp').innerText = `${s.throughput_mbps.toFixed(1)} Mbps`;
+            await sleep(2600);
+
+            // Step 2: Threat & DeepSeek AI
+            const threatEl = document.getElementById('demo-stat-threat');
+            moveVirtualCursorToElement(threatEl, `2. DeepSeek AI / IDS: Threat = ${s.threat_type}`);
+            threatEl.innerText = s.threat_type;
+            threatEl.className = s.threat_type === 'Normal' ? 'text-success fw-bold' : 'text-danger fw-bold';
+            document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="text-purple me-1 align-text-top" style="width:14px;height:14px;"></i>AI Reasoning: ${s.reasoning}`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            await sleep(2800);
+
+            // Step 3: HMM State Pill
+            const hmmEl = document.getElementById('demo-stat-hmm');
+            moveVirtualCursorToElement(hmmEl, `3. HMM Viterbi Decoder: Network State = ${s.hmm_state}`);
+            hmmEl.innerText = s.hmm_state;
+            await sleep(2600);
+
+            // Step 4: MDP Policy Selection
+            const mdpEl = document.getElementById('demo-stat-mdp');
+            moveVirtualCursorToElement(mdpEl, `4. MDP Bellman Value Iteration: Action = ${s.mdp_action}`);
+            mdpEl.innerText = s.mdp_action;
+            await sleep(2600);
+
+            // Step 5: CVXOPT LP Solver & KKT Verification
+            const lpEl = document.getElementById('demo-stat-lp');
+            moveVirtualCursorToElement(lpEl, `5. CVXOPT LP Solver: KKT Verified Optimal Solution (Max Viol: ${kktViol})`);
+            lpEl.innerText = s.lp_status.toUpperCase();
+            await sleep(2600);
+
+            // Step 6: OS Kernel Enforcement
+            const osEl = document.getElementById('demo-stat-os');
+            moveVirtualCursorToElement(osEl, `6. Windows NetQosPolicy: Kernel-Level Traffic Limit Enforced (${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical)`);
+            osEl.innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
+            await sleep(3200);
+
+            stopVirtualCursor();
+        } catch(err) {
+            console.error('[Demo Walkthrough] Error playing scenario tour:', err);
+        }
+    }
+
+    function resetGuidedDemo() {
+        isDemoPaused = false;
+        stopVirtualCursor();
+        const banner = document.getElementById('demo-status-banner');
+        if (banner) banner.style.display = 'none';
+        updateDashboard();
+    }
+
+    function runDemoScenario(scenarioId) {
+        playGuidedScenarioDemo(scenarioId);
+    }
+
+    function resetLiveMonitoring() {
+        resetGuidedDemo();
+    }
+
     // Set intervals with real-time SSE stream support
     if (typeof(EventSource) !== "undefined") {
         try {
             const evtSource = new EventSource("{% url 'dashboard:api_stream_metrics' %}");
             evtSource.onmessage = function(event) {
+                if (isDemoPaused) return; // STOP SSE OVERWRITES DURING DEMO TOUR!
                 try {
                     const data = JSON.parse(event.data);
-                    // Update UI using real-time SSE data
                     document.getElementById('card-throughput').childNodes[0].nodeValue = (data.throughput / 1e6).toFixed(2) + " ";
                     document.getElementById('card-packet-rate').childNodes[0].nodeValue = (data.packet_rate).toFixed(1) + " ";
                 } catch(e) {}
@@ -700,61 +812,12 @@
             console.log('[NetInsight] EventSource fallback to polling.');
         }
     }
-    let isDemoModeActive = false;
 
-    function runDemoScenario(scenarioId) {
-        isDemoModeActive = true;
-        const banner = document.getElementById('demo-status-banner');
-        if (banner) banner.style.display = 'block';
-
-        fetch("{% url 'dashboard:api_trigger_scenario' %}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ scenario_id: scenarioId })
-        })
-        .then(res => res.json())
-        .then(resData => {
-            if (resData.status === 'success' && resData.scenario) {
-                const s = resData.scenario;
-                
-                // Update Timeline Banner Elements
-                document.getElementById('demo-scenario-title').innerText = s.scenario_title;
-                const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
-                document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
-                document.getElementById('demo-stat-tp').innerText = `${s.throughput_mbps.toFixed(1)} Mbps`;
-                
-                const threatEl = document.getElementById('demo-stat-threat');
-                threatEl.innerText = s.threat_type;
-                threatEl.className = s.threat_type === 'Normal' ? 'text-success fw-bold' : 'text-danger fw-bold';
-                
-                document.getElementById('demo-stat-hmm').innerText = s.hmm_state;
-                document.getElementById('demo-stat-mdp').innerText = s.mdp_action;
-                document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
-                document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
-
-                document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="text-purple me-1 align-text-top" style="width:14px;height:14px;"></i>AI Reasoning: ${s.reasoning}`;
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-
-                // Instantly update dashboard metrics
-                updateDashboard();
-            }
-        })
-        .catch(err => {
-            console.error('[Demo] Trigger scenario failed:', err);
-        });
-    }
-
-    function resetLiveMonitoring() {
-        isDemoModeActive = false;
-        const banner = document.getElementById('demo-status-banner');
-        if (banner) banner.style.display = 'none';
-        updateDashboard();
-    }
-
-    setInterval(updateDashboard, refreshInterval);
+    setInterval(() => {
+        if (!isDemoPaused) updateDashboard();
+    }, refreshInterval);
     updateDashboard();
 </script>
 {% endblock %}
+
 

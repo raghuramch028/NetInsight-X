@@ -31,7 +31,50 @@
             --transition-premium: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Animated Virtual Cursor for Guided Presentation Tours */
+        #demo-virtual-cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 99999;
+            pointer-events: none;
+            transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+            display: none;
+        }
+        .cursor-pointer-icon {
+            width: 26px;
+            height: 26px;
+            fill: #3b82f6;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9));
+            transform: rotate(-25deg);
+        }
+        .cursor-tooltip-bubble {
+            position: absolute;
+            top: 25px;
+            left: 18px;
+            background: rgba(11, 15, 25, 0.96);
+            border: 1px solid var(--accent-blue);
+            color: #ffffff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.4);
+            backdrop-filter: blur(12px);
+        }
+
+        /* Spotlight Card Highlight Animation */
+        .widget-spotlight-active {
+            border-color: var(--accent-blue) !important;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.45), 0 0 12px rgba(59, 130, 246, 0.25) !important;
+            transform: translateY(-4px) scale(1.015);
+            transition: all 0.5s ease;
+            z-index: 1001;
+        }
+
         /* Bootstrap overrides for consistent premium dark mode */
+
         .text-secondary { color: var(--text-secondary) !important; }
         .text-muted { color: var(--text-muted) !important; }
         .bg-secondary { background-color: var(--bg-secondary) !important; }
@@ -459,9 +502,45 @@
                         <span>Settings</span>
                     </a>
                 </li>
+
+                <!-- Presentation Scenarios Sidebar Section -->
+                <li class="mt-4 pt-3 border-top border-secondary">
+                    <span class="text-secondary small font-mono px-3 d-block mb-2" style="font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;">
+                        PRESENTATION SCENARIOS
+                    </span>
+                </li>
+                <li>
+                    <button onclick="if(typeof playGuidedScenarioDemo === 'function') playGuidedScenarioDemo(1);" class="nav-item-link text-start w-100 bg-transparent border-0 text-success">
+                        <i data-lucide="play-circle" class="text-success"></i>
+                        <span>▶ Scenario 1: Baseline (100M)</span>
+                    </button>
+                </li>
+                <li>
+                    <button onclick="if(typeof playGuidedScenarioDemo === 'function') playGuidedScenarioDemo(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-danger">
+                        <i data-lucide="shield-alert" class="text-danger"></i>
+                        <span>▶ Scenario 2: DDoS Attack</span>
+                    </button>
+                </li>
+                <li>
+                    <button onclick="if(typeof resetGuidedDemo === 'function') resetGuidedDemo();" class="nav-item-link text-start w-100 bg-transparent border-0 text-secondary">
+                        <i data-lucide="rotate-ccw" class="text-secondary"></i>
+                        <span>↺ Reset Live Stream</span>
+                    </button>
+                </li>
             </ul>
         </div>
     </div>
+
+    <!-- Animated Virtual Cursor for Presentation Walkthroughs -->
+    <div id="demo-virtual-cursor">
+        <svg class="cursor-pointer-icon" viewBox="0 0 24 24">
+            <path d="M3 3l7 18 3-7 7-3L3 3z" />
+        </svg>
+        <div id="cursor-tooltip" class="cursor-tooltip-bubble">
+            Walkthrough Step Initializing...
+        </div>
+    </div>
+
 
     <!-- Main Content Area -->
     <div class="main-content">
