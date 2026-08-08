@@ -188,10 +188,9 @@
         ------------------------------------------------------------- */
         .main-content {
             flex: 1;
-            padding: 38px 52px 64px 52px;
+            padding: 38px 52px;
             background-color: var(--bg-main-canvas);
-            display: flex;
-            flex-direction: column;
+            display: block;
             min-width: 0;
             height: 100%;
             overflow-y: auto; /* SCROLLS INDEPENDENTLY! */
@@ -212,6 +211,29 @@
             font-size: 2.1rem;
             color: var(--text-dark);
             margin: 0;
+        }
+
+        @media (max-width: 992px) {
+            body {
+                padding: 10px;
+                height: 100vh;
+            }
+            #app-window-container {
+                height: calc(100vh - 20px);
+                border-radius: 16px;
+            }
+            .main-content {
+                padding: 24px 20px 80px 20px;
+            }
+            .page-header-title {
+                font-size: 1.45rem !important;
+            }
+            .top-navbar {
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-bottom: 20px;
+                padding-bottom: 14px;
+            }
         }
 
         /* Nomi AI Clean White Rounded Cards */
@@ -461,6 +483,7 @@
             </div>
 
             {% block content %}{% endblock %}
+            <div style="height: 100px; clear: both;"></div>
         </div>
 
     </div>
