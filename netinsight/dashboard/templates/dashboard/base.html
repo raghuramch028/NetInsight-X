@@ -229,24 +229,6 @@
             transform: translateY(-2px);
         }
 
-        .dse-alert-card {
-            background-color: #ffffff !important;
-            border-radius: 16px;
-            border: 1px solid rgba(0, 0, 0, 0.06) !important;
-            padding: 18px 24px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.02);
-            width: 100%;
-        }
-        .dse-alert-card.severity-critical {
-            border-left: 4px solid var(--accent-rose) !important;
-        }
-        .dse-alert-card.severity-warning {
-            border-left: 4px solid var(--accent-amber) !important;
-        }
-        .dse-alert-card.severity-info {
-            border-left: 4px solid var(--accent-terracotta) !important;
-        }
-
         /* Buttons & Badges */
         .btn-primary, .btn-terracotta {
             background-color: var(--accent-terracotta) !important;
@@ -482,6 +464,73 @@
                     <span class="text-secondary small font-mono">Autonomous Decision Support System</span>
                     <h2 class="page-header-title">{% block page_title %}Dashboard{% endblock %}</h2>
                 </div>
+
+                <!-- Top-Right Header Alerts Button (Replaces removed time widget) -->
+                <div class="position-relative">
+                    <button id="alerts-toggle-btn" onclick="toggleAlertsDrawer()" class="btn bg-white border shadow-sm rounded-4 p-2 px-3 d-flex align-items-center gap-2 position-relative" style="transition: var(--transition-smooth);" title="Toggle System Alerts">
+                        <div class="position-relative d-inline-block">
+                            <i data-lucide="bell" style="width: 20px; height: 20px; color: var(--text-dark);"></i>
+                            {% if dse_alerts_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                    <span class="visually-hidden">Active Alerts</span>
+                                </span>
+                            {% endif %}
+                        </div>
+                        <span class="font-mono text-dark fw-bold small">Alerts</span>
+                        {% if dse_alerts_count > 0 %}
+                            <span class="badge bg-danger rounded-pill font-mono" style="font-size: 0.72rem;">{{ dse_alerts_count }}</span>
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Floating Alerts Flyout Drawer Panel -->
+            <div id="alerts-drawer-panel" class="saas-card shadow-lg p-4" style="display: none; position: fixed; top: 90px; right: 40px; width: 440px; max-width: 90vw; z-index: 999999; border-radius: 24px; background: #ffffff !important; border: 1px solid rgba(0,0,0,0.08) !important;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 rounded-circle bg-light border d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--accent-terracotta);"></i>
+                        </div>
+                        <h4 class="m-0 editorial-serif h5 text-dark fw-bold">Alerts</h4>
+                        <span class="pill-badge terracotta font-mono ms-1" style="font-size: 0.72rem;">{{ dse_alerts_count }} Active</span>
+                    </div>
+                    <button onclick="toggleAlertsDrawer()" class="btn-close shadow-none" aria-label="Close Alerts Drawer"></button>
+                </div>
+
+                <!-- Filter Tabs (All, Critical, Warning, Info) -->
+                <div class="d-flex gap-1 mb-3 p-1 rounded-pill bg-light border font-mono small" style="font-size: 0.75rem;">
+                    <button onclick="filterAlerts('all')" id="alert-tab-all" class="btn btn-sm btn-dark rounded-pill flex-fill py-1 fw-bold">All</button>
+                    <button onclick="filterAlerts('Critical')" id="alert-tab-Critical" class="btn btn-sm text-secondary rounded-pill flex-fill py-1 fw-bold">Critical</button>
+                    <button onclick="filterAlerts('Warning')" id="alert-tab-Warning" class="btn btn-sm text-secondary rounded-pill flex-fill py-1 fw-bold">Warning</button>
+                    <button onclick="filterAlerts('Info')" id="alert-tab-Info" class="btn btn-sm text-secondary rounded-pill flex-fill py-1 fw-bold">Info</button>
+                </div>
+
+                <!-- Scrollable List of Alerts -->
+                <div id="alerts-drawer-list" class="d-flex flex-column gap-2" style="max-height: 460px; overflow-y: auto;">
+                    {% for alert in dse_alerts %}
+                        <div class="p-3 rounded-3 border alert-item-card alert-severity-{{ alert.severity }}" style="background: var(--bg-main-canvas); border-color: rgba(0,0,0,0.06) !important;">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" style="width:16px;height:16px;" class="{% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}"></i>
+                                    <span class="font-mono fw-bold" style="font-size:0.72rem; color: var(--text-muted);">{{ alert.module }}</span>
+                                </div>
+                                <span class="pill-badge {% if alert.severity == 'Critical' %}rose{% elif alert.severity == 'Warning' %}terracotta{% else %}emerald{% endif %} font-mono" style="font-size:0.68rem; padding: 2px 8px;">
+                                    {{ alert.severity }}
+                                </span>
+                            </div>
+                            <div class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">{{ alert.title }}</div>
+                            <div class="text-secondary small mb-2" style="font-size: 0.8rem; line-height: 1.4;">{{ alert.message }}</div>
+                            <div class="p-2 rounded bg-white border font-mono small text-dark" style="font-size:0.75rem;">
+                                <i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;color:var(--accent-terracotta);"></i><strong>Action:</strong> {{ alert.action }}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4 text-secondary font-mono small">
+                            <i data-lucide="check-circle" class="d-block mx-auto mb-2 text-success" style="width:28px;height:28px;"></i>
+                            No active alerts. All network systems operating within normal parameters.
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
 
             {% block content %}{% endblock %}
@@ -523,6 +572,39 @@
             const container = document.getElementById('app-window-container');
             if (container) container.classList.add('sidebar-collapsed');
         }
+
+        function toggleAlertsDrawer() {
+            const panel = document.getElementById('alerts-drawer-panel');
+            if (!panel) return;
+            const isHidden = panel.style.display === 'none' || panel.style.display === '';
+            panel.style.display = isHidden ? 'block' : 'none';
+        }
+
+        function filterAlerts(severity) {
+            document.querySelectorAll('#alerts-drawer-panel .btn').forEach(btn => {
+                if (btn.id.startsWith('alert-tab-')) {
+                    btn.className = 'btn btn-sm text-secondary rounded-pill flex-fill py-1 fw-bold';
+                }
+            });
+            const activeTab = document.getElementById(`alert-tab-${severity}`);
+            if (activeTab) activeTab.className = 'btn btn-sm btn-dark rounded-pill flex-fill py-1 fw-bold';
+
+            const items = document.querySelectorAll('.alert-item-card');
+            items.forEach(item => {
+                if (severity === 'all' || item.classList.contains(`alert-severity-${severity}`)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const panel = document.getElementById('alerts-drawer-panel');
+                if (panel) panel.style.display = 'none';
+            }
+        });
 
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();

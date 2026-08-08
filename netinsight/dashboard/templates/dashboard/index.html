@@ -31,20 +31,6 @@
 </div>
 {% endif %}
 
-<!-- DSE Alerts Container -->
-<div id="dse-alerts-container" class="mb-4 d-flex flex-column gap-3">
-    {% for alert in dse_alerts %}
-        <div class="d-flex align-items-start p-3 m-0 rounded border dse-alert-card {% if alert.severity == 'Critical' %}severity-critical{% elif alert.severity == 'Warning' %}severity-warning{% else %}severity-info{% endif %}" role="alert">
-            <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0 {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="width:20px;height:20px;"></i>
-            <div>
-                <strong class="d-block {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="font-size:0.95rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
-                <span class="d-block small mt-1 text-dark fw-500" style="font-size:0.88rem; color: #232021 !important;">{{ alert.message }}</span>
-                <span class="d-block small mt-2 font-bold text-dark" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
-            </div>
-        </div>
-    {% endfor %}
-</div>
-
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
