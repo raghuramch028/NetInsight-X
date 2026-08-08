@@ -1,4 +1,4 @@
-"""Centralized dictionary definitions for traffic classes, threat types, and HMM hidden states."""
+"""Centralized dictionary definitions for traffic classes and threat types."""
 
 CLASS_LABELS = {
     0: "Normal",
@@ -11,12 +11,3 @@ CLASS_LABELS = {
 }
 
 THREAT_LABELS = CLASS_LABELS
-
-HIDDEN_STATES = {
-    0: "Normal",
-    1: "Busy",
-    2: "Congested",
-    3: "Under Attack",
-    4: "Recovering"
-}
-STATE_INDEX = {v: k for k, v in HIDDEN_STATES.items()}

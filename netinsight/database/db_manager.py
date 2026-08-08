@@ -5,23 +5,12 @@ from pathlib import Path
 
 from netinsight.config import settings
 
-"""Legacy standalone packet capture monitor.
-
-.. deprecated::
-    This module is part of the legacy single-machine local capture pipeline.
-    The production architecture uses distributed edge agents (agent/ or agent_go/)
-    that POST telemetry to the central Django server via REST API.
-    This module is retained for offline benchmarking and local development only.
-"""
+"""Legacy standalone packet capture monitor."""
 
 logger = logging.getLogger(__name__)
 
 def get_connection() -> sqlite3.Connection:
-    """Returns a standard sqlite3 Connection to the configured database path.
-
-    Creates parent directories if necessary. The path is read from
-    ``settings.DB_PATH`` at call time so tests can override it.
-    """
+    """Returns a standard sqlite3 Connection to the configured database path."""
     db_file = Path(settings.DB_PATH)
     db_file.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_file), timeout=10.0)
@@ -32,16 +21,12 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 def init_db() -> None:
-    """Initializes the SQLite database schemas and indices.
-
-    Creates the tables: packets, metrics, active_devices, and state_history.
-    """
+    """Initializes the SQLite database schemas and indices."""
     logger.info("Initializing SQLite Database Schema...")
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        # Packets table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS packets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +41,6 @@ def init_db() -> None:
             )
         """)
 
-        # Metrics table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS metrics (
                 timestamp REAL PRIMARY KEY,
@@ -68,7 +52,6 @@ def init_db() -> None:
             )
         """)
 
-        # Active devices table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS active_devices (
                 ip TEXT PRIMARY KEY,
@@ -77,21 +60,8 @@ def init_db() -> None:
             )
         """)
 
-        # State history table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS state_history (
-                timestamp REAL PRIMARY KEY,
-                network_state TEXT,
-                bandwidth_utilization REAL,
-                packet_loss REAL,
-                latency REAL
-            )
-        """)
-
-        # Create indexes for optimized queries
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_packets_timestamp ON packets(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_state_history_timestamp ON state_history(timestamp)")
 
         conn.commit()
         logger.info("Database initialized successfully.")
@@ -103,10 +73,7 @@ def init_db() -> None:
         conn.close()
 
 def save_packets_bulk(packets_list: list[dict]) -> None:
-    """Saves a batch of packets to the packets table in a single transaction.
-
-    Each dict should contain: src_ip, dst_ip, src_port, dst_port, protocol, size, timestamp, ttl
-    """
+    """Saves a batch of packets to the packets table in a single transaction."""
     if not packets_list:
         return
 
@@ -159,22 +126,6 @@ def update_active_device(ip: str, last_seen: float, bytes_added: int) -> None:
     finally:
         conn.close()
 
-def save_state_history(timestamp: float, network_state: str, bandwidth_utilization: float, packet_loss: float, latency: float) -> None:
-    """Saves a state history record for prediction and Markov processes."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT OR REPLACE INTO state_history (timestamp, network_state, bandwidth_utilization, packet_loss, latency)
-            VALUES (?, ?, ?, ?, ?)
-        """, (timestamp, network_state, bandwidth_utilization, packet_loss, latency))
-        conn.commit()
-    except Exception as e:
-        logger.error(f"Error saving state history: {e}", exc_info=True)
-        conn.rollback()
-    finally:
-        conn.close()
-
 def clear_db() -> None:
     """Clears all tables for fresh runs."""
     conn = get_connection()
@@ -183,7 +134,6 @@ def clear_db() -> None:
         cursor.execute("DELETE FROM packets")
         cursor.execute("DELETE FROM metrics")
         cursor.execute("DELETE FROM active_devices")
-        cursor.execute("DELETE FROM state_history")
         conn.commit()
     except Exception as e:
         logger.error(f"Error clearing tables: {e}", exc_info=True)

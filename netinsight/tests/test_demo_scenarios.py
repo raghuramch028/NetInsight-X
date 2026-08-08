@@ -23,7 +23,6 @@ class TestDemoScenarios(TestCase):
         res = trigger_scenario(0)
         self.assertEqual(res["scenario_id"], 0)
         self.assertEqual(res["threat_type"], "Normal")
-        self.assertEqual(res["hmm_state"], "Normal")
 
     def test_scenario_1_normal_baseline(self):
         """Verifies Scenario 1 triggers baseline 100 Mbps execution pipeline."""
@@ -38,8 +37,6 @@ class TestDemoScenarios(TestCase):
         res = trigger_scenario(2)
         self.assertEqual(res["scenario_id"], 2)
         self.assertEqual(res["threat_type"], "DDoS")
-        self.assertEqual(res["hmm_state"], "Under Attack")
-        self.assertEqual(res["mdp_action"], "Prioritize Critical Services")
         self.assertIn("optimal", res["lp_status"])
 
     def test_scenario_3_mobile_hotspot_scaling(self):

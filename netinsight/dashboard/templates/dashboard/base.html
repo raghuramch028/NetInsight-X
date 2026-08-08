@@ -377,12 +377,6 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:prediction' %}" class="nav-item-link {% if request.resolver_match.url_name == 'prediction' %}active{% endif %}">
-                            <i data-lucide="wand-2"></i>
-                            <span>Predictive Markov</span>
-                        </a>
-                    </li>
-                    <li>
                         <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
                             <i data-lucide="fingerprint"></i>
                             <span>Traffic Classifier</span>

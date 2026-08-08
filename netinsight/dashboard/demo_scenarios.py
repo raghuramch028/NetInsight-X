@@ -1,8 +1,7 @@
 """Interactive presentation demo scenario runner for NetInsight-X.
 
-Provides 3 deterministic, foolproof presentation scenarios that demonstrate every module in
-the system (Telemetry Ingestion, Heuristic/DeepSeek AI Threat Classification, HMM Viterbi
-State Decoding, MDP Bellman Policy Optimization, CVXOPT LP Solver + KKT Verification, and
+Provides foolproof presentation scenarios that demonstrate every core module in
+the system (Telemetry Ingestion, DeepSeek AI Threat Classification, CVXOPT LP Solver + KKT Verification, and
 Windows NetQosPolicy Kernel Traffic Enforcement) at the click of a single button.
 """
 import logging
@@ -19,9 +18,7 @@ from netinsight.config import settings
 from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
-    get_hmm_predictor,
     get_lp_optimizer,
-    get_mdp_engine,
     get_traffic_classifier,
 )
 from netinsight.dashboard.models import (
@@ -29,11 +26,9 @@ from netinsight.dashboard.models import (
     FlowRecord,
     MetricRecord,
     PacketRecord,
-    StateHistory,
     SystemSettings,
     ThreatHistory,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +51,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
 
     if scenario_id == 0:
         # Scenario 0: Reset Demo Simulation to Live Stream
-        StateHistory.objects.create(
-            timestamp=now_ts,
-            network_state="Normal",
-            bandwidth_utilization=0.0,
-            packet_loss=0.0,
-            latency=0.0,
-        )
         ThreatHistory.objects.all().delete()
         demo_agent.cpu_usage = 12.0
         demo_agent.memory_usage = 28.0
@@ -80,8 +68,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             "packet_loss": 0.0,
             "threat_type": "Normal",
             "reasoning": "Demo simulation ended. Restored real-time edge agent live telemetry polling stream.",
-            "hmm_state": "Normal",
-            "mdp_action": "Reallocate Bandwidth",
             "lp_status": "optimal",
             "kkt_optimal": True,
             "kkt_primal_violation": 1e-7,
@@ -94,7 +80,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
     if scenario_id == 1:
         # Scenario 1: Baseline Normal Traffic (100 Mbps Link)
         capacity_bps = 100e6
-        state_name = "Normal"
         threat_type = "Normal"
         cpu_usage = 18.5
         mem_usage = 35.0
@@ -119,147 +104,97 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             {
                 "src_ip": "192.168.1.100",
                 "dst_ip": "1.1.1.1",
-                "src_port": 53535,
+                "src_port": 51234,
                 "dst_port": 53,
                 "protocol": "UDP",
-                "size": 78,
+                "size": 128,
                 "timestamp": now_ts,
                 "ttl": 64,
             },
         ]
 
     elif scenario_id == 2:
-        # Scenario 2: Volumetric DDoS Cyber Attack Incident Response (100 Mbps Link)
+        # Scenario 2: High Volumetric DDoS Attack Incident (100 Mbps Link)
         capacity_bps = 100e6
-        state_name = "Under Attack"
         threat_type = "DDoS"
-        cpu_usage = 88.5
-        mem_usage = 76.0
-        conn_count = 180
+        cpu_usage = 94.2
+        mem_usage = 82.0
+        conn_count = 1450
         pkt_rate = 1650.0
-        latency_val = 0.320
-        pkt_loss = 12.8
-        tp_val = 94e6
-        reasoning = "NVIDIA DeepSeek AI: Volumetric UDP flood detected (1650 pps, port 5004). High packet loss & latency violation."
+        latency_val = 0.185
+        pkt_loss = 8.5
+        tp_val = 96e6
+        reasoning = "NVIDIA DeepSeek AI: High-velocity volumetric UDP/TCP SYN flood anomaly detected. Rate 1650 pps exceeds safe operational thresholds."
 
         sample_packets = [
             {
-                "src_ip": f"192.168.1.{idx+10}",
+                "src_ip": f"192.168.1.{i+10}",
                 "dst_ip": "10.0.0.1",
-                "src_port": 60000 + idx,
+                "src_port": 6000 + i,
                 "dst_port": 5004,
                 "protocol": "UDP",
                 "size": 1200,
                 "timestamp": now_ts,
                 "ttl": 64,
             }
-            for idx in range(6)
+            for i in range(10)
         ]
 
-    else:
-        # Scenario 3: Mobile Hotspot Capacity Constraints (8.5 Mbps Link)
-        scenario_id = 3
+    elif scenario_id == 3:
+        # Scenario 3: Constrained Mobile Hotspot Optimization (8.5 Mbps Link)
         capacity_bps = 8.5e6
-        state_name = "Congested"
         threat_type = "Normal"
-        cpu_usage = 42.0
-        mem_usage = 58.0
-        conn_count = 25
-        pkt_rate = 350.0
-        latency_val = 0.085
-        pkt_loss = 2.5
+        cpu_usage = 24.0
+        mem_usage = 42.0
+        conn_count = 18
+        pkt_rate = 95.0
+        latency_val = 0.045
+        pkt_loss = 0.8
         tp_val = 7.8e6
-        reasoning = "NVIDIA DeepSeek AI: High utilization (91.8%) on constrained 8.5 Mbps cellular hotspot link. Rescaling QoS allocations."
+        reasoning = "NVIDIA DeepSeek AI: Link capacity constrained to mobile hotspot (8.5 Mbps). Allocating minimum guaranteed bandwidth per QoS class."
 
         sample_packets = [
             {
                 "src_ip": "192.168.1.100",
                 "dst_ip": "142.250.190.46",
-                "src_port": 61234,
+                "src_port": 52100,
                 "dst_port": 443,
                 "protocol": "TCP",
-                "size": 1420,
+                "size": 512,
                 "timestamp": now_ts,
                 "ttl": 64,
-            },
-            {
-                "src_ip": "192.168.1.100",
-                "dst_ip": "151.101.1.69",
-                "src_port": 61235,
-                "dst_port": 443,
-                "protocol": "TCP",
-                "size": 1380,
-                "timestamp": now_ts,
-                "ttl": 64,
-            },
+            }
         ]
+    else:
+        raise ValueError(f"Invalid presentation scenario_id {scenario_id}")
 
-    # Update agent stats
+    # Update agent state
     demo_agent.cpu_usage = cpu_usage
     demo_agent.memory_usage = mem_usage
     demo_agent.active_connections = conn_count
     demo_agent.last_seen = timezone.now()
     demo_agent.save()
 
-    # Create Metric & State History Records
-    MetricRecord.objects.create(
-        timestamp=now_ts,
-        throughput=tp_val,
-        packet_rate=pkt_rate,
-        bandwidth_util=min(100.0, (tp_val / capacity_bps) * 100.0),
-        latency=latency_val,
-        packet_loss=pkt_loss,
+    # Ingest packets
+    stats = {
+        "cpu_usage": cpu_usage,
+        "memory_usage": mem_usage,
+        "disk_usage": 30.0,
+        "active_connections": conn_count,
+        "bytes_sent": int(tp_val / 2),
+        "bytes_recv": int(tp_val / 2),
+        "rtt_seconds": latency_val,
+    }
+    handle_telemetry_ingestion(demo_agent, stats, sample_packets)
+
+    # Log threat history record
+    ThreatHistory.objects.create(
+        agent=demo_agent,
+        threat_type=threat_type,
+        severity="Critical" if threat_type == "DDoS" else "Information",
     )
 
-    StateHistory.objects.create(
-        timestamp=now_ts,
-        network_state=state_name,
-        bandwidth_utilization=min(1.0, tp_val / capacity_bps),
-        packet_loss=pkt_loss,
-        latency=latency_val,
-    )
-
-    if threat_type != "Normal":
-        ThreatHistory.objects.create(
-            agent=demo_agent,
-            threat_type=threat_type,
-            severity="Critical" if threat_type == "DDoS" else "Warning",
-        )
-
-    # Save sample packets and flow records
-    for pkt in sample_packets:
-        PacketRecord.objects.create(
-            agent=demo_agent,
-            src_ip=pkt["src_ip"],
-            dst_ip=pkt["dst_ip"],
-            src_port=pkt["src_port"],
-            dst_port=pkt["dst_port"],
-            protocol=pkt["protocol"],
-            size=pkt["size"],
-            timestamp=now_ts,
-            ttl=pkt["ttl"],
-        )
-
-    # Execute HMM, MDP, and CVXOPT LP Solver
-    hmm_model = get_hmm_predictor()
-    mdp_engine = get_mdp_engine()
     optimizer = get_lp_optimizer()
-
-    obs = [
-        {
-            "util": (tp_val / capacity_bps) * 100.0,
-            "latency": latency_val,
-            "loss": pkt_loss,
-            "packet_rate": pkt_rate,
-            "sockets": float(conn_count),
-            "threat_label": threat_type,
-        }
-    ]
-    decoded_states = hmm_model.decode_states(obs)
-    hmm_decoded_state = decoded_states[0] if decoded_states else state_name
-
-    mdp_rec = mdp_engine.get_recommendation(hmm_decoded_state)
-    recommended_action = mdp_rec["recommended_action"]
 
     # Priorities and bounds scaling
     raw_priorities = [1.0, 2.0, 0.5, 3.0]
@@ -269,14 +204,10 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
     active_min_bounds = [float(val * scale_ratio) for val in base_min]
     active_max_bounds = [float(val * scale_ratio) for val in base_max]
 
-    # Apply MDP overrides
-    if recommended_action == "Prioritize Critical Services":
+    if threat_type == "DDoS":
         raw_priorities[3] *= 2.0
         active_min_bounds[3] *= 1.5
         raw_priorities[2] *= 0.5
-    elif recommended_action == "Reroute Traffic":
-        raw_priorities[0] *= 1.5
-        raw_priorities[1] *= 0.5
 
     lp_result = optimizer.solve_allocation(
         priorities=raw_priorities,
@@ -293,10 +224,9 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         "streaming_mbps": float(allocations[1] / 1e6) if len(allocations) > 1 else 15.0,
         "file_transfer_mbps": float(allocations[2] / 1e6) if len(allocations) > 2 else 2.0,
         "critical_services_mbps": float(allocations[3] / 1e6) if len(allocations) > 3 else 10.0,
-        "recommended_policy": recommended_action,
+        "recommended_policy": "Prioritize Critical Services" if threat_type == "DDoS" else "Reallocate Bandwidth",
     }
 
-    # Apply Windows NetQosPolicy if on Windows
     os_enforcement_applied = False
     if platform.system().lower() == "windows":
         try:
@@ -320,9 +250,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         "packet_loss": float(pkt_loss),
         "threat_type": threat_type,
         "reasoning": reasoning,
-        "hmm_state": hmm_decoded_state,
-        "mdp_action": recommended_action,
-        "mdp_action_values": mdp_rec.get("action_values", {}),
         "lp_status": lp_result.get("status", "optimal"),
         "kkt_optimal": kkt_result.get("optimal", True),
         "kkt_primal_violation": kkt_result.get("max_primal_violation", 1e-7),

@@ -30,20 +30,7 @@ def check_dashboard_auth(request):
 
 
 def require_dashboard_auth(view_func):
-    """Decorator enforcing check_dashboard_auth() on a dashboard page or read-only API view.
-
-    NETINSIGHT_REQUIRE_AUTH previously had no effect because nothing invoked
-    check_dashboard_auth(). This decorator wires it into the actual request path.
-    Must NOT be applied to the agent-ingestion endpoints (api_register_agent,
-    api_agent_telemetry) — those are authenticated separately via validate_agent_token()
-    against edge-agent devices, not logged-in dashboard users.
-
-    Wraps both sync and async views: api_stream_metrics (the SSE endpoint) is an async view
-    under Django's native async view support, and Django's URL resolver decides whether to
-    await a view based on asyncio.iscoroutinefunction(), so the wrapper itself must be an
-    `async def` when wrapping an async view — returning an unawaited coroutine from a sync
-    wrapper would not be recognized as an async view.
-    """
+    """Decorator enforcing check_dashboard_auth() on a dashboard page or read-only API view."""
     if asyncio.iscoroutinefunction(view_func):
         @wraps(view_func)
         async def async_wrapper(request, *args, **kwargs):
@@ -65,8 +52,7 @@ def require_dashboard_auth(view_func):
 
 
 def validate_agent_token(request) -> bool:
-    """Validates X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured.
-    Uses hmac.compare_digest for constant-time comparison to prevent timing attacks."""
+    """Validates X-Agent-Token header if NETINSIGHT_AGENT_TOKEN is configured."""
     token = getattr(settings, "NETINSIGHT_AGENT_TOKEN", None)
     enforce = getattr(settings, "NETINSIGHT_ENFORCE_AGENT_TOKEN", False)
     if token or enforce:
@@ -74,20 +60,3 @@ def validate_agent_token(request) -> bool:
         if not auth_header or not token or not hmac.compare_digest(str(auth_header), str(token)):
             return False
     return True
-
-
-def apply_mdp_overrides(recommended_action: str, priorities: list, min_bounds: list, max_bounds: list) -> tuple:
-    """Applies MDP-driven priority/bounds adjustments based on recommended action.
-    Returns (adjusted_priorities, adjusted_min_bounds, adjusted_max_bounds)."""
-    p = list(priorities)
-    m = list(min_bounds)
-    x = list(max_bounds)
-    if recommended_action == "Prioritize Critical Services" and len(p) >= 4:
-        p[3] = float(p[3] * 2.0)
-        m[3] = float(m[3] * 1.5)
-        p[2] = float(p[2] * 0.5)
-    elif recommended_action == "Reroute Traffic" and len(p) >= 3:
-        p[0] = float(p[0] * 1.5)
-        p[1] = float(p[1] * 0.5)
-        p[2] = float(p[2] * 0.2)
-    return p, m, x

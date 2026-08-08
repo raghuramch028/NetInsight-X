@@ -13,8 +13,6 @@ from django.test import Client
 
 from netinsight.classification.classifier import TrafficClassifier
 from netinsight.optimization.solver import BandwidthOptimizer
-from netinsight.prediction.hmm import HiddenMarkovModel
-from netinsight.prediction.mdp import MDPRecommendationEngine
 
 
 class TestClosedLoopScenarios(unittest.TestCase):
@@ -22,16 +20,13 @@ class TestClosedLoopScenarios(unittest.TestCase):
     def setUp(self):
         self.client = Client()
         self.optimizer = BandwidthOptimizer()
-        self.hmm = HiddenMarkovModel()
-        self.mdp = MDPRecommendationEngine()
         self.classifier = TrafficClassifier()
-        self.mac = "00:1A:2B:3C:4D:5E"
+        self.mac = "00:1a:2b:3c:4d:5e"
         self.hostname = "Test-Host-01"
 
     def test_case_1_baseline_normal_traffic(self):
         """Test Case 1: Baseline 100 Mbps link with normal web browsing traffic."""
         print("\n[TEST CASE 1] Running Baseline Normal Traffic Test...")
-        # 1. Register agent
         reg = self.client.post("/api/v1/agents/register", {
             "mac_address": self.mac,
             "hostname": self.hostname,
@@ -40,7 +35,6 @@ class TestClosedLoopScenarios(unittest.TestCase):
         }, content_type="application/json")
         self.assertEqual(reg.status_code, 200)
 
-        # 2. Classify normal packet
         pkt = {
             "src_ip": "192.168.1.50", "dst_ip": "104.16.123.96",
             "src_port": 54321, "dst_port": 443, "protocol": "TCP",
@@ -49,7 +43,6 @@ class TestClosedLoopScenarios(unittest.TestCase):
         threat = self.classifier.classify_packet(pkt)
         self.assertEqual(threat, "Normal")
 
-        # 3. Solve LP Allocation at 100 Mbps
         result = self.optimizer.solve_allocation(total_capacity=100e6)
         self.assertIn("optimal", result["status"])
         self.assertGreater(result["allocations"][0], 0)
@@ -72,9 +65,8 @@ class TestClosedLoopScenarios(unittest.TestCase):
         print(f"  [OK] Test Case 2 PASSED: 8.5 Mbps LP solver optimal! Allocated {total_allocated/1e6:.2f} Mbps.")
 
     def test_case_3_ddos_attack_incident_response(self):
-        """Test Case 3: High packet rate DDoS attack detection and MDP policy override."""
+        """Test Case 3: High packet rate DDoS attack detection."""
         print("\n[TEST CASE 3] Running DDoS Attack Incident Response Test...")
-        # 1. High rate packet
         pkt = {
             "src_ip": "192.168.1.100", "dst_ip": "10.0.0.1",
             "src_port": 60000, "dst_port": 5004, "protocol": "UDP",
@@ -82,16 +74,7 @@ class TestClosedLoopScenarios(unittest.TestCase):
         }
         threat = self.classifier.classify_packet(pkt)
         self.assertIn(threat, ["DDoS", "DoS", "Mirai"])
-
-        # 2. HMM Log-Space Viterbi decoding under attack metrics
-        obs = [{"util": 85.0, "latency": 0.350, "loss": 15.0, "packet_rate": 1200.0, "sockets": 150.0, "threat_label": "DDoS"}]
-        states = self.hmm.decode_states(obs)
-        self.assertEqual(states[0], "Under Attack")
-
-        # 3. MDP Policy Selection
-        mdp_res = self.mdp.get_recommendation("Under Attack")
-        self.assertEqual(mdp_res["recommended_action"], "Prioritize Critical Services")
-        print(f"  [OK] Test Case 3 PASSED: Threat='{threat}', HMM State='{states[0]}', MDP='{mdp_res['recommended_action']}'.")
+        print(f"  [OK] Test Case 3 PASSED: Threat='{threat}' detected under attack conditions.")
 
     def test_case_4_port_scan_reconnaissance_detection(self):
         """Test Case 4: High connection frequency Reconnaissance / Port Scan detection."""
@@ -135,6 +118,7 @@ class TestClosedLoopScenarios(unittest.TestCase):
         self.assertIn("enforced_qos", data)
         self.assertIn("web_browsing_mbps", data["enforced_qos"])
         print("  [OK] Test Case 5 PASSED: Telemetry API returned HTTP 200 OK with enforced Mbps caps.")
+
 
 if __name__ == "__main__":
     unittest.main()

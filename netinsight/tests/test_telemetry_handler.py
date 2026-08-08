@@ -82,7 +82,7 @@ class TestTelemetryHandlerFixes(TestCase):
             PacketRecord.objects.create(
                 agent=self.agent, src_ip="192.168.1.50", dst_ip="10.0.0.9",
                 src_port=5000, dst_port=443, protocol="TCP", size=512,
-                timestamp=now_ts - 1 + i * 0.01, ttl=64,
+                timestamp=now_ts - 1 + i * 0.01, ttl=64, tcp_seq=100,
             )
         self.assertEqual(FlowRecord.objects.count(), 0)
 

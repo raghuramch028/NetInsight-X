@@ -22,6 +22,7 @@ class Agent(models.Model):
     def __str__(self):
         return f"{self.hostname} ({self.mac_address})"
 
+
 class PacketRecord(models.Model):
     """Logs individual raw packet headers captured by client agents (pruned regularly)."""
     id = models.BigAutoField(primary_key=True)
@@ -34,9 +35,6 @@ class PacketRecord(models.Model):
     size = models.IntegerField()
     ttl = models.IntegerField()
     timestamp = models.FloatField(db_index=True)
-    # TCP sequence number (null for non-TCP packets, or packets from an agent build predating
-    # this field). Lets packet-loss estimation detect true retransmissions — the same segment
-    # captured twice — instead of only an approximate duplicate-packet heuristic.
     tcp_seq = models.BigIntegerField(null=True, blank=True, default=None)
 
     def __str__(self):
@@ -47,6 +45,7 @@ class PacketRecord(models.Model):
         indexes = [
             models.Index(fields=["agent", "timestamp"]),
         ]
+
 
 class FlowRecord(models.Model):
     """Summarizes packet flows grouped by active IP flows for analysis and threat classification."""
@@ -71,6 +70,7 @@ class FlowRecord(models.Model):
             models.Index(fields=["agent", "flow_key", "end_time"]),
         ]
 
+
 class MetricRecord(models.Model):
     """Stores calculated network-wide performance metrics."""
     timestamp = models.FloatField(primary_key=True, db_index=True)
@@ -83,34 +83,24 @@ class MetricRecord(models.Model):
     def __str__(self):
         return f"Metrics @ {self.timestamp} (Throughput: {self.throughput/1e6:.2f} Mbps)"
 
-class StateHistory(models.Model):
-    """Logs the operational network states over time based on HMM outputs."""
-    timestamp = models.FloatField(primary_key=True, db_index=True)
-    network_state = models.CharField(max_length=50) # Normal, Busy, Congested, Under Attack, Recovering
-    bandwidth_utilization = models.FloatField(default=0.0)
-    packet_loss = models.FloatField(default=0.0)
-    latency = models.FloatField(default=0.0)
-
-    def __str__(self):
-        return f"State: {self.network_state} @ {self.timestamp}"
 
 class ThreatHistory(models.Model):
     """Stores classifications for dynamic security metrics and auditing."""
     id = models.BigAutoField(primary_key=True)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name="threats")
-    threat_type = models.CharField(max_length=100) # Normal, DoS, DDoS, Mirai, etc.
-    severity = models.CharField(max_length=20) # Information, Warning, Critical
+    threat_type = models.CharField(max_length=100)
+    severity = models.CharField(max_length=20)
 
     def __str__(self):
         return f"[{self.severity}] {self.threat_type} detected on {self.agent.hostname}"
 
+
 class SystemSettings(models.Model):
     """Stores system-wide threshold policies and settings dynamically."""
-    bandwidth_threshold = models.FloatField(default=0.75) # 75%
-    loss_threshold = models.FloatField(default=0.05) # 5%
-    latency_threshold = models.FloatField(default=0.15) # 150ms
-    hmm_thresholds = models.JSONField(default=dict)
+    bandwidth_threshold = models.FloatField(default=0.75)
+    loss_threshold = models.FloatField(default=0.05)
+    latency_threshold = models.FloatField(default=0.15)
     lp_priorities = models.JSONField(default=list)
     svm_confidence_threshold = models.FloatField(default=0.80)
 

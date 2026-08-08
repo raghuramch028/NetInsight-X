@@ -10,7 +10,6 @@ matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -18,39 +17,24 @@ from django.utils import timezone
 from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
-    get_hmm_predictor,
     get_lp_optimizer,
-    get_mdp_engine,
     get_traffic_classifier,
 )
-from netinsight.dashboard.models import (
-    Agent,
-    MetricRecord,
-    StateHistory,
-    ThreatHistory,
-)
+from netinsight.dashboard.models import Agent, MetricRecord, ThreatHistory
 from netinsight.dashboard.views.utils import (
     require_dashboard_auth as _require_dashboard_auth,
 )
 from netinsight.dashboard.views.utils import (
     to_native_types as _to_native_types,
 )
-from netinsight.prediction.markov import MarkovPredictor
 
 logger = logging.getLogger(__name__)
 
-# Centralized thread-safe singleton references
 analytics_engine = get_analytics_engine()
 optimizer = get_lp_optimizer()
-hmm_predictor = get_hmm_predictor()
-markov_predictor = MarkovPredictor()
-mdp_engine = get_mdp_engine()
 classifier = get_traffic_classifier()
 dse_engine = get_dse_engine()
 
-# =====================================================================
-# REST APIs for Agents Ingestion
-# =====================================================================
 
 @_require_dashboard_auth
 def reports_view(request):
@@ -64,25 +48,12 @@ def reports_view(request):
         except Exception as e:
             logger.error(f"Error generating reports time plot: {e}", exc_info=True)
 
-        states_qs = StateHistory.objects.all().order_by("-timestamp")[:200]
-        data = [{"network_state": r.network_state} for r in states_qs]
-        df_states = pd.DataFrame(data)
-
-        if not df_states.empty:
-            try:
-                plots["states_distribution"] = _generate_states_distribution_plot(df_states)
-            except Exception as e:
-                logger.error(f"Error generating reports state counts plot: {e}", exc_info=True)
-
     context = {
         "plots": plots,
         "data_available": bool(plots),
     }
     return render(request, "dashboard/reports.html", context)
 
-# =====================================================================
-# PDF, CSV, and JSON Document Exports
-# =====================================================================
 
 @_require_dashboard_auth
 def reports_pdf_download(request):
@@ -120,7 +91,6 @@ def reports_pdf_download(request):
             spaceAfter=8
         )
 
-        # Header Title
         story.append(Paragraph("NetInsight-X Health & Security Audit Report", title_style))
         story.append(Paragraph(f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}", body_style))
         story.append(Spacer(1, 15))
@@ -174,7 +144,7 @@ def reports_pdf_download(request):
         story.append(Spacer(1, 20))
 
         # 3. Threat History Audit
-        story.append(Paragraph("<b>3. Security Incidents Logs (Heuristic/LLM Threat Classification)</b>", styles["Heading2"]))
+        story.append(Paragraph("<b>3. Security Incidents Logs (DeepSeek AI Classification)</b>", styles["Heading2"]))
         threats = ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:10]
         threat_data = [["Timestamp", "Source Host", "Threat Classified", "Severity Level"]]
         for t in threats:
@@ -198,95 +168,75 @@ def reports_pdf_download(request):
 
         doc.build(story)
         return response
-
     except Exception as e:
-        logger.error(f"Error compiling PDF report: {e}", exc_info=True)
-        return HttpResponse(f"Error generating PDF: {e}", status=500)
+        logger.error(f"PDF generation error: {e}", exc_info=True)
+        return HttpResponse(f"Error generating PDF report: {e}", status=500)
+
 
 @_require_dashboard_auth
 def reports_csv_download(request):
-    """Exports historical metrics and system operational states to CSV logs."""
+    """Exports historical metrics records to a downloadable CSV file."""
     try:
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="netinsight_metrics_history.csv"'
+        response["Content-Disposition"] = 'attachment; filename="netinsight_metrics_export.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(["Timestamp_Unix", "Timestamp_Readable", "Throughput_bps", "Packet_Rate_pps", "Bandwidth_Utilization_pct", "Latency_s", "Packet_Loss_pct"])
+        writer.writerow(["Timestamp", "Throughput_bps", "Packet_Rate_pps", "Bandwidth_Utilization_pct", "Latency_sec", "Packet_Loss_pct"])
 
-        records = MetricRecord.objects.all().order_by("-timestamp")[:500]
+        records = MetricRecord.objects.all().order_by("-timestamp")[:1000]
         for r in records:
-            readable = pd.to_datetime(r.timestamp, unit="s").strftime("%Y-%m-%d %H:%M:%S") if r.timestamp else "N/A"
-            writer.writerow([
-                r.timestamp,
-                readable,
-                r.throughput,
-                r.packet_rate,
-                r.bandwidth_util,
-                r.latency,
-                r.packet_loss
-            ])
+            writer.writerow([r.timestamp, r.throughput, r.packet_rate, r.bandwidth_util, r.latency, r.packet_loss])
 
         return response
     except Exception as e:
-        logger.error(f"Error compiling CSV report: {e}", exc_info=True)
-        return HttpResponse(f"Error generating CSV: {e}", status=500)
+        logger.error(f"CSV export error: {e}", exc_info=True)
+        return HttpResponse(f"Error exporting CSV: {e}", status=500)
+
 
 @_require_dashboard_auth
 def reports_json_download(request):
-    """Exports structured audit logs to a JSON schema for external analysis."""
+    """Exports historical metrics and active devices snapshot to a downloadable JSON file."""
     try:
-        data = {
-            "report_timestamp": timezone.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "agents": [],
-            "metrics": [],
-            "threats": []
+        metrics_qs = MetricRecord.objects.all().order_by("-timestamp")[:500]
+        agents_qs = Agent.objects.all()
+
+        export_data = {
+            "exported_at": timezone.now().isoformat(),
+            "agents": [
+                {
+                    "mac_address": a.mac_address,
+                    "hostname": a.hostname,
+                    "ip_address": a.ip_address,
+                    "device_type": a.device_type,
+                    "vendor": a.vendor,
+                    "last_seen": a.last_seen.isoformat() if a.last_seen else None
+                }
+                for a in agents_qs
+            ],
+            "metrics": [
+                {
+                    "timestamp": m.timestamp,
+                    "throughput": m.throughput,
+                    "packet_rate": m.packet_rate,
+                    "bandwidth_util": m.bandwidth_util,
+                    "latency": m.latency,
+                    "packet_loss": m.packet_loss
+                }
+                for m in metrics_qs
+            ]
         }
 
-        for a in Agent.objects.all()[:200]:
-            data["agents"].append({
-                "id": str(a.id),
-                "mac_address": a.mac_address,
-                "hostname": a.hostname,
-                "ip_address": a.ip_address,
-                "cpu_usage": a.cpu_usage,
-                "memory_usage": a.memory_usage,
-                "disk_usage": a.disk_usage,
-                "active_connections": a.active_connections
-            })
-
-        for m in MetricRecord.objects.all().order_by("-timestamp")[:100]:
-            data["metrics"].append({
-                "timestamp": m.timestamp,
-                "throughput": m.throughput,
-                "packet_rate": m.packet_rate,
-                "bandwidth_util": m.bandwidth_util,
-                "latency": m.latency,
-                "packet_loss": m.packet_loss
-            })
-
-        for t in ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:200]:
-            data["threats"].append({
-                "timestamp": t.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ") if t.timestamp else "N/A",
-                "agent_mac": t.agent.mac_address if t.agent else "Unknown",
-                "threat_type": t.threat_type,
-                "severity": t.severity
-            })
-
-        response = HttpResponse(json.dumps(_to_native_types(data), indent=2), content_type="application/json")
-        response["Content-Disposition"] = 'attachment; filename="netinsight_audit_log.json"'
+        response = HttpResponse(json.dumps(_to_native_types(export_data), indent=2), content_type="application/json")
+        response["Content-Disposition"] = 'attachment; filename="netinsight_full_export.json"'
         return response
-
     except Exception as e:
-        logger.error(f"Error compiling JSON report: {e}", exc_info=True)
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.error(f"JSON export error: {e}", exc_info=True)
+        return HttpResponse(f"Error exporting JSON: {e}", status=500)
 
-# =====================================================================
-# Poll APIs for Dashboard Dynamic Chart.js Updates
-# =====================================================================
 
-def _generate_throughput_latency_plot(df_metrics: pd.DataFrame) -> str:
-    """Generates a dual-axis throughput/latency time-series plot."""
-    df = df_metrics.copy()
+def _generate_throughput_latency_plot(df: pd.DataFrame) -> str:
+    """Generates a Matplotlib throughput vs latency dual-axis time-series plot."""
+    df = df.copy()
     df["time_formatted"] = pd.to_datetime(df["timestamp"], unit="s").dt.strftime("%H:%M:%S")
     df["throughput_mbps"] = df["throughput"] / 1e6
     df["latency_ms"] = df["latency"] * 1000.0
@@ -307,28 +257,6 @@ def _generate_throughput_latency_plot(df_metrics: pd.DataFrame) -> str:
     ax2.tick_params(axis="y", colors="#ef4444")
 
     plt.title("NetInsight-X Historical Telemetry Performance", color="#ffffff", fontsize=12, pad=15)
-    fig.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
-def _generate_states_distribution_plot(df_states: pd.DataFrame) -> str:
-    """Generates a network state distribution count bar chart."""
-    fig, ax = plt.subplots(figsize=(8, 4), facecolor="#0d111c")
-    ax.set_facecolor("#0d111c")
-
-    counts = df_states["network_state"].value_counts()
-    sns.barplot(x=counts.index, y=counts.values, palette="magma", ax=ax)
-
-    ax.set_xlabel("Inferred Network Hidden State", color="#94a3b8")
-    ax.set_ylabel("State Count", color="#94a3b8")
-    ax.tick_params(colors="#94a3b8")
-    for spine in ax.spines.values():
-        spine.set_color("#334155")
-
-    plt.title("HMM Network State Frequency Distribution", color="#ffffff", fontsize=12, pad=15)
     fig.tight_layout()
 
     buf = io.BytesIO()

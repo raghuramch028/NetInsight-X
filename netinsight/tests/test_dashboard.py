@@ -14,7 +14,7 @@ import django
 django.setup()
 
 from netinsight.config import settings
-from netinsight.dashboard.models import Agent, MetricRecord, StateHistory
+from netinsight.dashboard.models import Agent, MetricRecord
 from netinsight.database import db_manager
 
 
@@ -44,7 +44,6 @@ class TestDashboardViews(TestCase):
             ("dashboard:index", {}),
             ("dashboard:analytics", {}),
             ("dashboard:optimization", {}),
-            ("dashboard:prediction", {}),
             ("dashboard:classification", {}),
             ("dashboard:reports", {})
         ]
@@ -55,8 +54,7 @@ class TestDashboardViews(TestCase):
             self.assertEqual(response.status_code, 200, f"Failed rendering view {view_name} at URL {url}")
 
     def test_health_check_endpoint(self):
-        """The /healthz endpoint must be reachable without any authentication and report DB
-        connectivity — used by load balancers / orchestration platforms."""
+        """The /healthz endpoint must be reachable without any authentication."""
         response = self.client.get(reverse("dashboard:api_health_check"))
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -74,11 +72,9 @@ class TestDashboardViews(TestCase):
 
     def test_json_api_endpoints(self):
         """Verifies the JSON APIs for Chart.js and packet logs return expected structures."""
-        # Create an active agent so the metrics logic runs
         from django.utils import timezone
         Agent.objects.create(mac_address="00:11:22:33:44:55", hostname="Agent 1", ip_address="192.168.1.5", last_seen=timezone.now())
 
-        # Test Live Metrics API
         url_metrics = reverse("dashboard:api_live_metrics")
         response = self.client.get(url_metrics)
         self.assertEqual(response.status_code, 200)
@@ -89,11 +85,8 @@ class TestDashboardViews(TestCase):
         self.assertIn("bandwidth_util", data)
         self.assertIn("latency", data)
         self.assertIn("packet_loss", data)
-        self.assertIn("network_state", data)
         self.assertIsInstance(data["bandwidth_util"], (int, float))
-        self.assertIn(data["network_state"], ["Normal", "Busy", "Congested", "Under Attack", "Recovering"])
 
-        # Test Live Packets API
         url_packets = reverse("dashboard:api_live_packets")
         response = self.client.get(url_packets)
         self.assertEqual(response.status_code, 200)
@@ -103,11 +96,9 @@ class TestDashboardViews(TestCase):
 
     def test_reports_with_data(self):
         """Verifies the reports page can generate telemetry charts."""
-        # Seed a couple of metrics/state rows via Django ORM so the plots are generated
         MetricRecord.objects.create(timestamp=time.time() - 10, throughput=1.0, packet_rate=1.0, bandwidth_util=1.0, latency=0.015, packet_loss=0.0)
         MetricRecord.objects.create(timestamp=time.time() - 5, throughput=2.0, packet_rate=2.0, bandwidth_util=2.0, latency=0.015, packet_loss=0.0)
         MetricRecord.objects.create(timestamp=time.time(), throughput=3.0, packet_rate=3.0, bandwidth_util=3.0, latency=0.015, packet_loss=0.0)
-        StateHistory.objects.create(timestamp=time.time(), network_state="Normal", bandwidth_utilization=1.0, packet_loss=0.0, latency=0.015)
 
         url_reports = reverse("dashboard:reports")
         response = self.client.get(url_reports)
@@ -117,7 +108,6 @@ class TestDashboardViews(TestCase):
     def test_optimization_post_validation(self):
         """Verifies optimization POST handling validates list length and clamping boundaries."""
         url = reverse("dashboard:optimization")
-        # Valid POST
         valid_payload = {
             "priorities": ["1.0", "2.0", "0.5", "3.0"],
             "min_bounds": ["5", "15", "2", "10"],
@@ -127,7 +117,6 @@ class TestDashboardViews(TestCase):
         response = self.client.post(url, valid_payload)
         self.assertEqual(response.status_code, 200)
 
-        # Malformed POST (fewer than 4 classes) - should be handled gracefully without IndexError
         malformed_payload = {
             "priorities": ["1.0", "2.0"],
             "min_bounds": ["5"],
@@ -181,15 +170,12 @@ class TestDashboardViews(TestCase):
             settings.NETINSIGHT_AGENT_TOKEN = "secret_token"
             settings.DEBUG = False
 
-            # Test when token is missing
             request = factory.post("/api/v1/agents/")
             self.assertFalse(_validate_agent_token(request))
 
-            # Test when token is mismatched
             request = factory.post("/api/v1/agents/", HTTP_X_AGENT_TOKEN="wrong_token")
             self.assertFalse(_validate_agent_token(request))
 
-            # Test when token matches
             request = factory.post("/api/v1/agents/", HTTP_X_AGENT_TOKEN="secret_token")
             self.assertTrue(_validate_agent_token(request))
         finally:
@@ -214,8 +200,6 @@ class TestDashboardViews(TestCase):
         self.assertNotIn("<b onmouseover", agent.device_type)
 
     def test_register_agent_rejects_invalid_mac_address(self):
-        """Regression (Phase 4): mac_address was accepted as any non-empty string, even though
-        it is the agent's primary identity key. A malformed value must now be rejected."""
         res = self.client.post(
             "/api/v1/agents/register",
             data={"mac_address": "not-a-mac-address", "hostname": "Bad-Mac-Host"},
@@ -225,8 +209,6 @@ class TestDashboardViews(TestCase):
         self.assertFalse(Agent.objects.filter(hostname="Bad-Mac-Host").exists())
 
     def test_register_agent_falls_back_on_invalid_ip(self):
-        """A malformed ip_address must not be written verbatim (GenericIPAddressField isn't
-        enforced by save()); it should fall back to a safe default instead."""
         res = self.client.post(
             "/api/v1/agents/register",
             data={
@@ -241,9 +223,6 @@ class TestDashboardViews(TestCase):
         self.assertEqual(agent.ip_address, "0.0.0.0")
 
     def test_register_agent_truncates_overlong_fields(self):
-        """hostname/device_type/vendor must be truncated to their model max_length — SQLite
-        doesn't enforce CharField length, but Postgres (the optional production DB backend via
-        DATABASE_URL) does, and this endpoint doesn't call full_clean() to catch it earlier."""
         res = self.client.post(
             "/api/v1/agents/register",
             data={
@@ -261,8 +240,6 @@ class TestDashboardViews(TestCase):
         self.assertLessEqual(len(agent.vendor), 255)
 
     def test_register_agent_error_response_does_not_leak_exception_text(self):
-        """Regression (Phase 4): internal exception text (potential DB/implementation detail)
-        was previously echoed straight back to any anonymous caller on a 500."""
         from unittest.mock import patch
 
         with patch(
@@ -278,8 +255,6 @@ class TestDashboardViews(TestCase):
         self.assertNotIn("super secret internal detail", res.json().get("error", ""))
 
     def test_dashboard_auth_gate_blocks_when_required(self):
-        """Regression test: NETINSIGHT_REQUIRE_AUTH previously had no effect because
-        check_dashboard_auth() was never invoked by any view. Verifies it is now enforced."""
         original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
         try:
             settings.NETINSIGHT_REQUIRE_AUTH = True
@@ -293,7 +268,6 @@ class TestDashboardViews(TestCase):
             settings.NETINSIGHT_REQUIRE_AUTH = original
 
     def test_dashboard_open_when_auth_not_required(self):
-        """Verifies the dashboard remains accessible when NETINSIGHT_REQUIRE_AUTH is False (default)."""
         original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
         try:
             settings.NETINSIGHT_REQUIRE_AUTH = False
@@ -303,8 +277,6 @@ class TestDashboardViews(TestCase):
             settings.NETINSIGHT_REQUIRE_AUTH = original
 
     def test_agent_ingestion_endpoints_unaffected_by_dashboard_auth_gate(self):
-        """Verifies NETINSIGHT_REQUIRE_AUTH (dashboard-user auth) does NOT gate the agent
-        ingestion endpoints, which are authenticated separately via validate_agent_token()."""
         original = getattr(settings, "NETINSIGHT_REQUIRE_AUTH", False)
         try:
             settings.NETINSIGHT_REQUIRE_AUTH = True
@@ -317,10 +289,10 @@ class TestDashboardViews(TestCase):
         finally:
             settings.NETINSIGHT_REQUIRE_AUTH = original
 
+
 class TestConcurrency(TransactionTestCase):
 
     def test_concurrent_telemetry_write_safety(self):
-        """Verifies concurrent multi-threaded telemetry writes execute safely without DB lock exceptions."""
         from concurrent.futures import ThreadPoolExecutor
 
         agents = [
@@ -368,5 +340,3 @@ class TestConcurrency(TransactionTestCase):
 
         for res in results:
             self.assertEqual(res.status_code, 200)
-
-

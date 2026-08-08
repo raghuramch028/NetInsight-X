@@ -192,40 +192,6 @@ HOTSPOT_SSID = os.environ.get("HOTSPOT_SSID", "SEM3_PROJECT")
 # Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
 NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
 
-# Configurable thresholds for network states (based on bandwidth utilization and packet loss)
-STATE_THRESHOLDS = {
-    "NORMAL": {
-        "util_max": 0.40,      # < 40%
-        "loss_max": 0.02       # < 2%
-    },
-    "BUSY": {
-        "util_min": 0.40,
-        "util_max": 0.75,      # 40% to 75%
-        "loss_max": 0.05       # < 5%
-    },
-    "CONGESTED": {
-        "util_min": 0.75,
-        "util_max": 0.95,      # 75% to 95%
-        "loss_max": 0.10       # < 10%
-    },
-    "FAILURE": {
-        "util_min": 0.95,      # >= 95%
-        "loss_min": 0.10       # or Loss >= 10%
-    }
-}
-
-# MDP Configurable Parameters
-MDP_DISCOUNT_FACTOR = float(os.environ.get("NETINSIGHT_MDP_GAMMA", 0.90))
-
-# Reward matrices for each (state, action) pair
-MDP_REWARDS = {
-    0: {0: 10.0, 1: 5.0, 2: 8.0},    # Normal
-    1: {0: 8.0,  1: 4.0, 2: 7.0},    # Busy
-    2: {0: 5.0,  1: 8.0, 2: 6.0},    # Congested
-    3: {0: -2.0, 1: -5.0, 2: 2.0},   # Under Attack / Failure
-    4: {0: 7.0,  1: 4.0, 2: 8.0}     # Recovering
-}
-
 # LLM Classification Configuration
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
 NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")

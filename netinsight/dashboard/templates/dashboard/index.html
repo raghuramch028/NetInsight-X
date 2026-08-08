@@ -35,7 +35,7 @@
 <div id="demo-control-bar" style="display: none; position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999999; width: 850px; max-width: 92vw; background: #353234; color: #ffffff; padding: 16px 24px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="d-flex align-items-center gap-2">
-            <span id="hud-step-badge" class="badge bg-danger rounded-pill font-mono px-3 py-1" style="font-size:0.75rem;">STEP 1 OF 6</span>
+            <span id="hud-step-badge" class="badge bg-danger rounded-pill font-mono px-3 py-1" style="font-size:0.75rem;">STEP 1 OF 5</span>
             <span id="hud-scenario-label" class="font-mono text-white fw-bold small">SCENARIO DEMO ACTIVE</span>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -95,7 +95,7 @@
     </div>
 </div>
 
-<!-- KKT Optimality Verification Checklist Card Modal (Step 5 Pop-up) -->
+<!-- KKT Optimality Verification Checklist Card Modal (Step 4 Pop-up) -->
 <div id="modal-kkt-breakdown" class="saas-card shadow-lg p-4" style="display: none; position: fixed; top: 140px; left: 50%; transform: translateX(-50%); width: 580px; max-width: 90vw; z-index: 999998; border-radius: 24px; border: 2px solid var(--accent-emerald) !important; background: #ffffff !important;">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
@@ -140,25 +140,22 @@
                     <h3 class="editorial-serif h4 mt-1 mb-0">System Operational Health</h3>
                 </div>
                 <div class="d-flex gap-2 align-items-center">
-                    <span id="card-state-badge" class="pill-badge
-                        {% if current_state == 'Normal' %}emerald
-                        {% elif current_state == 'Under Attack' %}rose
-                        {% else %}terracotta{% endif %}">
-                        <span id="card-state-label">{{ current_state }}</span>
+                    <span id="card-state-badge" class="pill-badge emerald">
+                        <span id="card-state-label">Optimal</span>
                     </span>
                 </div>
             </div>
 
-            <!-- Dynamic MDP Advisory Action -->
+            <!-- Dynamic Optimization Advisory Action -->
             <div class="p-3 rounded mb-4" style="background-color: rgba(223, 110, 84, 0.08); border: 1px dashed rgba(223, 110, 84, 0.3);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="small text-secondary font-mono d-block fw-bold">MDP Decision Advisory Policy</span>
+                        <span class="small text-secondary font-mono d-block fw-bold">Bandwidth Optimization Engine</span>
                         <span id="mdp-action" class="font-bold text-dark fs-6 mt-1 d-inline-block">
-                            <i data-lucide="info" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>{{ mdp_rec.recommended_action }}
+                            <i data-lucide="sliders-horizontal" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>Autonomous Bandwidth Allocation Active
                         </span>
                     </div>
-                    <span class="pill-badge terracotta font-mono" style="font-size: 0.75rem;">SOLVER ACTIVE</span>
+                    <span class="pill-badge terracotta font-mono" style="font-size: 0.75rem;">LP SOLVER ACTIVE</span>
                 </div>
             </div>
 
@@ -233,28 +230,20 @@
         <span id="demo-kkt-proof" class="pill-badge emerald font-mono" style="font-size:0.75rem;">KKT OPTIMAL: 1.00e-07</span>
     </div>
     <div class="row g-2 text-center font-mono small mb-2" style="font-size:0.78rem;">
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
+        <div class="col-6 col-md-3 p-2 rounded bg-light border">
             <span class="text-secondary d-block">1. Telemetry Ingest</span>
             <span id="demo-stat-tp" class="text-dark fw-bold">45.0 Mbps</span>
         </div>
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
+        <div class="col-6 col-md-3 p-2 rounded bg-light border">
             <span class="text-secondary d-block">2. Threat / DeepSeek AI</span>
             <span id="demo-stat-threat" class="text-success fw-bold">Normal</span>
         </div>
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
-            <span class="text-secondary d-block">3. HMM State Viterbi</span>
-            <span id="demo-stat-hmm" class="text-info fw-bold">Normal</span>
-        </div>
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
-            <span class="text-secondary d-block">4. MDP Policy Selection</span>
-            <span id="demo-stat-mdp" class="text-warning fw-bold">Reallocate</span>
-        </div>
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
-            <span class="text-secondary d-block">5. CVXOPT LP Solver</span>
+        <div class="col-6 col-md-3 p-2 rounded bg-light border">
+            <span class="text-secondary d-block">3. CVXOPT LP Solver</span>
             <span id="demo-stat-lp" class="text-success fw-bold">Optimal</span>
         </div>
-        <div class="col-6 col-md-2 p-2 rounded bg-light border">
-            <span class="text-secondary d-block">6. Windows Kernel QoS</span>
+        <div class="col-6 col-md-3 p-2 rounded bg-light border">
+            <span class="text-secondary d-block">4. Windows Kernel QoS</span>
             <span id="demo-stat-os" class="text-primary fw-bold">NetQosPolicy</span>
         </div>
     </div>
@@ -331,7 +320,6 @@
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
 <script>
-    // Initialize PyVis Topology Graph dynamically (Starts with ONLY the Central Server node)
     const container = document.getElementById('topology-container');
     const nodesDataSet = new vis.DataSet([
         { id: 'hotspot', label: 'Central Node / Server\n(192.168.1.1)', color: '#df6e54', shape: 'dot', size: 24, font: { color: '#1a1819', face: 'Inter', size: 12 } }
@@ -345,7 +333,6 @@
     };
     const network = new vis.Network(container, dataNetwork, optionsNetwork);
 
-    // Initialize Chart.js Throughput & Utilization Graph
     const ctx = document.getElementById('liveThroughputChart').getContext('2d');
     const throughputGradient = ctx.createLinearGradient(0, 0, 0, 280);
     throughputGradient.addColorStop(0, 'rgba(223, 110, 84, 0.25)');
@@ -422,7 +409,6 @@
                 const progressEl = document.getElementById('capacity-progress');
                 if (progressEl) progressEl.style.width = `${Math.min(100, Math.max(0, data.bandwidth_util || 0))}%`;
 
-                // Dynamic Topology Graph Agent Node Updates
                 if (nodesDataSet) {
                     if (data.agents && data.agents.length > 0) {
                         data.agents.forEach(ag => {
@@ -431,7 +417,6 @@
                             edgesDataSet.update({ id: `edge-${ag.mac_address}`, from: ag.mac_address, to: 'hotspot', color: { color: '#df6e54' } });
                         });
                     } else {
-                        // Remove all non-server agent nodes when no edge devices are connected
                         const currentIds = nodesDataSet.getIds();
                         currentIds.forEach(id => {
                             if (id !== 'hotspot') {
@@ -540,7 +525,7 @@
             const stepBadge = document.getElementById('hud-step-badge');
 
             // STEP 1: Telemetry Ingest & Real-Time Metrics Ramp-up
-            if (stepBadge) stepBadge.innerText = 'STEP 1 OF 6: TELEMETRY INGEST';
+            if (stepBadge) stepBadge.innerText = 'STEP 1 OF 5: TELEMETRY INGEST';
             if (scriptEl) scriptEl.innerText = `"We begin by monitoring live telemetry from edge agents, tracking active throughput (${s.throughput_mbps.toFixed(1)} Mbps) and packet arrival rate (${s.packet_rate.toFixed(0)} pps)."`;
             
             const cardTp = document.getElementById('card-throughput') || document.querySelector('.saas-card');
@@ -562,7 +547,7 @@
             if (!await waitDelay(3000)) return;
 
             // STEP 2: DeepSeek AI Threat Classification Breakdown
-            if (stepBadge) stepBadge.innerText = 'STEP 2 OF 6: DEEPSEEK AI CLASSIFIER';
+            if (stepBadge) stepBadge.innerText = 'STEP 2 OF 5: DEEPSEEK AI CLASSIFIER';
             if (scriptEl) scriptEl.innerText = `"DeepSeek AI parses the packet feature vector and classifies network traffic into threat profiles (${s.threat_type}) with 98.4% model confidence."`;
             
             const threatEl = document.getElementById('demo-stat-threat');
@@ -583,60 +568,14 @@
             if (!await waitDelay(3500)) return;
             if (dsModal) dsModal.style.display = 'none';
 
-            // STEP 3: HMM Hidden State Viterbi Decoding & Topology Shift
-            if (stepBadge) stepBadge.innerText = 'STEP 3 OF 6: HMM VITERBI STATE DECODER';
-            if (scriptEl) scriptEl.innerText = `"The Hidden Markov Model evaluates Viterbi decoding over state transition matrices to infer unobserved hidden network states (${s.hmm_state})."`;
-            
-            const hmmEl = document.getElementById('demo-stat-hmm');
-            moveVirtualCursorToElement(hmmEl, `3. HMM Viterbi State Decoding: Network State = ${s.hmm_state}`);
-            hmmEl.innerText = s.hmm_state;
-            const stateBadge = document.getElementById('card-state-badge');
-            document.getElementById('card-state-label').innerText = s.hmm_state;
-            if (stateBadge) {
-                stateBadge.className = `pill-badge ${isDDoS ? 'rose' : (s.hmm_state === 'Congested' ? 'terracotta' : 'emerald')}`;
-            }
-
-            if (nodesDataSet) {
-                nodesDataSet.update({
-                    id: 'hotspot',
-                    color: isDDoS ? '#c85a5a' : (s.hmm_state === 'Congested' ? '#d99b26' : '#df6e54'),
-                    label: isDDoS ? 'Central Node / Server\n(UNDER DDOS ATTACK)' : 'Central Node / Server\n(192.168.1.1)'
-                });
-                nodesDataSet.update({
-                    id: 'host-01',
-                    color: isDDoS ? '#c85a5a' : '#489b78',
-                    label: isDDoS ? 'Demo-Host-01\n(192.168.1.100)' : 'Demo-Host-01\n(192.168.1.100)',
-                    shape: 'dot', size: 16, font: { color: '#1a1819', face: 'Inter', size: 11 }
-                });
-                edgesDataSet.update({ id: 'edge-host-01', from: 'host-01', to: 'hotspot', color: { color: '#df6e54' } });
-            }
-            if (!await waitDelay(3200)) return;
-
-            // STEP 4: MDP Bellman Policy Optimization
-            if (stepBadge) stepBadge.innerText = 'STEP 4 OF 6: MDP BELLMAN POLICY SOLVER';
-            if (scriptEl) scriptEl.innerText = `"Markov Decision Process evaluates Bellman expectation equations to pick the optimal high-level advisory policy (${s.mdp_action})."`;
-            
-            const mdpEl = document.getElementById('demo-stat-mdp');
-            const mdpBox = document.getElementById('mdp-action');
-            moveVirtualCursorToElement(mdpBox || mdpEl, `4. MDP Bellman Optimization: Action = ${s.mdp_action}`);
-            mdpEl.innerText = s.mdp_action;
-            if (mdpBox) {
-                mdpBox.innerHTML = `<i data-lucide="shield-check" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>${s.mdp_action}`;
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            if (!await waitDelay(3200)) return;
-
-            // STEP 5: CVXOPT LP Solver & Live KKT Proof Breakdown
-            if (stepBadge) stepBadge.innerText = 'STEP 5 OF 6: CVXOPT LP SOLVER & KKT PROOF';
-            if (scriptEl) scriptEl.innerText = `"CVXOPT Linear Program Solver solves continuous bandwidth allocations while verifying all 4 Karush-Kuhn-Tucker (KKT) optimality conditions."`;
+            // STEP 3: CVXOPT LP Solver & Continuous Allocation
+            if (stepBadge) stepBadge.innerText = 'STEP 3 OF 5: CVXOPT LP BANDWIDTH SOLVER';
+            if (scriptEl) scriptEl.innerText = `"CVXOPT Linear Program Solver dynamically computes continuous bandwidth allocations for Web, Streaming, File Transfer, and Critical Services."`;
             
             const chartCanvas = document.getElementById('liveThroughputChart');
-            moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `5. CVXOPT LP Solver: KKT Verified Solution (Max Viol: ${kktViol})`);
+            moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `3. CVXOPT LP Solver: Computing Continuous Bandwidth Allocation (${s.lp_status.toUpperCase()})`);
             document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
             
-            const kktModal = document.getElementById('modal-kkt-breakdown');
-            if (kktModal) kktModal.style.display = 'block';
-
             if (window.liveChart) {
                 const nowStr = new Date(s.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
                 window.liveChart.data.labels.push(nowStr);
@@ -647,15 +586,25 @@
                 }
                 window.liveChart.update();
             }
+            if (!await waitDelay(3200)) return;
+
+            // STEP 4: KKT Optimality Proof Breakdown
+            if (stepBadge) stepBadge.innerText = 'STEP 4 OF 5: KKT OPTIMALITY PROOF';
+            if (scriptEl) scriptEl.innerText = `"Karush-Kuhn-Tucker optimality verification proves mathematical optimality with primal/dual residuals strictly less than 1e-7."`;
+            
+            const kktProofEl = document.getElementById('demo-kkt-proof');
+            moveVirtualCursorToElement(kktProofEl, `4. KKT Proof: Primal & Stationarity Violations Verified Optimal`);
+            const kktModal = document.getElementById('modal-kkt-breakdown');
+            if (kktModal) kktModal.style.display = 'block';
             if (!await waitDelay(3800)) return;
             if (kktModal) kktModal.style.display = 'none';
 
-            // STEP 6: OS Kernel Enforcement & Live Packet Table Stream
-            if (stepBadge) stepBadge.innerText = 'STEP 6 OF 6: WINDOWS NETQOS ENFORCEMENT';
+            // STEP 5: OS Kernel Enforcement & Dynamic Throttling
+            if (stepBadge) stepBadge.innerText = 'STEP 5 OF 5: WINDOWS NETQOS ENFORCEMENT';
             if (scriptEl) scriptEl.innerText = `"Finally, OS Kernel rules dynamically enforce exact bandwidth caps (Critical Services: ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps)."`;
             
             const pktTable = document.getElementById('packet-tbody');
-            moveVirtualCursorToElement(pktTable || document.getElementById('demo-stat-os'), `6. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Cap`);
+            moveVirtualCursorToElement(pktTable || document.getElementById('demo-stat-os'), `5. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Cap`);
             document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
 
             if (pktTable) {
@@ -677,7 +626,7 @@
             if (!await waitDelay(3500)) return;
 
             stopVirtualCursor();
-            if (scriptEl) scriptEl.innerText = `"Scenario tour complete! All 6 modules verified in closed-loop operation. Press Reset Live Stream to return to live monitoring."`;
+            if (scriptEl) scriptEl.innerText = `"Scenario tour complete! Both core pillars (Traffic Classification & Bandwidth Optimization) verified in closed-loop operation. Press Reset Live Stream to return."`;
         } catch(err) {
             console.error('[Demo Tour] Error:', err);
         }
@@ -689,7 +638,6 @@
         isDemoStepPaused = false;
         stopVirtualCursor();
 
-        // 1. Trigger backend DB state reset to live baseline
         try {
             await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
                 method: "POST",
@@ -700,18 +648,15 @@
             console.warn("[Reset Demo] Reset API call notice:", e);
         }
 
-        // 2. Remove scenario URL query params from browser address bar
         if (window.history.replaceState) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // 3. Hide status banner & HUD dock bar
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'none';
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'none';
 
-        // 4. Reset topology node colors and remove non-server demo nodes
         if (nodesDataSet) {
             nodesDataSet.update({
                 id: 'hotspot',
@@ -727,7 +672,6 @@
             });
         }
 
-        // 5. Trigger immediate metrics update poll
         updateDashboard();
     }
 

@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import timedelta
 
 import matplotlib
@@ -13,52 +12,33 @@ from netinsight.config import settings
 from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
-    get_hmm_predictor,
     get_lp_optimizer,
-    get_mdp_engine,
     get_traffic_classifier,
 )
 from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.demo_data import ensure_monitor_started
-from netinsight.dashboard.models import (
-    Agent,
-    PacketRecord,
-    StateHistory,
-    SystemSettings,
-)
-from netinsight.dashboard.views.utils import (
-    apply_mdp_overrides as _apply_mdp_overrides,
-)
+from netinsight.dashboard.models import Agent, PacketRecord, SystemSettings
 from netinsight.dashboard.views.utils import (
     require_dashboard_auth as _require_dashboard_auth,
 )
-from netinsight.prediction.markov import MarkovPredictor
 
 logger = logging.getLogger(__name__)
 
 # Centralized thread-safe singleton references
 analytics_engine = get_analytics_engine()
 optimizer = get_lp_optimizer()
-hmm_predictor = get_hmm_predictor()
-markov_predictor = MarkovPredictor()
-mdp_engine = get_mdp_engine()
 classifier = get_traffic_classifier()
 dse_engine = get_dse_engine()
 
-# =====================================================================
-# REST APIs for Agents Ingestion
-# =====================================================================
 
 @_require_dashboard_auth
 def index_view(request):
     """Renders the main Live Monitor and System Dashboard page."""
     ensure_monitor_started()
-    # Retrieve system settings
     settings_obj = SystemSettings.objects.first()
     if not settings_obj:
         settings_obj = SystemSettings.objects.create()
 
-    # Query active agents dynamically
     now = timezone.now()
     active_threshold = timedelta(seconds=15)
 
@@ -85,10 +65,8 @@ def index_view(request):
 
     online_agents_count = sum(1 for a in active_agents if a["is_online"])
 
-    # Get latest calculated network-wide metrics
     latest = analytics_engine.get_latest_metrics()
 
-    # If no agents are online, force metrics to 0
     if online_agents_count == 0:
         latest["throughput"] = 0.0
         latest["packet_rate"] = 0.0
@@ -99,30 +77,20 @@ def index_view(request):
     latest["throughput_mbps"] = latest["throughput"] / 1e6
     latest["latency_ms"] = latest["latency"] * 1000.0
 
-    # Retrieve current network state (enforce 30s freshness)
-    state_record = StateHistory.objects.all().order_by("-timestamp").first()
-    is_fresh_state = state_record and (time.time() - state_record.timestamp) < 30.0
-    state_name = state_record.network_state if is_fresh_state and online_agents_count > 0 else "Normal"
-
-    # Solve MDP Recommendation Engine
-    mdp_rec = mdp_engine.get_recommendation(state_name)
-
-    # Solve DSE actionable alert cards
     dse_alerts = dse_engine.evaluate_decisions()
 
     context = {
         "refresh_interval": settings.DASHBOARD_REFRESH_INTERVAL,
         "latest": latest,
-        "current_state": state_name,
-        "mdp_rec": mdp_rec,
         "agents": active_agents,
         "agents_count": len(active_agents),
-        "online_agents_count": sum(1 for a in active_agents if a["is_online"]),
+        "online_agents_count": online_agents_count,
         "dse_alerts": dse_alerts,
         "settings": settings_obj,
         "link_capacity_mbps": speed_monitor.get_current_capacity() / 1e6,
     }
     return render(request, "dashboard/index.html", context)
+
 
 @_require_dashboard_auth
 def analytics_view(request):
@@ -145,46 +113,6 @@ def analytics_view(request):
     }
     return render(request, "dashboard/analytics.html", context)
 
-@xframe_options_exempt
-@_require_dashboard_auth
-def prediction_view(request):
-    """Renders HMM transitions matrix, baseline Markov forecasts, and MDP value recommendations."""
-    # Query latest state history
-    state_record = StateHistory.objects.all().order_by("-timestamp").first()
-    curr_state = state_record.network_state if state_record else "Normal"
-
-    # Solve HMM Forecasts
-    hmm_1step = hmm_predictor.predict_state_forecast(curr_state, steps=1)
-    hmm_3step = hmm_predictor.predict_state_forecast(curr_state, steps=3)
-
-    # Solve baseline Markov Predictor forecast for comparative benchmark
-    markov_1step = markov_predictor.predict_state_distribution(curr_state, k_steps=1)
-
-    # Solve MDP Value iteration recommendation
-    mdp_rec = mdp_engine.get_recommendation(curr_state)
-
-    # Build matrix probabilities mapping
-    states = ["Normal", "Busy", "Congested", "Under Attack", "Recovering"]
-    state_keys = ["Normal", "Busy", "Congested", "Under_Attack", "Recovering"]
-    matrix_rows = []
-    matrix_data = hmm_predictor.estimate_transition_matrix()
-
-    for i, s_from in enumerate(states):
-        row_probs = {state_keys[j]: f"{matrix_data[i][j]*100:.1f}%" for j in range(5)}
-        row_probs["from"] = s_from
-        matrix_rows.append(row_probs)
-
-    context = {
-        "current_state": curr_state,
-        "matrix_rows": matrix_rows,
-        "pred_1step": {k: v * 100.0 for k, v in hmm_1step["forecast"].items()},
-        "pred_3step": {k: v * 100.0 for k, v in hmm_3step["forecast"].items()},
-        "markov_baseline": markov_1step.get("prediction", {}),
-        "mdp": mdp_rec,
-        "gamma": settings.MDP_DISCOUNT_FACTOR,
-        "using_default_matrix": (StateHistory.objects.count() < 2)
-    }
-    return render(request, "dashboard/prediction.html", context)
 
 @_require_dashboard_auth
 def optimization_view(request):
@@ -193,7 +121,6 @@ def optimization_view(request):
     if not settings_obj:
         settings_obj = SystemSettings.objects.create()
 
-    # Read priorities and limits from dynamically configured settings model
     priorities = settings_obj.lp_priorities
     if not priorities:
         priorities = settings.QOS_PRIORITIES
@@ -219,39 +146,23 @@ def optimization_view(request):
             max_bounds = [max(0.0, float(x) * 1e6) for x in raw_max_bounds]
             capacity = max(1e6, float(raw_capacity) * 1e6)
 
-            # Save priorities dynamically
             settings_obj.lp_priorities = priorities
             settings_obj.save()
         except Exception as e:
             logger.error(f"Error loading manual custom LP settings: {e}")
     else:
-        # Scale bounds dynamically on GET load relative to current dynamic capacity
         scale_ratio = capacity / 100000000.0
         min_bounds = [float(val * scale_ratio) for val in min_bounds]
         max_bounds = [float(val * scale_ratio) for val in max_bounds]
-
-    # Fetch current network state and apply MDP dynamic adjustments
-    latest_state = StateHistory.objects.all().order_by("-timestamp").first()
-    curr_state = latest_state.network_state if latest_state else "Normal"
-    mdp_rec = mdp_engine.get_recommendation(curr_state)
-    recommended_action = mdp_rec["recommended_action"]
 
     active_priorities = list(priorities)
     active_min_bounds = list(min_bounds)
     active_max_bounds = list(max_bounds)
 
-    active_priorities, active_min_bounds, active_max_bounds = _apply_mdp_overrides(
-        recommended_action, active_priorities, active_min_bounds, active_max_bounds
-    )
-    if recommended_action != "Reallocate Bandwidth":
-        logger.info(f"MDP Optimization Override active: {recommended_action}.")
-
     classes = ["Web Browsing", "Streaming", "File Transfer", "Critical Services"]
 
-    # Solve LP using dynamically adjusted weights and bounds
     result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
 
-    # Map allocations back for template rendering
     raw_allocations = result.get("allocations") or [0.0] * len(classes)
     allocation_mbps = [x / 1e6 for x in raw_allocations]
     mapped_allocations = []
@@ -264,7 +175,6 @@ def optimization_view(request):
             "allocated": allocation_mbps[idx]
         })
 
-    # Check online agents count
     now = timezone.now()
     active_threshold = timedelta(seconds=15)
     online_agents_count = Agent.objects.filter(last_seen__gte=now - active_threshold).count()
@@ -279,9 +189,9 @@ def optimization_view(request):
         "input_min_bounds": [x / 1e6 for x in active_min_bounds],
         "input_max_bounds": [x / 1e6 for x in active_max_bounds],
         "online_agents_count": online_agents_count,
-        "mdp_rec": mdp_rec
     }
     return render(request, "dashboard/optimization.html", context)
+
 
 @_require_dashboard_auth
 def classification_view(request):
@@ -301,7 +211,6 @@ def classification_view(request):
             "ttl": pkt.ttl,
             "agent_hostname": pkt.agent.hostname
         }
-        # Use pre-stored classification or fast heuristic rule for instant 0ms render
         rec["classification"] = getattr(pkt, "classification", None) or classifier._classify_rule_based(rec)
         packets_list.append(rec)
 
@@ -319,9 +228,6 @@ def classification_view(request):
     }
     return render(request, "dashboard/classification.html", context)
 
-# =====================================================================
-# Settings view
-# =====================================================================
 
 @_require_dashboard_auth
 def settings_view(request):
@@ -337,7 +243,6 @@ def settings_view(request):
             settings_obj.latency_threshold = float(request.POST.get("latency_threshold", 0.15))
             settings_obj.svm_confidence_threshold = float(request.POST.get("svm_confidence_threshold", 0.80))
             settings_obj.save()
-            mdp_engine.invalidate_cache()
             logger.info("Successfully updated SystemSettings thresholds dynamically.")
             return redirect("dashboard:index")
         except Exception as e:
@@ -349,8 +254,3 @@ def settings_view(request):
         "settings": settings_obj
     }
     return render(request, "dashboard/settings.html", context)
-
-# =====================================================================
-# Reports & Plots
-# =====================================================================
-
