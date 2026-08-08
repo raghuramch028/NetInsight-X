@@ -112,9 +112,9 @@ def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_lis
     throughput = (total_bytes * 8.0) / 10.0
     packet_rate = float(packet_count) / 10.0
 
-    from netinsight.config import settings
-    link_capacity = getattr(settings, "LINK_CAPACITY", 100_000_000.0)
-    bandwidth_util = (throughput / link_capacity) * 100.0
+    from netinsight.dashboard import speed_monitor
+    link_capacity = speed_monitor.get_current_capacity()
+    bandwidth_util = (throughput / link_capacity) * 100.0 if link_capacity > 0 else 0.0
 
     _DEFAULT_LATENCY_SECONDS = 0.015
     _MAX_PLAUSIBLE_LATENCY_SECONDS = 10.0
