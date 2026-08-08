@@ -258,14 +258,8 @@
     window.liveChart = liveChart;
 
     const refreshInterval = parseInt("{{ dashboard_refresh_interval|default:1000 }}");
-    let isDemoPaused = false;
-    let currentDemoScenarioId = 1;
-    let activeDemoToken = 0;
-    let demoSpeedMultiplier = 1.0;
-    let isDemoStepPaused = false;
 
     function updateDashboard() {
-        if (isDemoPaused) return;
         fetch("{% url 'dashboard:api_live_metrics' %}")
             .then(res => res.json())
             .then(data => {
@@ -312,7 +306,51 @@
                     renderDSEAlerts(data.dse_alerts);
                 }
             })
-            .catch(err => console.warn('[NetInsight] Poll failed:', err));
+            .catch(err => console.warn('[NetInsight] Metrics poll failed:', err));
+
+        fetch("{% url 'dashboard:api_live_packets' %}")
+            .then(res => res.json())
+            .then(packets => {
+                const tbody = document.getElementById('packet-tbody');
+                const badge = document.getElementById('packet-count-badge');
+                if (badge) badge.innerText = packets ? packets.length : 0;
+                if (!tbody) return;
+
+                if (!packets || packets.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="text-center text-secondary py-4 font-mono">Listening for edge packet stream headers...</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                packets.slice(0, 10).forEach(pkt => {
+                    const proto = pkt.protocol || 'IP';
+                    const badgeClass = proto === 'TCP' ? 'terracotta' : (proto === 'UDP' ? 'emerald' : 'slate');
+                    const timeStr = pkt.timestamp ? new Date(pkt.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : 'Just now';
+                    const agentName = pkt.agent_hostname || 'Agent';
+
+                    html += `
+                        <tr>
+                            <td><span class="pill-badge ${badgeClass} font-mono" style="font-size:0.7rem;">${proto}</span></td>
+                            <td class="font-bold text-dark small">${agentName}</td>
+                            <td class="font-mono text-dark fw-bold">${pkt.src_ip || '0.0.0.0'}</td>
+                            <td class="font-mono text-dark fw-bold">${pkt.dst_ip || '0.0.0.0'}</td>
+                            <td class="font-mono text-dark">${pkt.src_port || 0}</td>
+                            <td class="font-mono text-dark">${pkt.dst_port || 0}</td>
+                            <td class="font-mono text-dark fw-bold">${pkt.size || 0}</td>
+                            <td class="font-mono text-dark">${pkt.ttl || 64}</td>
+                            <td class="font-mono text-secondary">${timeStr}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            })
+            .catch(err => console.warn('[NetInsight] Packet poll failed:', err));
+    }
+
     setInterval(() => {
         updateDashboard();
     }, refreshInterval);
