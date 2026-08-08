@@ -5,6 +5,7 @@ import requests
 
 from agent import config
 from agent.logger import logger
+from agent.utils import get_current_ssid
 
 
 class TelemetrySender:
@@ -52,10 +53,9 @@ class TelemetrySender:
             "mac_address": mac_address,
             "hostname": hostname,
             "device_type": device_type,
-            "vendor": vendor
+            "vendor": vendor,
+            "ssid": get_current_ssid()
         }
-
-
 
         while True:
             logger.info(f"Attempting to register agent at {config.REGISTRATION_ENDPOINT}...")
@@ -72,6 +72,8 @@ class TelemetrySender:
                         return True
                     else:
                         logger.error("Registration response did not contain 'agent_id'.")
+                elif response.status_code == 403:
+                    logger.error(f"Server rejected registration (403 Forbidden): {response.text}")
                 elif response.status_code == 401:
                     logger.error(
                         "Server rejected registration (401 Unauthorized). The server has agent-token "
@@ -96,7 +98,8 @@ class TelemetrySender:
         payload = {
             "agent_id": self.agent_id,
             "stats": stats,
-            "packets": packets
+            "packets": packets,
+            "ssid": get_current_ssid()
         }
 
         try:

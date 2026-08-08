@@ -102,9 +102,7 @@ class NetInsightAgent:
 
         logger.info(f"Local Host Details: MAC={mac_addr}, Hostname={hostname}, OS={device_type}")
 
-        self.sender.register(mac_addr, hostname, device_type, vendor)
         self.sniffer.start()
-
         self.is_running = True
         logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s, Target Hotspot: '{config.HOTSPOT_SSID}')...")
 
@@ -114,10 +112,10 @@ class NetInsightAgent:
             # Enforce Wi-Fi Hotspot restriction
             if config.HOTSPOT_SSID:
                 current_ssid = get_current_ssid()
-                if current_ssid and current_ssid != config.HOTSPOT_SSID:
+                if current_ssid != config.HOTSPOT_SSID:
                     logger.warning(
-                        f"[HOTSPOT RESTRICTION] Connected to Wi-Fi '{current_ssid}', but target hotspot is '{config.HOTSPOT_SSID}'. "
-                        "Telemetry upload paused until connected to hotspot."
+                        f"[HOTSPOT RESTRICTION] Connected to Wi-Fi '{current_ssid or 'Disconnected/Ethernet'}', but target hotspot is '{config.HOTSPOT_SSID}'. "
+                        "Telemetry upload and registration paused until connected to hotspot SEM3_PROJECT."
                     )
                     self.sniffer.get_and_clear_packets()
                     time.sleep(config.TELEMETRY_INTERVAL)
@@ -126,9 +124,11 @@ class NetInsightAgent:
             start_time = time.time()
 
             if not self.sender.agent_id:
-                logger.warning("Agent ID missing or invalidated. Re-running registration sequence...")
+                logger.warning("Agent ID missing or invalidated. Running registration sequence...")
                 mac_addr = get_mac_address()
-                self.sender.register(mac_addr, self.collector.hostname, self.collector.os_type, self.collector.vendor)
+                if not self.sender.register(mac_addr, self.collector.hostname, self.collector.os_type, self.collector.vendor):
+                    time.sleep(config.TELEMETRY_INTERVAL)
+                    continue
 
             stats = self.collector.collect()
 

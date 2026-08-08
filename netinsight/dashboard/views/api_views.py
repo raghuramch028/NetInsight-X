@@ -101,6 +101,15 @@ def api_register_agent(request):
         device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())[:100]
         vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())[:255]
         ip_address = html.escape(_clean_ip_or_default(str(data.get("ip_address", "0.0.0.0"))))
+        client_ssid = str(data.get("ssid", "")).strip()
+
+        hotspot_target = getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT")
+        if hotspot_target and client_ssid and client_ssid != hotspot_target:
+            logger.warning(f"Registration rejected for MAC {mac_address}: Device connected to SSID '{client_ssid}', target hotspot is '{hotspot_target}'")
+            return Response(
+                {"error": f"Access denied: Devices must be connected to hotspot network '{hotspot_target}'."},
+                status=403,
+            )
 
         if not mac_address:
             return Response({"error": "MAC Address is required for registration"}, status=400)
@@ -148,6 +157,15 @@ def api_agent_telemetry(request):
         agent_id = data.get("agent_id")
         stats = data.get("stats", {})
         packets = data.get("packets", [])
+        client_ssid = str(data.get("ssid", "")).strip()
+
+        hotspot_target = getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT")
+        if hotspot_target and client_ssid and client_ssid != hotspot_target:
+            logger.warning(f"Telemetry upload rejected for Agent ID {agent_id}: Device connected to SSID '{client_ssid}', target hotspot is '{hotspot_target}'")
+            return Response(
+                {"error": f"Access denied: Devices must be connected to hotspot network '{hotspot_target}'."},
+                status=403,
+            )
 
         if not agent_id:
             return Response({"error": "Missing agent_id"}, status=400)

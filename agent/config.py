@@ -30,8 +30,7 @@ CAPTURE_INTERFACE = os.environ.get("NETINSIGHT_AGENT_INTERFACE", None)
 AGENT_ID_FILE = "agent_id.txt"
 
 # SSID restriction setting (if set, agent will only upload telemetry when connected to this Wi-Fi network name)
-
-HOTSPOT_SSID = os.environ.get("NETINSIGHT_HOTSPOT_SSID", None)
+HOTSPOT_SSID = os.environ.get("NETINSIGHT_HOTSPOT_SSID", "SEM3_PROJECT")
 
 # Shared secret sent as the X-Agent-Token header on every request to the central server.
 # Must match NETINSIGHT_AGENT_TOKEN configured on the server for registration/telemetry to succeed
