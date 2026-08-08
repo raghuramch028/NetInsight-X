@@ -24,33 +24,65 @@ def set_current_capacity(val: float) -> None:
     with _CAPACITY_LOCK:
         _CURRENT_CAPACITY = clamped_val
 
+import concurrent.futures
+
+def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0) -> float | None:
+    """Executes a Google M-Lab / NDT7 style multi-stream parallel socket throughput speed test.
+    
+    1. Spawns 4 concurrent TCP streams to saturate link capacity (bypassing single-stream TCP window bottlenecks).
+    2. Measures total bytes downloaded over a 5.0 second steady-state sampling window.
+    3. Computes exact steady-state bandwidth in bits per second (bps).
+    """
+    endpoints = [
+        "https://speed.cloudflare.com/__down?bytes=25000000",
+        "https://speed.cloudflare.com/__down?bytes=25000000",
+        "https://speed.cloudflare.com/__down?bytes=25000000",
+        "https://speed.cloudflare.com/__down?bytes=25000000",
+    ]
+
+    total_bytes_downloaded = 0
+    bytes_lock = threading.Lock()
+    test_start = time.perf_counter()
+
+    def download_stream(url: str):
+        nonlocal total_bytes_downloaded
+        try:
+            resp = requests.get(url, stream=True, timeout=(3, test_duration + 2))
+            if resp.status_code == 200:
+                for chunk in resp.iter_content(chunk_size=65536):
+                    elapsed = time.perf_counter() - test_start
+                    if elapsed > test_duration:
+                        break
+                    with bytes_lock:
+                        total_bytes_downloaded += len(chunk)
+        except Exception as e:
+            logger.debug(f"Speed test stream worker exception: {e}")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(download_stream, endpoints[i % len(endpoints)]) for i in range(num_threads)]
+        concurrent.futures.wait(futures, timeout=test_duration + 2)
+
+    total_elapsed = time.perf_counter() - test_start
+    if total_elapsed > 0 and total_bytes_downloaded > 0:
+        measured_bps = (total_bytes_downloaded * 8) / total_elapsed
+        return measured_bps
+    return None
+
+
 def run_speed_test():
-    """Measures dynamic link capacity using configured external speed tests or local telemetry heuristics."""
+    """Measures dynamic link capacity using Google M-Lab NDT7 style parallel streams or local telemetry heuristics."""
     enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", True)
     if not enable_external:
         _run_telemetry_fallback("External speed test disabled (NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST=False).")
         return
 
-    url = "https://speed.cloudflare.com/__down?bytes=10000000"
     try:
-        start_time = time.perf_counter()
-        response = requests.get(url, stream=True, timeout=(5, 10))
-
-        if response.status_code == 200:
-            total_bytes = 0
-            for chunk in response.iter_content(chunk_size=65536):
-                total_bytes += len(chunk)
-                elapsed = time.perf_counter() - start_time
-                if elapsed >= 8.0:
-                    break
-
-            elapsed = time.perf_counter() - start_time
-            if elapsed > 0 and total_bytes > 0:
-                speed_bps = (total_bytes * 8) / elapsed
-                set_current_capacity(speed_bps)
-                logger.info(f"[DYNAMIC CAPACITY] Speed test completed: {get_current_capacity() / 1e6:.2f} Mbps (Downloaded {total_bytes/1e6:.2f} MB in {elapsed:.2f}s)")
-                return
-        raise Exception(f"HTTP status {response.status_code}")
+        measured_bps = run_google_style_speed_test(num_threads=4, test_duration=5.0)
+        if measured_bps and measured_bps > 0:
+            set_current_capacity(measured_bps)
+            logger.info(f"[DYNAMIC CAPACITY] Google NDT7 multi-stream speed test completed: {get_current_capacity() / 1e6:.2f} Mbps")
+            return
+        raise Exception("Multi-stream speed test returned zero bytes")
     except Exception as e:
         _run_telemetry_fallback(f"Active speed test notice ({e}).")
 
