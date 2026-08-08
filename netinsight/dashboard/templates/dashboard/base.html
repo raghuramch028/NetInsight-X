@@ -21,9 +21,10 @@
             --bg-card: #ffffff;             /* Crisp pure white card surface */
             --bg-control: #efece8;          /* Neutral input/pill container */
             
-            --text-dark: #232021;           /* Warm dark charcoal text */
-            --text-secondary: #706b6d;      /* Muted descriptive text */
-            --text-sidebar: #a8a3a6;        /* Silver gray sidebar text */
+            --text-dark: #1a1819;           /* Deep dark charcoal for 100% contrast */
+            --text-secondary: #4a4648;      /* High contrast slate secondary text */
+            --text-muted: #6b6668;          /* High contrast muted text */
+            --text-sidebar: #c2bdc0;        /* Bright silver gray sidebar text */
             
             --accent-terracotta: #df6e54;   /* Nomi AI signature terracotta coral accent */
             --accent-emerald: #489b78;      /* Soft editorial emerald */
@@ -74,6 +75,11 @@
             letter-spacing: -0.02em;
             font-weight: 600;
         }
+
+        /* Global Text Contrast Overrides */
+        .text-secondary { color: var(--text-secondary) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+        .text-dark { color: var(--text-dark) !important; }
 
         /* -------------------------------------------------------------
            Nomi AI Charcoal Left Sidebar (Stationary Fixed Container)
@@ -187,7 +193,7 @@
         }
 
         /* -------------------------------------------------------------
-           Nomi AI Cream Main Right Canvas (Independent Scrollable Container)
+           Nomi AI Cream Main Right Canvas (Independent Scroll Container)
         ------------------------------------------------------------- */
         .main-content {
             flex: 1;
@@ -291,6 +297,21 @@
             color: var(--accent-rose);
         }
 
+        /* Table Text Contrast Enhancements */
+        .table {
+            color: var(--text-dark) !important;
+        }
+        .table th {
+            color: var(--text-dark) !important;
+            font-weight: 700 !important;
+            border-bottom: 2px solid rgba(0,0,0,0.08) !important;
+        }
+        .table td {
+            color: var(--text-dark) !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid rgba(0,0,0,0.04) !important;
+        }
+
         /* Animated Pointer Virtual Cursor & HUD */
         #demo-virtual-cursor {
             position: fixed;
@@ -367,6 +388,10 @@
         <div id="demo-control-bar">
             <span id="hud-scenario-label" class="font-mono small text-dark fw-bold">SCENARIO DEMO ACTIVE</span>
             <div class="d-flex align-items-center gap-2">
+                <button onclick="toggleScenarioSpeed()" id="btn-scenario-speed" class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 font-mono" style="font-size:0.75rem;" title="Toggle Tour Speed (1x / 2x)">1x</button>
+                <button onclick="toggleScenarioPause()" id="btn-scenario-pause" class="btn btn-sm btn-outline-dark rounded-circle p-2 d-flex align-items-center justify-content-center" title="Pause / Resume Tour">
+                    <i data-lucide="pause" style="width:14px;height:14px;"></i>
+                </button>
                 <button onclick="playGuidedScenarioDemo(currentDemoScenarioId || 1)" class="btn btn-sm btn-outline-dark rounded-circle p-2 d-flex align-items-center justify-content-center" title="Replay Scenario">
                     <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
                 </button>
@@ -435,24 +460,24 @@
 
                     <!-- Presentation Scenarios Sidebar Section -->
                     <li class="mt-4 pt-3 border-top border-secondary">
-                        <span class="text-secondary small font-mono px-3 d-block mb-2 sidebar-section-header" style="font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;">
+                        <span class="text-sidebar small font-mono px-3 d-block mb-2 sidebar-section-header" style="font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;">
                             PRESENTATION DEMOS
                         </span>
                     </li>
                     <li>
-                        <button onclick="if(typeof playGuidedScenarioDemo === 'function') playGuidedScenarioDemo(1);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
+                        <button onclick="triggerPresentationScenario(1);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
                             <i data-lucide="play-circle" style="color: var(--accent-emerald);"></i>
                             <span>▶ Scenario 1: Baseline</span>
                         </button>
                     </li>
                     <li>
-                        <button onclick="if(typeof playGuidedScenarioDemo === 'function') playGuidedScenarioDemo(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
+                        <button onclick="triggerPresentationScenario(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
                             <i data-lucide="shield-alert" style="color: var(--accent-rose);"></i>
                             <span>▶ Scenario 2: DDoS Attack</span>
                         </button>
                     </li>
                     <li>
-                        <button onclick="if(typeof resetGuidedDemo === 'function') resetGuidedDemo();" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
+                        <button onclick="if(typeof resetGuidedDemo === 'function') resetGuidedDemo(); else triggerPresentationScenario(0);" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
                             <i data-lucide="rotate-ccw"></i>
                             <span>↺ Reset Live Stream</span>
                         </button>
@@ -485,6 +510,20 @@
     <!-- Lucide Icons UMD CDN -->
     <script src="https://unpkg.com/lucide@0.263.0"></script>
     <script>
+        function triggerPresentationScenario(scenarioId) {
+            if (scenarioId === 0) {
+                if (typeof resetGuidedDemo === 'function') resetGuidedDemo();
+                else window.location.href = "{% url 'dashboard:index' %}";
+                return;
+            }
+            const isLiveMonitor = window.location.pathname === '/' || window.location.pathname.includes('index');
+            if (isLiveMonitor && typeof playGuidedScenarioDemo === 'function') {
+                playGuidedScenarioDemo(scenarioId);
+            } else {
+                window.location.href = "{% url 'dashboard:index' %}?scenario=" + scenarioId;
+            }
+        }
+
         function toggleSidebar() {
             const container = document.getElementById('app-window-container');
             if (!container) return;
@@ -493,7 +532,6 @@
             localStorage.setItem('netinsight_sidebar_collapsed', isCollapsed ? 'true' : 'false');
         }
 
-        // Restore sidebar state from localStorage
         if (localStorage.getItem('netinsight_sidebar_collapsed') === 'true') {
             const container = document.getElementById('app-window-container');
             if (container) container.classList.add('sidebar-collapsed');

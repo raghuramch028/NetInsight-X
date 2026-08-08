@@ -4,22 +4,22 @@
 
 {% block content %}
 {% if online_agents_count == 0 %}
-<div class="alert alert-warning border-0 small font-mono mb-4" style="background-color: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2) !important;">
+<div class="alert alert-warning border-0 small font-mono mb-4" style="background-color: rgba(217,155,38,0.1); color: var(--accent-amber); border: 1px solid rgba(217,155,38,0.3) !important;">
     <i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;" class="me-2"></i>
     Sandbox Mode: No active edge agents are currently online. These calculated bandwidth limits will take effect dynamically once a device registers and connects.
 </div>
 {% endif %}
 
 {% if mdp_rec %}
-<div class="saas-card mb-4" style="border: 1px solid rgba(59,130,246,0.2) !important; background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.06) 100%);">
+<div class="saas-card mb-4" style="border: 1px dashed rgba(223,110,84,0.3) !important; background-color: rgba(223,110,84,0.04);">
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <div class="small text-secondary font-mono mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em;">MDP DECISION-SUPPORT OVERRIDE ACTIVE</div>
-            <div class="text-white fw-bold">
-                Current Network State: <span class="text-primary">{{ mdp_rec.current_state }}</span> &mdash; 
-                Recommended Policy: <span class="text-warning fw-bold">{{ mdp_rec.recommended_action }}</span>
+            <div class="small text-secondary font-mono mb-1 fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;">MDP DECISION-SUPPORT OVERRIDE ACTIVE</div>
+            <div class="text-dark fw-bold">
+                Current Network State: <span style="color: var(--accent-terracotta);">{{ mdp_rec.current_state }}</span> &mdash; 
+                Recommended Policy: <span style="color: var(--accent-amber);" class="fw-bold">{{ mdp_rec.recommended_action }}</span>
             </div>
-            <p class="text-secondary small mt-1 mb-0" style="font-size: 0.8rem;">
+            <p class="text-secondary small mt-1 mb-0" style="font-size: 0.85rem;">
                 {% if mdp_rec.recommended_action == "Prioritize Critical Services" %}
                     System has automatically doubled <strong>Critical Services priority weight</strong> to guarantee bandwidth constraints.
                 {% elif mdp_rec.recommended_action == "Reroute Traffic" %}
@@ -29,13 +29,13 @@
                 {% endif %}
             </p>
         </div>
-        <span class="saas-badge badge-normal font-mono" style="font-size:0.75rem;"><i data-lucide="cpu" class="d-inline-block me-1" style="width:12px;height:12px;vertical-align:-1px;"></i>MDP Active</span>
+        <span class="pill-badge terracotta font-mono" style="font-size:0.75rem;"><i data-lucide="cpu" class="d-inline-block me-1" style="width:12px;height:12px;vertical-align:-1px;"></i>MDP Active</span>
     </div>
 </div>
 {% endif %}
 
 {% if status != "optimal" %}
-<div class="alert alert-warning border-0 small font-mono mb-4" style="background-color: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2) !important;">
+<div class="alert alert-warning border-0 small font-mono mb-4" style="background-color: rgba(200,90,90,0.1); color: var(--accent-rose); border: 1px solid rgba(200,90,90,0.3) !important;">
     <i data-lucide="alert-octagon" style="width:14px;height:14px;vertical-align:-2px;" class="me-2"></i>
     Infeasible Bounds Warning: Sum of minimum QoS guarantees exceeds link capacity ({{ total_capacity_mbps|floatformat:2 }} Mbps). Computed proportional fallback allocation.
 </div>
@@ -45,19 +45,19 @@
     <!-- Math and LP Formulation Details -->
     <div class="col-lg-8">
         <div class="saas-card h-100">
-            <h4 class="mb-3 text-white font-bold h6">
-                <i data-lucide="variable" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>Linear Programming Model Formulation
+            <h4 class="mb-3 text-dark editorial-serif h6">
+                <i data-lucide="variable" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>Linear Programming Model Formulation
             </h4>
             <p class="text-secondary small">
                 We formulate bandwidth allocation as a constrained Linear Program. The objective is to maximize the utility of allocated bandwidths <em>x</em><sub>i</sub> weighted by traffic priorities <em>c</em><sub>i</sub>, subject to total link capacity <em>B</em> and Class-of-Service QoS constraints:
             </p>
             
-            <div class="p-3 rounded mb-3 font-mono" style="background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle);">
-                <div class="text-primary font-bold">Maximize &nbsp; &sum; c<sub>i</sub> · x<sub>i</sub></div>
+            <div class="p-3 rounded mb-3 font-mono text-dark bg-light border">
+                <div class="font-bold" style="color: var(--accent-terracotta);">Maximize &nbsp; &sum; c<sub>i</sub> · x<sub>i</sub></div>
                 <div class="text-secondary mt-1">Subject to:</div>
-                <div class="ps-3 text-white">&sum; x<sub>i</sub> &le; B &nbsp; (Total Link Capacity)</div>
-                <div class="ps-3 text-white">x<sub>i</sub> &ge; m<sub>i</sub> &nbsp; (Guaranteed Minimum Bandwidth)</div>
-                <div class="ps-3 text-white">x<sub>i</sub> &le; M<sub>i</sub> &nbsp; (Maximum Bandwidth Cap)</div>
+                <div class="ps-3 text-dark fw-bold">&sum; x<sub>i</sub> &le; B &nbsp; (Total Link Capacity)</div>
+                <div class="ps-3 text-dark fw-bold">x<sub>i</sub> &ge; m<sub>i</sub> &nbsp; (Guaranteed Minimum Bandwidth)</div>
+                <div class="ps-3 text-dark fw-bold">x<sub>i</sub> &le; M<sub>i</sub> &nbsp; (Maximum Bandwidth Cap)</div>
             </div>
             
             <p class="text-secondary small mb-0">
@@ -69,65 +69,65 @@
     <!-- Optimization Parameter Controls Form -->
     <div class="col-lg-4">
         <div class="saas-card h-100">
-            <h4 class="mb-4 text-white font-bold h6">
-                <i data-lucide="settings-2" class="d-inline-block me-2 text-warning" style="width:16px;height:16px;vertical-align:-2px;"></i>QoS Allocator Parameters
+            <h4 class="mb-4 text-dark editorial-serif h6">
+                <i data-lucide="settings-2" class="d-inline-block me-2" style="color: var(--accent-amber); width:16px;height:16px;vertical-align:-2px;"></i>QoS Allocator Parameters
             </h4>
             
             <form method="post" action="{% url 'dashboard:optimization' %}">
                 {% csrf_token %}
                 <div class="mb-3">
-                    <label class="form-label text-secondary small font-mono">Link Capacity (Mbps)</label>
-                    <input type="number" step="0.1" class="form-control bg-dark border-secondary text-white font-mono" name="capacity" value="{{ total_capacity_mbps|floatformat:1 }}" style="border-color: var(--border-subtle) !important;" required>
+                    <label class="form-label text-dark small font-mono fw-bold">Link Capacity (Mbps)</label>
+                    <input type="number" step="0.1" class="form-control bg-light border text-dark font-mono fw-bold" name="capacity" value="{{ total_capacity_mbps|floatformat:1 }}" required>
                 </div>
                 
-                <div class="text-secondary small font-mono mb-2">Class Weights & Mins (Mbps)</div>
+                <div class="text-dark small font-mono mb-2 fw-bold">Class Weights & Mins (Mbps)</div>
                 <div class="d-flex flex-column gap-2 mb-4">
                     <div class="row g-2">
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Web Priority</span>
-                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="priorities" value="{{ input_priorities.0 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-light border text-dark font-mono" name="priorities" value="{{ input_priorities.0 }}" required>
                         </div>
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Web Min (Mbps)</span>
-                            <input type="number" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="min_bounds" value="{{ input_min_bounds.0 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" class="form-control form-control-sm bg-light border text-dark font-mono" name="min_bounds" value="{{ input_min_bounds.0 }}" required>
                             <input type="hidden" name="max_bounds" value="{{ input_max_bounds.0 }}">
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Stream Priority</span>
-                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="priorities" value="{{ input_priorities.1 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-light border text-dark font-mono" name="priorities" value="{{ input_priorities.1 }}" required>
                         </div>
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Stream Min (Mbps)</span>
-                            <input type="number" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="min_bounds" value="{{ input_min_bounds.1 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" class="form-control form-control-sm bg-light border text-dark font-mono" name="min_bounds" value="{{ input_min_bounds.1 }}" required>
                             <input type="hidden" name="max_bounds" value="{{ input_max_bounds.1 }}">
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">File Priority</span>
-                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="priorities" value="{{ input_priorities.2 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-light border text-dark font-mono" name="priorities" value="{{ input_priorities.2 }}" required>
                         </div>
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">File Min (Mbps)</span>
-                            <input type="number" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="min_bounds" value="{{ input_min_bounds.2 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" class="form-control form-control-sm bg-light border text-dark font-mono" name="min_bounds" value="{{ input_min_bounds.2 }}" required>
                             <input type="hidden" name="max_bounds" value="{{ input_max_bounds.2 }}">
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Critical Priority</span>
-                            <input type="number" step="0.1" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="priorities" value="{{ input_priorities.3 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" step="0.1" class="form-control form-control-sm bg-light border text-dark font-mono" name="priorities" value="{{ input_priorities.3 }}" required>
                         </div>
                         <div class="col-6">
                             <span class="small text-secondary" style="font-size:0.75rem;">Crit Min (Mbps)</span>
-                            <input type="number" class="form-control form-control-sm bg-dark border-secondary text-white font-mono" name="min_bounds" value="{{ input_min_bounds.3 }}" style="border-color: var(--border-subtle) !important;" required>
+                            <input type="number" class="form-control form-control-sm bg-light border text-dark font-mono" name="min_bounds" value="{{ input_min_bounds.3 }}" required>
                             <input type="hidden" name="max_bounds" value="{{ input_max_bounds.3 }}">
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 font-mono" style="font-size:0.85rem;"><i data-lucide="refresh-cw" class="d-inline-block me-1" style="width:14px;height:14px;vertical-align:-2px;"></i>RUN SOLVER</button>
+                <button type="submit" class="btn btn-terracotta w-100 font-mono" style="font-size:0.85rem;"><i data-lucide="refresh-cw" class="d-inline-block me-1" style="width:14px;height:14px;vertical-align:-2px;"></i>RUN SOLVER</button>
             </form>
         </div>
     </div>
@@ -138,39 +138,39 @@
     <div class="col-lg-6">
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="m-0 text-white font-bold h6">
-                    <i data-lucide="check-circle" class="d-inline-block me-2 text-success" style="width:16px;height:16px;vertical-align:-2px;"></i>Optimization Allocations
+                <h4 class="m-0 text-dark editorial-serif h6">
+                    <i data-lucide="check-circle" class="d-inline-block me-2" style="color: var(--accent-emerald); width:16px;height:16px;vertical-align:-2px;"></i>Optimization Allocations
                 </h4>
                 {% if status == 'optimal' %}
-                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">Optimal</span>
+                    <span class="pill-badge emerald font-mono" style="font-size:0.7rem;">Optimal</span>
                 {% else %}
-                    <span class="saas-badge badge-congested font-mono" style="font-size:0.7rem;">Fallback</span>
+                    <span class="pill-badge terracotta font-mono" style="font-size:0.7rem;">Fallback</span>
                 {% endif %}
             </div>
             
             <div class="table-responsive">
-                <table class="table custom-table">
+                <table class="table align-middle">
                     <thead>
                         <tr>
-                            <th>Class</th>
-                            <th>Priority</th>
-                            <th>Min Req</th>
-                            <th>Allocated</th>
-                            <th>Share Ratio</th>
+                            <th class="text-dark fw-bold">Class</th>
+                            <th class="text-dark fw-bold">Priority</th>
+                            <th class="text-dark fw-bold">Min Req</th>
+                            <th class="text-dark fw-bold">Allocated</th>
+                            <th class="text-dark fw-bold">Share Ratio</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in mapped_allocations %}
                             <tr>
-                                <td class="text-white fw-bold">{{ item.class }}</td>
-                                <td class="font-mono text-center">{{ item.priority }}</td>
-                                <td class="font-mono">{{ item.min_req|floatformat:1 }} Mbps</td>
-                                <td class="font-mono text-info fw-bold">{{ item.allocated|floatformat:2 }} Mbps</td>
+                                <td class="text-dark fw-bold">{{ item.class }}</td>
+                                <td class="font-mono text-center text-dark">{{ item.priority }}</td>
+                                <td class="font-mono text-dark">{{ item.min_req|floatformat:1 }} Mbps</td>
+                                <td class="font-mono fw-bold" style="color: var(--accent-terracotta);">{{ item.allocated|floatformat:2 }} Mbps</td>
                                 <td class="d-flex align-items-center gap-2">
-                                    <div class="progress flex-grow-1" style="height: 8px; background-color: var(--bg-primary);">
-                                        <div class="progress-bar bg-info" role="progressbar" style="width: {% widthratio item.allocated total_capacity_mbps 100 %}%;"></div>
+                                    <div class="progress flex-grow-1" style="height: 8px; background-color: var(--bg-control); border-radius:10px;">
+                                        <div class="progress-bar" role="progressbar" style="width: {% widthratio item.allocated total_capacity_mbps 100 %}%; background-color: var(--accent-terracotta);"></div>
                                     </div>
-                                    <span class="font-mono small text-secondary" style="min-width: 36px;">{% widthratio item.allocated total_capacity_mbps 100 %}%</span>
+                                    <span class="font-mono small text-dark fw-bold" style="min-width: 36px;">{% widthratio item.allocated total_capacity_mbps 100 %}%</span>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -178,9 +178,9 @@
                 </table>
             </div>
             
-            <div class="mt-4 p-3 rounded d-flex justify-content-between align-items-center font-mono" style="background-color: rgba(59,130,246,0.04); border: 1px solid rgba(59,130,246,0.15);">
-                <span class="text-secondary small">Objective Utility Matrix Output:</span>
-                <span class="font-bold text-primary fs-5">{{ utility|floatformat:2 }}</span>
+            <div class="mt-4 p-3 rounded d-flex justify-content-between align-items-center font-mono bg-light border">
+                <span class="text-secondary small fw-bold">Objective Utility Matrix Output:</span>
+                <span class="font-bold fs-5" style="color: var(--accent-terracotta);">{{ utility|floatformat:2 }}</span>
             </div>
         </div>
     </div>
@@ -189,13 +189,13 @@
     <div class="col-lg-6">
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="m-0 text-white font-bold h6">
-                    <i data-lucide="shield-check" class="d-inline-block me-2 text-primary" style="width:16px;height:16px;vertical-align:-2px;"></i>KKT Optimality Verification
+                <h4 class="m-0 text-dark editorial-serif h6">
+                    <i data-lucide="shield-check" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>KKT Optimality Verification
                 </h4>
                 {% if kkt.is_optimal %}
-                    <span class="saas-badge badge-normal font-mono" style="font-size:0.7rem;">Verified</span>
+                    <span class="pill-badge emerald font-mono" style="font-size:0.7rem;">Verified</span>
                 {% else %}
-                    <span class="saas-badge badge-failure font-mono" style="font-size:0.7rem;">Failed</span>
+                    <span class="pill-badge rose font-mono" style="font-size:0.7rem;">Failed</span>
                 {% endif %}
             </div>
             
@@ -205,9 +205,9 @@
             
             <ul class="list-group list-group-flush bg-transparent">
                 <!-- Condition 1 -->
-                <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">1. Primal Feasibility <span class="font-mono text-info small">(G·x<sup>*</sup> &minus; h &le; 0)</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">1. Primal Feasibility <span class="font-mono small" style="color: var(--accent-terracotta);">(G·x<sup>*</sup> &minus; h &le; 0)</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if constraints are satisfied within bounds</div>
                     </div>
                     <div class="text-end font-mono">
@@ -221,9 +221,9 @@
                 </li>
                 
                 <!-- Condition 2 -->
-                <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">2. Dual Feasibility <span class="font-mono text-info small">>(&lambda;<sup>*</sup> &ge; 0)</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">2. Dual Feasibility <span class="font-mono small" style="color: var(--accent-terracotta);">&lambda;<sup>*</sup> &ge; 0</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrange multipliers are non-negative</div>
                     </div>
                     <div class="text-end font-mono">
@@ -237,9 +237,9 @@
                 </li>
 
                 <!-- Condition 3 -->
-                <li class="list-group-item bg-transparent py-3 px-0 border-secondary text-white d-flex justify-content-between align-items-center" style="border-color: var(--border-subtle) !important;">
+                <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">3. Complementary Slackness <span class="font-mono text-info small">>(&lambda;<sup>*</sup> · (G·x<sup>*</sup> &minus; h) = 0)</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">3. Complementary Slackness <span class="font-mono small" style="color: var(--accent-terracotta);">&lambda;<sup>*</sup> · (G·x<sup>*</sup> &minus; h) = 0</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if inactive constraints map to zero multipliers</div>
                     </div>
                     <div class="text-end font-mono">
@@ -253,9 +253,9 @@
                 </li>
 
                 <!-- Condition 4 -->
-                <li class="list-group-item bg-transparent py-3 px-0 border-0 text-white d-flex justify-content-between align-items-center">
+                <li class="list-group-item bg-transparent py-3 px-0 border-0 text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold" style="font-size: 0.9rem;">4. Stationarity <span class="font-mono text-info small">>(&minus;c + G<sup>T</sup>&lambda;<sup>*</sup> = 0)</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">4. Stationarity <span class="font-mono small" style="color: var(--accent-terracotta);">&minus;c + G<sup>T</sup>&lambda;<sup>*</sup> = 0</span></div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrangian gradient vanishes at optimum</div>
                     </div>
                     <div class="text-end font-mono">

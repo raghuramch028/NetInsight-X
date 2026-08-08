@@ -35,8 +35,8 @@
             <span id="demo-stat-os" class="text-primary fw-bold">NetQosPolicy</span>
         </div>
     </div>
-    <div id="demo-ai-reasoning" class="small text-secondary font-mono mt-1 p-2 rounded bg-light" style="font-size: 0.8rem; border: 1px dashed rgba(0,0,0,0.1);">
-        <i data-lucide="sparkles" class="me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i>AI Reasoning: Scenario executing baseline network traffic parameters.
+    <div id="demo-ai-reasoning" class="small text-dark font-mono mt-1 p-2 rounded bg-light" style="font-size: 0.82rem; border: 1px dashed rgba(0,0,0,0.15);">
+        <i data-lucide="sparkles" class="me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i><strong>AI Reasoning:</strong> Scenario executing baseline network traffic parameters.
     </div>
 </div>
 
@@ -75,7 +75,7 @@
             <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" class="me-3 mt-1 flex-shrink-0 {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="width:20px;height:20px;"></i>
             <div>
                 <strong class="d-block {% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}" style="font-size:0.95rem;">[{{ alert.severity }}] {{ alert.title }} ({{ alert.module }})</strong>
-                <span class="d-block small mt-1 text-secondary" style="font-size:0.85rem;">{{ alert.message }}</span>
+                <span class="d-block small mt-1 text-dark fw-500" style="font-size:0.88rem; color: #232021 !important;">{{ alert.message }}</span>
                 <span class="d-block small mt-2 font-bold text-dark" style="font-size:0.85rem;"><i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;"></i>Recommended Action: {{ alert.action }}</span>
             </div>
         </div>
@@ -102,10 +102,10 @@
             </div>
 
             <!-- Dynamic MDP Advisory Action -->
-            <div class="p-3 rounded mb-4" style="background-color: rgba(223, 110, 84, 0.06); border: 1px dashed rgba(223, 110, 84, 0.25);">
+            <div class="p-3 rounded mb-4" style="background-color: rgba(223, 110, 84, 0.08); border: 1px dashed rgba(223, 110, 84, 0.3);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="small text-secondary font-mono d-block">MDP Decision Advisory Policy</span>
+                        <span class="small text-secondary font-mono d-block fw-bold">MDP Decision Advisory Policy</span>
                         <span id="mdp-action" class="font-bold text-dark fs-6 mt-1 d-inline-block">
                             <i data-lucide="info" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>{{ mdp_rec.recommended_action }}
                         </span>
@@ -123,7 +123,7 @@
                             {{ latest_metrics.throughput_mbps|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">Mbps</span>
                         </h2>
                     </div>
-                    <span class="small text-secondary font-mono" id="card-capacity">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
+                    <span class="small text-secondary font-mono fw-bold" id="card-capacity">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
                 </div>
                 
                 <div class="progress" style="height: 8px; background-color: var(--bg-control); border-radius: 10px;">
@@ -139,33 +139,33 @@
             <!-- Latency Card -->
             <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-secondary small font-mono">Avg Latency (RTT)</span>
+                    <span class="text-secondary small font-mono fw-bold">Avg Latency (RTT)</span>
                     <h3 id="card-latency" class="font-bold text-dark m-0 mt-1" style="font-size: 1.6rem;">
                         {{ latest_metrics.latency_ms|floatformat:0|default:"0" }} <span class="fs-6 text-secondary fw-normal">ms</span>
                     </h3>
                 </div>
                 <div class="p-3 rounded-circle bg-light border">
-                    <i data-lucide="clock" class="text-secondary" style="width:20px;height:20px;"></i>
+                    <i data-lucide="clock" class="text-dark" style="width:20px;height:20px;"></i>
                 </div>
             </div>
 
             <!-- Packet Loss Card -->
             <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-secondary small font-mono">Packet Loss Rate</span>
+                    <span class="text-secondary small font-mono fw-bold">Packet Loss Rate</span>
                     <h3 id="card-loss" class="font-bold text-dark m-0 mt-1" style="font-size: 1.6rem;">
                         {{ latest_metrics.packet_loss|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">%</span>
                     </h3>
                 </div>
                 <div class="p-3 rounded-circle bg-light border">
-                    <i data-lucide="alert-triangle" class="text-secondary" style="width:20px;height:20px;"></i>
+                    <i data-lucide="alert-triangle" class="text-dark" style="width:20px;height:20px;"></i>
                 </div>
             </div>
 
             <!-- Packet Rate Card -->
             <div class="saas-card flex-grow-1 p-3 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-secondary small font-mono">Traffic Packet Rate</span>
+                    <span class="text-secondary small font-mono fw-bold">Traffic Packet Rate</span>
                     <h3 id="card-packet-rate" class="font-bold text-dark m-0 mt-1" style="font-size: 1.6rem;">
                         {{ latest_metrics.packet_rate|floatformat:1|default:"0.0" }} <span class="fs-6 text-secondary fw-normal">pps</span>
                     </h3>
@@ -184,7 +184,7 @@
     <div class="col-lg-8">
         <div class="saas-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="editorial-serif h5 m-0">Live Throughput & Link Utilization Stream</h4>
+                <h4 class="editorial-serif h5 m-0 text-dark">Live Throughput & Link Utilization Stream</h4>
                 <span class="pill-badge terracotta font-mono" style="font-size: 0.75rem;">60s ROLLING WINDOW</span>
             </div>
             <div style="height: 280px; position: relative;">
@@ -197,7 +197,7 @@
     <div class="col-lg-4">
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="editorial-serif h5 m-0">Active Multi-Agent Network Topology</h4>
+                <h4 class="editorial-serif h5 m-0 text-dark">Active Multi-Agent Network Topology</h4>
                 <span class="pill-badge emerald font-mono" style="font-size:0.75rem;">LIVE TOPOLOGY</span>
             </div>
             <div id="topology-container" style="height: 280px; background-color: #ffffff; border-radius: 14px; border: 1px solid rgba(0,0,0,0.06);"></div>
@@ -209,7 +209,7 @@
 <div class="saas-card mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h4 class="editorial-serif h5 m-0">Live Packet Stream Aggregations</h4>
+            <h4 class="editorial-serif h5 m-0 text-dark">Live Packet Stream Aggregations</h4>
             <span class="text-secondary small font-mono">Non-blocking scapy packet header capture stream</span>
         </div>
         <span class="pill-badge terracotta font-mono" id="packet-count-badge">0</span>
@@ -217,17 +217,17 @@
     
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size:0.88rem;">
-            <thead class="bg-light text-secondary font-mono small">
+            <thead class="bg-light text-dark font-mono small">
                 <tr>
-                    <th>PROTOCOL</th>
-                    <th>AGENT</th>
-                    <th>SRC IP</th>
-                    <th>DST IP</th>
-                    <th>SRC PORT</th>
-                    <th>DST PORT</th>
-                    <th>SIZE (BYTES)</th>
-                    <th>TTL</th>
-                    <th>TIME</th>
+                    <th class="text-dark fw-bold">PROTOCOL</th>
+                    <th class="text-dark fw-bold">AGENT</th>
+                    <th class="text-dark fw-bold">SRC IP</th>
+                    <th class="text-dark fw-bold">DST IP</th>
+                    <th class="text-dark fw-bold">SRC PORT</th>
+                    <th class="text-dark fw-bold">DST PORT</th>
+                    <th class="text-dark fw-bold">SIZE (BYTES)</th>
+                    <th class="text-dark fw-bold">TTL</th>
+                    <th class="text-dark fw-bold">TIME</th>
                 </tr>
             </thead>
             <tbody id="packet-tbody">
@@ -249,9 +249,12 @@
     // Initialize PyVis Topology Graph
     const container = document.getElementById('topology-container');
     const nodesDataSet = new vis.DataSet([
-        { id: 'hotspot', label: 'Central Node / Server\n(192.168.1.1)', color: '#df6e54', shape: 'dot', size: 24, font: { color: '#232021', face: 'Inter' } }
+        { id: 'hotspot', label: 'Central Node / Server\n(192.168.1.1)', color: '#df6e54', shape: 'dot', size: 24, font: { color: '#1a1819', face: 'Inter', size: 12 } },
+        { id: 'host-01', label: 'Demo-Host-01\n(192.168.1.100)', color: '#489b78', shape: 'dot', size: 16, font: { color: '#1a1819', face: 'Inter', size: 11 } }
     ]);
-    const edgesDataSet = new vis.DataSet([]);
+    const edgesDataSet = new vis.DataSet([
+        { from: 'host-01', to: 'hotspot', color: { color: '#df6e54' } }
+    ]);
     const dataNetwork = { nodes: nodesDataSet, edges: edgesDataSet };
     const optionsNetwork = {
         nodes: { borderWidth: 2, shadow: true },
@@ -302,12 +305,12 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: '#232021', font: { size: 11, family: 'Inter' } } }
+                legend: { labels: { color: '#1a1819', font: { size: 11, family: 'Inter', weight: 'bold' } } }
             },
             scales: {
-                x: { grid: { display: false }, ticks: { color: '#706b6d', font: { size: 10, family: 'JetBrains Mono' } } },
-                y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#df6e54', font: { size: 10, family: 'JetBrains Mono' } } },
-                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#489b78', font: { size: 10, family: 'JetBrains Mono' } }, min: 0, max: 100 }
+                x: { grid: { display: false }, ticks: { color: '#4a4648', font: { size: 10, family: 'JetBrains Mono' } } },
+                y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#df6e54', font: { size: 10, family: 'JetBrains Mono', weight: 'bold' } } },
+                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#489b78', font: { size: 10, family: 'JetBrains Mono', weight: 'bold' } }, min: 0, max: 100 }
             }
         }
     });
@@ -316,6 +319,9 @@
     const refreshInterval = parseInt("{{ dashboard_refresh_interval|default:1000 }}");
     let isDemoPaused = false;
     let currentDemoScenarioId = 1;
+    let activeDemoToken = 0;
+    let demoSpeedMultiplier = 1.0;
+    let isDemoStepPaused = false;
 
     function updateDashboard() {
         if (isDemoPaused) return;
@@ -354,7 +360,7 @@
             cursor.style.transform = `translate3d(${rect.left + rect.width / 2}px, ${rect.top + rect.height / 3}px, 0)`;
             if (tooltip) tooltip.innerText = tooltipText;
             targetEl.classList.add('widget-spotlight-active');
-        }, 300);
+        }, 250);
     }
 
     function stopVirtualCursor() {
@@ -363,14 +369,32 @@
         document.querySelectorAll('.widget-spotlight-active').forEach(el => el.classList.remove('widget-spotlight-active'));
     }
 
+    function toggleScenarioPause() {
+        isDemoStepPaused = !isDemoStepPaused;
+        const btn = document.getElementById('btn-scenario-pause');
+        if (btn) {
+            btn.innerHTML = isDemoStepPaused ? `<i data-lucide="play" style="width:14px;height:14px;"></i>` : `<i data-lucide="pause" style="width:14px;height:14px;"></i>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    }
+
+    function toggleScenarioSpeed() {
+        demoSpeedMultiplier = demoSpeedMultiplier === 1.0 ? 2.0 : 1.0;
+        const btn = document.getElementById('btn-scenario-speed');
+        if (btn) btn.innerText = `${demoSpeedMultiplier}x`;
+    }
+
     async function playGuidedScenarioDemo(scenarioId) {
         isDemoPaused = true;
         currentDemoScenarioId = scenarioId;
+        const currentToken = ++activeDemoToken; // Increment token to immediately cancel any prior running tour loops!
 
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'block';
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'flex';
+        const hudLabel = document.getElementById('hud-scenario-label');
+        if (hudLabel) hudLabel.innerText = `SCENARIO ${scenarioId} SIMULATION TOUR`;
 
         try {
             const response = await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
@@ -379,46 +403,85 @@
                 body: JSON.stringify({ scenario_id: scenarioId })
             });
             const resData = await response.json();
-            if (!resData.scenario) return;
+            if (!resData.scenario || activeDemoToken !== currentToken) return;
 
             const s = resData.scenario;
             document.getElementById('demo-scenario-title').innerText = s.scenario_title;
             const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
             document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
 
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const waitDelay = async (ms) => {
+                let waited = 0;
+                const effectiveMs = ms / demoSpeedMultiplier;
+                while (waited < effectiveMs) {
+                    if (activeDemoToken !== currentToken) return false;
+                    if (!isDemoStepPaused) waited += 100;
+                    await new Promise(r => setTimeout(r, 100));
+                }
+                return activeDemoToken === currentToken;
+            };
 
-            // Step 1: Telemetry Card
+            const isDDoS = s.threat_type === 'DDoS';
+
+            // Step 1: Telemetry Ramp-up Simulation
             const cardTp = document.getElementById('card-throughput') || document.querySelector('.saas-card');
-            moveVirtualCursorToElement(cardTp, `1. Telemetry Ingest: Throughput = ${s.throughput_mbps.toFixed(1)} Mbps, Packet Rate = ${s.packet_rate} pps`);
-            document.getElementById('demo-stat-tp').innerText = `${s.throughput_mbps.toFixed(1)} Mbps`;
-            document.getElementById('card-throughput').innerHTML = `${s.throughput_mbps.toFixed(2)} <span class="fs-6 text-secondary fw-normal">Mbps</span>`;
-            document.getElementById('card-packet-rate').innerHTML = `${s.packet_rate.toFixed(1)} <span class="fs-6 text-secondary fw-normal">pps</span>`;
-            await sleep(2800);
+            moveVirtualCursorToElement(cardTp, `1. Telemetry Ingest: Throughput = ${s.throughput_mbps.toFixed(1)} Mbps, Rate = ${s.packet_rate} pps`);
+            
+            // Ramp animation
+            const targetTp = s.throughput_mbps;
+            const targetPr = s.packet_rate;
+            for (let i = 1; i <= 5; i++) {
+                if (activeDemoToken !== currentToken) return;
+                const currentTp = (targetTp * (i / 5)).toFixed(2);
+                const currentPr = (targetPr * (i / 5)).toFixed(1);
+                document.getElementById('demo-stat-tp').innerText = `${currentTp} Mbps`;
+                document.getElementById('card-throughput').innerHTML = `${currentTp} <span class="fs-6 text-secondary fw-normal">Mbps</span>`;
+                document.getElementById('card-packet-rate').innerHTML = `${currentPr} <span class="fs-6 text-secondary fw-normal">pps</span>`;
+                await new Promise(r => setTimeout(r, 150));
+            }
+            if (!await waitDelay(2400)) return;
 
-            // Step 2: Threat AI
+            // Step 2: DeepSeek AI Threat Classifier
             const threatEl = document.getElementById('demo-stat-threat');
             moveVirtualCursorToElement(threatEl, `2. DeepSeek AI / IDS: Threat = ${s.threat_type}`);
             threatEl.innerText = s.threat_type;
-            threatEl.className = s.threat_type === 'Normal' ? 'text-success fw-bold' : 'text-danger fw-bold';
-            document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i>AI Reasoning: ${s.reasoning}`;
+            threatEl.className = isDDoS ? 'text-danger fw-bold' : 'text-success fw-bold';
+            document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i><strong>AI Reasoning:</strong> ${s.reasoning}`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            await sleep(3000);
+            if (!await waitDelay(2800)) return;
 
-            // Step 3: HMM State
+            // Step 3: HMM State Viterbi Decoding & Topology Visualizer Update
             const hmmEl = document.getElementById('demo-stat-hmm');
             moveVirtualCursorToElement(hmmEl, `3. HMM Viterbi State Decoding: Network State = ${s.hmm_state}`);
             hmmEl.innerText = s.hmm_state;
+            const stateBadge = document.getElementById('card-state-badge');
             document.getElementById('card-state-label').innerText = s.hmm_state;
-            await sleep(2800);
+            if (stateBadge) {
+                stateBadge.className = `pill-badge ${isDDoS ? 'rose' : 'emerald'}`;
+            }
 
-            // Step 4: MDP Policy
+            // Update Topology Node Colors
+            if (nodesDataSet) {
+                nodesDataSet.update({
+                    id: 'hotspot',
+                    color: isDDoS ? '#c85a5a' : '#df6e54',
+                    label: isDDoS ? 'Central Node / Server\n(UNDER DDOS ATTACK)' : 'Central Node / Server\n(192.168.1.1)'
+                });
+            }
+            if (!await waitDelay(2600)) return;
+
+            // Step 4: MDP Bellman Optimization
             const mdpEl = document.getElementById('demo-stat-mdp');
-            moveVirtualCursorToElement(mdpEl, `4. MDP Bellman Optimization: Action = ${s.mdp_action}`);
+            const mdpBox = document.getElementById('mdp-action');
+            moveVirtualCursorToElement(mdpBox || mdpEl, `4. MDP Bellman Optimization: Action = ${s.mdp_action}`);
             mdpEl.innerText = s.mdp_action;
-            await sleep(2800);
+            if (mdpBox) {
+                mdpBox.innerHTML = `<i data-lucide="shield-check" class="me-2 align-text-top" style="color: var(--accent-terracotta); width:16px;height:16px;"></i>${s.mdp_action}`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            if (!await waitDelay(2600)) return;
 
-            // Step 5: CVXOPT LP & Chart
+            // Step 5: CVXOPT LP Solver & Live Chart Push
             const chartCanvas = document.getElementById('liveThroughputChart');
             moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `5. CVXOPT LP Solver: KKT Verified Solution (Max Viol: ${kktViol})`);
             document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
@@ -433,13 +496,30 @@
                 }
                 window.liveChart.update();
             }
-            await sleep(3000);
+            if (!await waitDelay(2800)) return;
 
-            // Step 6: OS Kernel Enforcement
-            const osEl = document.getElementById('demo-stat-os');
-            moveVirtualCursorToElement(osEl, `6. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Services Cap`);
-            osEl.innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
-            await sleep(3200);
+            // Step 6: OS Kernel Enforcement & Packet Stream Population
+            const pktTable = document.getElementById('packet-tbody');
+            moveVirtualCursorToElement(pktTable || document.getElementById('demo-stat-os'), `6. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Cap`);
+            document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
+
+            if (pktTable) {
+                pktTable.innerHTML = `
+                    <tr>
+                        <td><span class="pill-badge ${isDDoS ? 'rose' : 'terracotta'} font-mono" style="font-size:0.75rem;">${isDDoS ? 'UDP-FLOOD' : 'TCP'}</span></td>
+                        <td class="font-bold text-dark small">Demo-Host-01</td>
+                        <td class="font-mono text-dark fw-bold">192.168.1.100</td>
+                        <td class="font-mono text-dark fw-bold">${isDDoS ? '10.0.0.1 (Target)' : '104.16.123.96'}</td>
+                        <td class="font-mono text-dark">60001</td>
+                        <td class="font-mono text-dark">${isDDoS ? '5004' : '443'}</td>
+                        <td class="font-mono text-dark fw-bold">${isDDoS ? '1200' : '600'}</td>
+                        <td class="font-mono text-dark">64</td>
+                        <td class="font-mono text-secondary">${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+                document.getElementById('packet-count-badge').innerText = '1 (Simulation)';
+            }
+            if (!await waitDelay(3000)) return;
 
             stopVirtualCursor();
         } catch(err) {
@@ -448,14 +528,35 @@
     }
 
     function resetGuidedDemo() {
+        activeDemoToken++; // Cancel any active async tour delays
         isDemoPaused = false;
+        isDemoStepPaused = false;
         stopVirtualCursor();
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'none';
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'none';
+
+        if (nodesDataSet) {
+            nodesDataSet.update({
+                id: 'hotspot',
+                color: '#df6e54',
+                label: 'Central Node / Server\n(192.168.1.1)'
+            });
+        }
         updateDashboard();
     }
+
+    // Auto-check scenario query string on page load
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('scenario')) {
+            const scenarioId = parseInt(params.get('scenario'));
+            setTimeout(() => {
+                playGuidedScenarioDemo(scenarioId);
+            }, 500);
+        }
+    });
 
     setInterval(() => {
         if (!isDemoPaused) updateDashboard();
