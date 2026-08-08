@@ -19,9 +19,13 @@ def _pid_is_running(pid: int) -> bool:
         import psutil
         return psutil.pid_exists(pid)
     except Exception:
-        # psutil unavailable or errored — fail safe by assuming the owner is still alive,
-        # so we don't accidentally double-start the task it owns.
+        pass
+
+    try:
+        os.kill(pid, 0)
         return True
+    except (OSError, AttributeError):
+        return False
 
 
 def acquire_singleton_lock(name: str) -> bool:

@@ -1,25 +1,29 @@
 import uuid
 
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 from agent.logger import logger
 
 
 def get_mac_address() -> str:
     """Discovers the physical MAC address of the active network interface."""
-    try:
-        # Loop through network interfaces
-        for _interface_name, addrs in psutil.net_if_addrs().items():
-            for addr in addrs:
-                # AF_LINK represents MAC addresses on Windows/macOS
-                # AF_PACKET represents MAC addresses on Linux
-                if addr.family in (psutil.AF_LINK, getattr(psutil, 'AF_PACKET', -1)):
-                    mac = addr.address
-                    # Filter out loopback interfaces
-                    if mac and mac != "00:00:00:00:00:00" and not mac.startswith("00:00:00:00"):
-                        return mac.replace("-", ":").lower()
-    except Exception as e:
-        logger.error(f"Error extracting MAC address from interfaces list: {e}")
+    if psutil is not None:
+        try:
+            # Loop through network interfaces
+            for _interface_name, addrs in psutil.net_if_addrs().items():
+                for addr in addrs:
+                    # AF_LINK represents MAC addresses on Windows/macOS
+                    # AF_PACKET represents MAC addresses on Linux
+                    if addr.family in (psutil.AF_LINK, getattr(psutil, 'AF_PACKET', -1)):
+                        mac = addr.address
+                        # Filter out loopback interfaces
+                        if mac and mac != "00:00:00:00:00:00" and not mac.startswith("00:00:00:00"):
+                            return mac.replace("-", ":").lower()
+        except Exception as e:
+            logger.error(f"Error extracting MAC address from interfaces list: {e}")
 
     # Fallback to standard library uuid node discovery
     try:
