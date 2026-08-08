@@ -21,33 +21,54 @@ def apply_windows_qos_caps(enforced_qos: dict) -> bool:
         }
 
         success_count = 0
+        permission_denied = False
+
         for policy_name, mbps in policies.items():
             bits_per_sec = int(mbps * 1_000_000)
 
             # Check if policy exists
-            check_cmd = ["powershell", "-Command", f"Get-NetQosPolicy -Name '{policy_name}' -ErrorAction Stop"]
-            res = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            check_cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", f"Get-NetQosPolicy -Name '{policy_name}' -ErrorAction Stop"]
+            res = subprocess.run(check_cmd, capture_output=True, text=True)
+
             if res.returncode != 0:
+                if "PermissionDenied" in res.stderr or "Access to a CIM resource was not available" in res.stderr:
+                    permission_denied = True
+                    break
+
                 create_cmd = [
                     "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy", "Bypass",
                     "-Command",
-                    f"New-NetQosPolicy -Name '{policy_name}' -IPProtocolMatchCondition Both -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction SilentlyContinue"
+                    f"New-NetQosPolicy -Name '{policy_name}' -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction Stop"
                 ]
-                r = subprocess.run(create_cmd, capture_output=True, timeout=5)
+                r = subprocess.run(create_cmd, capture_output=True, text=True)
                 if r.returncode == 0:
                     success_count += 1
+                elif "PermissionDenied" in r.stderr or "Access to a CIM resource was not available" in r.stderr:
+                    permission_denied = True
+                    break
             else:
                 set_cmd = [
                     "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy", "Bypass",
                     "-Command",
-                    f"Set-NetQosPolicy -Name '{policy_name}' -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction SilentlyContinue"
+                    f"Set-NetQosPolicy -Name '{policy_name}' -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction Stop"
                 ]
-                r = subprocess.run(set_cmd, capture_output=True, timeout=5)
+                r = subprocess.run(set_cmd, capture_output=True, text=True)
                 if r.returncode == 0:
                     success_count += 1
 
-        logger.info(f"Successfully configured {success_count} Windows NetQosPolicy rules.")
-        return True
+        if permission_denied:
+            logger.warning(
+                "[SHAPER] Windows NetQosPolicy requires Administrator privileges. "
+                "To enable OS-level kernel rate capping, run python agent/main.py from an Administrator PowerShell terminal."
+            )
+            return False
+        else:
+            logger.info(f"[SHAPER] Successfully configured {success_count} active Windows NetQosPolicy OS Kernel rules.")
+            return True
     except Exception as e:
         logger.warning(f"Windows NetQosPolicy execution notice: {e}")
         return False
