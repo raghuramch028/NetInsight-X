@@ -363,6 +363,10 @@ class TestConcurrency(TransactionTestCase):
             futures = [executor.submit(send_telemetry, i) for i in range(5)]
             results = [f.result() for f in futures]
 
+        from netinsight.analytics.telemetry_handler import drain_telemetry_pool
+        drain_telemetry_pool(timeout=5.0)
+
         for res in results:
             self.assertEqual(res.status_code, 200)
+
 

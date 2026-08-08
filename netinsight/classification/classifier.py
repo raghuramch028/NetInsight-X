@@ -121,6 +121,7 @@ class TrafficClassifier:
         rule_label = self._classify_rule_based(packet_dict)
         if rule_label != "Normal":
             self.last_engine_used = "Heuristics"
+            self.last_llm_reasoning = f"Heuristic IDS Rule Triggered: Detected {rule_label} traffic pattern."
             return rule_label
         try:
             if hasattr(self.llm_classifier, 'classify_packet'):

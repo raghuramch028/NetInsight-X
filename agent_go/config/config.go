@@ -2,20 +2,18 @@ package config
 
 import (
 	"os"
+	"strings"
 )
 
 var (
 	ServerURL            = "http://localhost:8000"
-	RegistrationEndpoint = ServerURL + "/api/v1/agents/register"
-	TelemetryEndpoint    = ServerURL + "/api/v1/agents/telemetry"
+	RegistrationEndpoint = "http://localhost:8000/api/v1/agents/register"
+	TelemetryEndpoint    = "http://localhost:8000/api/v1/agents/telemetry"
 	TelemetryInterval    = 3 // seconds
 	AgentIDFile         = "agent_id.txt"
 	CaptureInterface    = "" // Leave empty to auto-select primary interface
 	HotspotSSID         = getEnv("HOTSPOT_SSID", "SEM3_PROJECT")
-	// AgentToken is sent as the X-Agent-Token header on every request. Must match
-	// NETINSIGHT_AGENT_TOKEN configured on the server for the server to accept this agent's traffic
-	// once token enforcement is enabled.
-	AgentToken = getEnv("NETINSIGHT_AGENT_TOKEN", "")
+	AgentToken          = getEnv("NETINSIGHT_AGENT_TOKEN", "")
 )
 
 func getEnv(key, fallback string) string {
@@ -25,16 +23,18 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// SetServerURL updates ServerURL and derives the registration/telemetry endpoints from it.
-// Used both by the SERVER_URL env var and by the -server CLI flag.
+// SetServerURL updates ServerURL and re-derives registration and telemetry endpoints.
 func SetServerURL(url string) {
-	ServerURL = url
+	cleanURL := strings.TrimRight(url, "/")
+	ServerURL = cleanURL
 	RegistrationEndpoint = ServerURL + "/api/v1/agents/register"
 	TelemetryEndpoint = ServerURL + "/api/v1/agents/telemetry"
 }
 
 func init() {
 	if val := os.Getenv("SERVER_URL"); val != "" {
+		SetServerURL(val)
+	} else if val := os.Getenv("NETINSIGHT_SERVER_URL"); val != "" {
 		SetServerURL(val)
 	}
 }

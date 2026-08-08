@@ -309,3 +309,14 @@ def start_periodic_pruner() -> None:
     t = threading.Thread(target=_periodic_pruning_loop, daemon=True, name="DBPruner")
     t.start()
     logger.info(f"Started periodic DB pruning background thread (interval={_PRUNE_INTERVAL_SECONDS:.0f}s).")
+
+
+def drain_telemetry_pool(timeout: float = 5.0) -> None:
+    """Waits for all currently in-flight async telemetry worker tasks to complete."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if _telemetry_inflight_semaphore._value == _MAX_INFLIGHT_TELEMETRY_TASKS:
+            break
+        time.sleep(0.05)
+    close_old_connections()
+
