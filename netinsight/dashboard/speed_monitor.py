@@ -26,14 +26,38 @@ def set_current_capacity(val: float) -> None:
 
 import concurrent.futures
 
+def get_google_mlab_endpoints() -> list[str]:
+    """Queries official Google M-Lab NDT7 locate service to discover nearest Google Speed Test servers."""
+    try:
+        r = requests.get("https://locate.measurementlab.net/v2/nearest/ndt/ndt7", timeout=4.0)
+        if r.status_code == 200:
+            data = r.json()
+            results = data.get("results", [])
+            urls = []
+            for item in results:
+                m_urls = item.get("urls", {})
+                dl_url = m_urls.get("wss:///ndt/v7/download") or m_urls.get("ws:///ndt/v7/download")
+                if dl_url:
+                    http_url = dl_url.replace("wss://", "https://").replace("ws://", "http://")
+                    urls.append(http_url)
+            if urls:
+                logger.info(f"[GOOGLE M-LAB] Discovered {len(urls)} official Google Speed Test servers: {results[0].get('machine')}")
+                return urls
+    except Exception as e:
+        logger.debug(f"Google M-Lab locator notice ({e}). Using Cloudflare/Fast CDN fallback endpoints.")
+    return []
+
+
 def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0) -> float | None:
-    """Executes a Google M-Lab / NDT7 style multi-stream parallel socket throughput speed test.
+    """Executes a Google M-Lab / NDT7 multi-stream parallel socket throughput speed test.
     
-    1. Spawns 4 concurrent TCP streams to saturate link capacity (bypassing single-stream TCP window bottlenecks).
-    2. Measures total bytes downloaded over a 5.0 second steady-state sampling window.
-    3. Computes exact steady-state bandwidth in bits per second (bps).
+    1. Queries official Google M-Lab server infrastructure.
+    2. Spawns 4 concurrent TCP streams to saturate link capacity.
+    3. Measures total bytes downloaded over a 5.0 second steady-state sampling window.
+    4. Computes exact steady-state bandwidth in bits per second (bps).
     """
-    endpoints = [
+    google_urls = get_google_mlab_endpoints()
+    endpoints = google_urls if google_urls else [
         "https://speed.cloudflare.com/__down?bytes=25000000",
         "https://speed.cloudflare.com/__down?bytes=25000000",
         "https://speed.cloudflare.com/__down?bytes=25000000",
@@ -70,7 +94,7 @@ def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0
 
 
 def run_speed_test():
-    """Measures dynamic link capacity using Google M-Lab NDT7 style parallel streams or local telemetry heuristics."""
+    """Measures dynamic link capacity using Google M-Lab NDT7 parallel streams or local telemetry heuristics."""
     enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", True)
     if not enable_external:
         _run_telemetry_fallback("External speed test disabled (NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST=False).")
@@ -80,7 +104,7 @@ def run_speed_test():
         measured_bps = run_google_style_speed_test(num_threads=4, test_duration=5.0)
         if measured_bps and measured_bps > 0:
             set_current_capacity(measured_bps)
-            logger.info(f"[DYNAMIC CAPACITY] Google NDT7 multi-stream speed test completed: {get_current_capacity() / 1e6:.2f} Mbps")
+            logger.info(f"[DYNAMIC CAPACITY] Google M-Lab NDT7 multi-stream speed test completed: {get_current_capacity() / 1e6:.2f} Mbps")
             return
         raise Exception("Multi-stream speed test returned zero bytes")
     except Exception as e:
