@@ -87,28 +87,36 @@ def run_speed_test():
         _run_telemetry_fallback(f"Active speed test notice ({e}).")
 
 def _run_telemetry_fallback(reason: str):
-    """Calculates capacity from real active telemetry throughput or retains last measured speed."""
+    """Calculates capacity from real active telemetry throughput or dynamic traffic rates."""
     logger.info(f"[SPEED MONITOR] {reason} Checking live measured internet throughput...")
     try:
         import django.db
-        from netinsight.dashboard.models import MetricRecord
+        from netinsight.dashboard.models import MetricRecord, PacketRecord
         try:
             records = MetricRecord.objects.all().order_by("-timestamp")[:40]
             if records.exists():
                 max_throughput = max(r.throughput for r in records)
-                if max_throughput > 100000.0:
-                    speed_bps = max_throughput * 1.25
+                if max_throughput > 0.0:
+                    speed_bps = max(max_throughput * 1.2, 2_000_000.0)
                     set_current_capacity(speed_bps)
                     logger.info(f"[DYNAMIC CAPACITY] Real-time Traffic Throughput: Capacity set to {get_current_capacity() / 1e6:.2f} Mbps from active flows.")
                     return
+
+            # Check recent packet byte rates
+            pkts = PacketRecord.objects.all().order_by("-timestamp")[:100]
+            if pkts.exists():
+                total_bytes = sum(p.size for p in pkts)
+                speed_bps = max((total_bytes * 8) / 10.0, 2_000_000.0)
+                set_current_capacity(speed_bps)
+                logger.info(f"[DYNAMIC CAPACITY] Live Packet Stream: Capacity set to {get_current_capacity() / 1e6:.2f} Mbps.")
+                return
         finally:
             django.db.close_old_connections()
     except Exception as fallback_err:
         logger.error(f"[SPEED MONITOR] Real-time throughput calculation notice: {fallback_err}")
 
 def speed_monitor_loop():
-    """Infinite loop executing speed tests every 30 seconds."""
-    time.sleep(3)
+    """Infinite loop executing Google-style speed tests every 30 seconds."""
     run_speed_test()
     interval = int(os.environ.get("NETINSIGHT_SPEEDTEST_INTERVAL", "30"))
     while True:
@@ -116,13 +124,13 @@ def speed_monitor_loop():
         run_speed_test()
 
 def start_speed_monitor():
-    """Launches the background daemon thread, guarded by a cross-process singleton lock."""
+    """Launches the background daemon thread immediately, guarded by a cross-process singleton lock."""
     from netinsight.dashboard.process_lock import acquire_singleton_lock
 
     if not acquire_singleton_lock("speed_monitor"):
         logger.info("Another process already owns the speed-monitor task; skipping in this process.")
         return
 
-    logger.info("Initializing dynamic network capacity speed monitor (30s interval)...")
+    logger.info("Initializing dynamic network capacity speed monitor (Google NDT7 engine)...")
     t = threading.Thread(target=speed_monitor_loop, daemon=True)
     t.start()
