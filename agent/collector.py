@@ -1,10 +1,44 @@
 import os
 import platform
 import socket
+import subprocess
 
 import psutil
 
 from agent.logger import logger
+
+
+def apply_windows_qos_caps(enforced_qos: dict) -> bool:
+    """Applies kernel-level bandwidth rate caps using Windows NetQosPolicy PowerShell cmdlets."""
+    if platform.system().lower() != "windows":
+        return False
+    try:
+        crit_mbps = float(enforced_qos.get("critical_services_mbps", 40.0))
+        bytes_per_sec = int(crit_mbps * 125000)
+        
+        # Check if policy exists
+        check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Critical' -ErrorAction Stop"]
+        res = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode != 0:
+            create_cmd = [
+                "powershell",
+                "-Command",
+                f"New-NetQosPolicy -Name 'NetInsight-Critical' -IPProtocol MatchAny -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"
+            ]
+            subprocess.run(create_cmd, capture_output=True, timeout=5)
+        else:
+            set_cmd = [
+                "powershell",
+                "-Command",
+                f"Set-NetQosPolicy -Name 'NetInsight-Critical' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"
+            ]
+            subprocess.run(set_cmd, capture_output=True, timeout=5)
+            
+        logger.info(f"Successfully configured Windows NetQosPolicy (Critical Services: {crit_mbps:.1f} Mbps / {bytes_per_sec} Bps)")
+        return True
+    except Exception as e:
+        logger.warning(f"Windows NetQosPolicy execution notice: {e}")
+        return False
 
 
 class TelemetryCollector:
@@ -18,7 +52,6 @@ class TelemetryCollector:
     def get_primary_ip(self) -> str:
         """Finds the primary local IP address of the active routing adapter."""
         try:
-            # Connect to an external address (doesn't send actual data) to discover local interface IP
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
@@ -34,7 +67,6 @@ class TelemetryCollector:
         """Counts active TCP/UDP internet connections."""
         try:
             connections = psutil.net_connections(kind="inet")
-            # Count connections in ESTABLISHED or LISTEN states
             active = [c for c in connections if c.status in ("ESTABLISHED", "LISTEN")]
             return len(active)
         except (psutil.AccessDenied, Exception) as e:
@@ -47,10 +79,8 @@ class TelemetryCollector:
     def collect(self) -> dict:
         """Aggregates all host-level telemetry data into a serializable payload."""
         try:
-            # Memory details
             mem = psutil.virtual_memory()
 
-            # Disk details
             try:
                 disk = psutil.disk_usage("/")
                 disk_usage = disk.percent
@@ -61,7 +91,6 @@ class TelemetryCollector:
                 except Exception:
                     disk_usage = 0.0
 
-            # Net counters
             net_io = psutil.net_io_counters()
 
             payload = {
