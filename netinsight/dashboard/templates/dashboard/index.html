@@ -657,7 +657,7 @@
     }
 
     let isDemoPaused = false;
-    let demoStepTimeout = null;
+    let currentDemoScenarioId = 1;
 
     function moveVirtualCursorToElement(targetEl, tooltipText) {
         const cursor = document.getElementById('demo-virtual-cursor');
@@ -667,15 +667,20 @@
         // Remove spotlight from all previous elements
         document.querySelectorAll('.widget-spotlight-active').forEach(el => el.classList.remove('widget-spotlight-active'));
 
-        const rect = targetEl.getBoundingClientRect();
-        const targetX = rect.left + rect.width / 2;
-        const targetY = rect.top + rect.height / 3;
+        // Smooth scroll element into view if outside viewport
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        cursor.style.display = 'block';
-        cursor.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
-        if (tooltip) tooltip.innerText = tooltipText;
+        setTimeout(() => {
+            const rect = targetEl.getBoundingClientRect();
+            const targetX = rect.left + rect.width / 2;
+            const targetY = rect.top + rect.height / 3;
 
-        targetEl.classList.add('widget-spotlight-active');
+            cursor.style.display = 'block';
+            cursor.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+            if (tooltip) tooltip.innerText = tooltipText;
+
+            targetEl.classList.add('widget-spotlight-active');
+        }, 300);
     }
 
     function stopVirtualCursor() {
@@ -686,10 +691,16 @@
 
     async function playGuidedScenarioDemo(scenarioId) {
         isDemoPaused = true; // PAUSE REAL-TIME BACKGROUND POLLING & SSE CALLS!
-        if (demoStepTimeout) clearTimeout(demoStepTimeout);
+        currentDemoScenarioId = scenarioId;
 
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'block';
+
+        const hud = document.getElementById('demo-control-bar');
+        if (hud) hud.style.display = 'flex';
+
+        const hudLabel = document.getElementById('hud-scenario-label');
+        if (hudLabel) hudLabel.innerText = `SCENARIO ${scenarioId} DEMO TOUR ACTIVE`;
 
         try {
             const response = await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
@@ -707,43 +718,96 @@
 
             const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-            // Step 1: Telemetry Ingestion Card
+            // Step 1: Telemetry Ingestion Card (Primary Throughput)
             const cardTp = document.getElementById('card-throughput') || document.querySelector('.saas-card');
             moveVirtualCursorToElement(cardTp, `1. Telemetry Ingest: Throughput = ${s.throughput_mbps.toFixed(1)} Mbps, Packet Rate = ${s.packet_rate} pps`);
             document.getElementById('demo-stat-tp').innerText = `${s.throughput_mbps.toFixed(1)} Mbps`;
-            await sleep(2600);
+            
+            // Push values into primary dashboard cards
+            const tpEl = document.getElementById('card-throughput');
+            if (tpEl) tpEl.childNodes[0].nodeValue = s.throughput_mbps.toFixed(2) + " ";
+            const prEl = document.getElementById('card-packet-rate');
+            if (prEl) prEl.childNodes[0].nodeValue = s.packet_rate.toFixed(1) + " ";
+            const capEl = document.getElementById('card-capacity');
+            if (capEl) capEl.innerText = `Capacity: ${s.link_capacity_mbps.toFixed(1)} Mbps`;
+            const progEl = document.getElementById('capacity-progress');
+            if (progEl) progEl.style.width = Math.min(100, (s.throughput_mbps / s.link_capacity_mbps) * 100) + '%';
+            await sleep(2800);
 
-            // Step 2: Threat & DeepSeek AI
+            // Step 2: Threat Classifier & DeepSeek AI
             const threatEl = document.getElementById('demo-stat-threat');
             moveVirtualCursorToElement(threatEl, `2. DeepSeek AI / IDS: Threat = ${s.threat_type}`);
             threatEl.innerText = s.threat_type;
             threatEl.className = s.threat_type === 'Normal' ? 'text-success fw-bold' : 'text-danger fw-bold';
             document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="text-purple me-1 align-text-top" style="width:14px;height:14px;"></i>AI Reasoning: ${s.reasoning}`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            await sleep(3000);
+
+            // Step 3: HMM State Pill & Health Badge
+            const hmmEl = document.getElementById('demo-stat-hmm');
+            const mainBadge = document.getElementById('card-state-badge');
+            moveVirtualCursorToElement(mainBadge || hmmEl, `3. HMM Viterbi State Decoding: Network State = ${s.hmm_state}`);
+            hmmEl.innerText = s.hmm_state;
+            
+            const stateLabel = document.getElementById('card-state-label');
+            if (stateLabel) stateLabel.innerText = s.hmm_state;
+            if (mainBadge) {
+                mainBadge.className = `saas-badge ${s.hmm_state === 'Normal' ? 'badge-normal' : (s.hmm_state === 'Under Attack' ? 'badge-failure' : 'badge-congested')}`;
+            }
             await sleep(2800);
 
-            // Step 3: HMM State Pill
-            const hmmEl = document.getElementById('demo-stat-hmm');
-            moveVirtualCursorToElement(hmmEl, `3. HMM Viterbi Decoder: Network State = ${s.hmm_state}`);
-            hmmEl.innerText = s.hmm_state;
-            await sleep(2600);
-
-            // Step 4: MDP Policy Selection
+            // Step 4: MDP Policy Advisory Banner
             const mdpEl = document.getElementById('demo-stat-mdp');
-            moveVirtualCursorToElement(mdpEl, `4. MDP Bellman Value Iteration: Action = ${s.mdp_action}`);
+            const mdpBox = document.getElementById('mdp-action');
+            moveVirtualCursorToElement(mdpBox || mdpEl, `4. MDP Bellman Value Iteration: Action = ${s.mdp_action}`);
             mdpEl.innerText = s.mdp_action;
-            await sleep(2600);
+            if (mdpBox) {
+                mdpBox.innerHTML = `<i data-lucide="shield-check" class="text-warning me-2 align-text-top" style="width:16px;height:16px;"></i>${s.mdp_action}`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            await sleep(2800);
 
-            // Step 5: CVXOPT LP Solver & KKT Verification
-            const lpEl = document.getElementById('demo-stat-lp');
-            moveVirtualCursorToElement(lpEl, `5. CVXOPT LP Solver: KKT Verified Optimal Solution (Max Viol: ${kktViol})`);
-            lpEl.innerText = s.lp_status.toUpperCase();
-            await sleep(2600);
+            // Step 5: Live Chart Push & LP Solver
+            const chartCanvas = document.getElementById('liveThroughputChart');
+            moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `5. CVXOPT LP Solver: KKT Verified Optimal Solution (Max Viol: ${kktViol})`);
+            document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
+            
+            // Push scenario throughput directly into Chart.js
+            if (window.liveChart) {
+                const nowStr = new Date(s.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                window.liveChart.data.labels.push(nowStr);
+                window.liveChart.data.datasets[0].data.push(s.throughput_mbps);
+                if (window.liveChart.data.labels.length > 20) {
+                    window.liveChart.data.labels.shift();
+                    window.liveChart.data.datasets[0].data.shift();
+                }
+                window.liveChart.update();
+            }
+            await sleep(3000);
 
-            // Step 6: OS Kernel Enforcement
-            const osEl = document.getElementById('demo-stat-os');
-            moveVirtualCursorToElement(osEl, `6. Windows NetQosPolicy: Kernel-Level Traffic Limit Enforced (${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical)`);
-            osEl.innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
+            // Step 6: Packet Table & OS Kernel Enforcement
+            const pktTable = document.getElementById('packet-tbody');
+            moveVirtualCursorToElement(pktTable || document.getElementById('demo-stat-os'), `6. Windows NetQosPolicy: Enforced ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps Critical Services Cap`);
+            document.getElementById('demo-stat-os').innerText = s.os_enforcement_applied ? 'NetQos (Active)' : 'Enforced (Sim)';
+
+            // Populate Packet Stream Table
+            if (pktTable) {
+                const isDDoS = s.threat_type === 'DDoS';
+                pktTable.innerHTML = `
+                    <tr>
+                        <td><span class="badge ${isDDoS ? 'bg-danger' : 'bg-primary'} text-white font-mono" style="font-size:0.7rem;">${isDDoS ? 'UDP-FLOOD' : 'TCP'}</span></td>
+                        <td class="font-bold text-white small" style="font-size:0.8rem;">Demo-Host-01</td>
+                        <td class="font-mono">192.168.1.100</td>
+                        <td class="font-mono">${isDDoS ? '10.0.0.1' : '104.16.123.96'}</td>
+                        <td class="font-mono">60001</td>
+                        <td class="font-mono">${isDDoS ? '5004' : '443'}</td>
+                        <td class="font-mono">${isDDoS ? '1200' : '600'}</td>
+                        <td class="font-mono">64</td>
+                        <td class="font-mono text-secondary">${new Date(s.timestamp * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+                document.getElementById('packet-count-badge').innerText = '1 (Live Demo)';
+            }
             await sleep(3200);
 
             stopVirtualCursor();
@@ -757,6 +821,8 @@
         stopVirtualCursor();
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'none';
+        const hud = document.getElementById('demo-control-bar');
+        if (hud) hud.style.display = 'none';
         updateDashboard();
     }
 
@@ -791,5 +857,6 @@
     updateDashboard();
 </script>
 {% endblock %}
+
 
 
