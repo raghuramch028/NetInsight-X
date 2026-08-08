@@ -52,7 +52,7 @@
         </div>
     </div>
 
-    <!-- Presenter Script Box (What to say out loud!) -->
+    <!-- Presenter Script Box -->
     <div class="p-2 px-3 rounded bg-dark border border-secondary font-mono small text-light" style="font-size:0.83rem; line-height: 1.45;">
         <i data-lucide="mic" class="me-2 align-text-top text-warning" style="width:14px;height:14px;"></i>
         <strong class="text-warning">PRESENTER SCRIPT:</strong> <span id="hud-presenter-script">Initializing guided tour step...</span>
@@ -171,7 +171,7 @@
                             {{ latest_metrics.throughput_mbps|floatformat:2|default:"0.00" }} <span class="fs-6 text-secondary fw-normal">Mbps</span>
                         </h2>
                     </div>
-                    <span class="small text-secondary font-mono fw-bold" id="card-capacity">Capacity: {{ link_capacity_mbps|floatformat:1 }} Mbps</span>
+                    <span class="small text-secondary font-mono fw-bold" id="card-capacity">Capacity: {{ link_capacity_mbps|floatformat:1|default:"100.0" }} Mbps</span>
                 </div>
                 
                 <div class="progress" style="height: 8px; background-color: var(--bg-control); border-radius: 10px;">
@@ -331,15 +331,12 @@
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
 <script>
-    // Initialize PyVis Topology Graph
+    // Initialize PyVis Topology Graph dynamically (Starts with ONLY the Central Server node)
     const container = document.getElementById('topology-container');
     const nodesDataSet = new vis.DataSet([
-        { id: 'hotspot', label: 'Central Node / Server\n(192.168.1.1)', color: '#df6e54', shape: 'dot', size: 24, font: { color: '#1a1819', face: 'Inter', size: 12 } },
-        { id: 'host-01', label: 'Demo-Host-01\n(192.168.1.100)', color: '#489b78', shape: 'dot', size: 16, font: { color: '#1a1819', face: 'Inter', size: 11 } }
+        { id: 'hotspot', label: 'Central Node / Server\n(192.168.1.1)', color: '#df6e54', shape: 'dot', size: 24, font: { color: '#1a1819', face: 'Inter', size: 12 } }
     ]);
-    const edgesDataSet = new vis.DataSet([
-        { from: 'host-01', to: 'hotspot', color: { color: '#df6e54' } }
-    ]);
+    const edgesDataSet = new vis.DataSet([]);
     const dataNetwork = { nodes: nodesDataSet, edges: edgesDataSet };
     const optionsNetwork = {
         nodes: { borderWidth: 2, shadow: true },
@@ -418,6 +415,32 @@
                 document.getElementById('card-packet-rate').innerHTML = `${data.packet_rate.toFixed(1)} <span class="fs-6 text-secondary fw-normal">pps</span>`;
                 document.getElementById('card-latency').innerHTML = `${(data.latency * 1000).toFixed(0)} <span class="fs-6 text-secondary fw-normal">ms</span>`;
                 document.getElementById('card-loss').innerHTML = `${data.packet_loss.toFixed(2)} <span class="fs-6 text-secondary fw-normal">%</span>`;
+
+                const capMbps = data.link_capacity_mbps ? parseFloat(data.link_capacity_mbps).toFixed(1) : "100.0";
+                const capEl = document.getElementById('card-capacity');
+                if (capEl) capEl.innerText = `Capacity: ${capMbps} Mbps`;
+                const progressEl = document.getElementById('capacity-progress');
+                if (progressEl) progressEl.style.width = `${Math.min(100, Math.max(0, data.bandwidth_util || 0))}%`;
+
+                // Dynamic Topology Graph Agent Node Updates
+                if (nodesDataSet) {
+                    if (data.agents && data.agents.length > 0) {
+                        data.agents.forEach(ag => {
+                            const nodeLabel = `${ag.hostname}\n(${ag.ip_address || 'Agent'})`;
+                            nodesDataSet.update({ id: ag.mac_address, label: nodeLabel, color: '#489b78', shape: 'dot', size: 16, font: { color: '#1a1819', face: 'Inter', size: 11 } });
+                            edgesDataSet.update({ id: `edge-${ag.mac_address}`, from: ag.mac_address, to: 'hotspot', color: { color: '#df6e54' } });
+                        });
+                    } else {
+                        // Remove all non-server agent nodes when no edge devices are connected
+                        const currentIds = nodesDataSet.getIds();
+                        currentIds.forEach(id => {
+                            if (id !== 'hotspot') {
+                                nodesDataSet.remove(id);
+                                try { edgesDataSet.remove(`edge-${id}`); } catch(e) {}
+                            }
+                        });
+                    }
+                }
 
                 throughputData.shift();
                 throughputData.push(parseFloat(mbps));
@@ -579,6 +602,13 @@
                     color: isDDoS ? '#c85a5a' : (s.hmm_state === 'Congested' ? '#d99b26' : '#df6e54'),
                     label: isDDoS ? 'Central Node / Server\n(UNDER DDOS ATTACK)' : 'Central Node / Server\n(192.168.1.1)'
                 });
+                nodesDataSet.update({
+                    id: 'host-01',
+                    color: isDDoS ? '#c85a5a' : '#489b78',
+                    label: isDDoS ? 'Demo-Host-01\n(192.168.1.100)' : 'Demo-Host-01\n(192.168.1.100)',
+                    shape: 'dot', size: 16, font: { color: '#1a1819', face: 'Inter', size: 11 }
+                });
+                edgesDataSet.update({ id: 'edge-host-01', from: 'host-01', to: 'hotspot', color: { color: '#df6e54' } });
             }
             if (!await waitDelay(3200)) return;
 
@@ -681,12 +711,19 @@
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'none';
 
-        // 4. Reset topology node colors
+        // 4. Reset topology node colors and remove non-server demo nodes
         if (nodesDataSet) {
             nodesDataSet.update({
                 id: 'hotspot',
                 color: '#df6e54',
                 label: 'Central Node / Server\n(192.168.1.1)'
+            });
+            const currentIds = nodesDataSet.getIds();
+            currentIds.forEach(id => {
+                if (id !== 'hotspot') {
+                    nodesDataSet.remove(id);
+                    try { edgesDataSet.remove(`edge-${id}`); } catch(e) {}
+                }
             });
         }
 
