@@ -118,22 +118,8 @@
             gap: 12px;
         }
 
-        .sidebar-brand-icon {
-            width: 32px;
-            height: 32px;
-            background-color: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff !important;
-            flex-shrink: 0;
-        }
-
         /* ALL SIDEBAR ICONS ARE CLEAN WHITE */
         .sidebar svg,
-        .sidebar-brand-icon svg,
         .nav-item-link svg {
             color: #ffffff !important;
             stroke: #ffffff !important;
@@ -412,9 +398,6 @@
                 <!-- Brand Header with Toggle Sidebar Button -->
                 <div class="sidebar-brand-wrapper">
                     <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
-                        <div class="sidebar-brand-icon">
-                            <i data-lucide="activity" style="width:16px;height:16px;"></i>
-                        </div>
                         <span class="brand-text">NetInsight-X</span>
                     </a>
                     <button id="toggle-sidebar-btn" onclick="toggleSidebar()" class="btn p-1 border-0 bg-transparent text-sidebar" title="Toggle Sidebar Menu">
