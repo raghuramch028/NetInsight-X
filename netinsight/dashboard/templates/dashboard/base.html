@@ -465,20 +465,14 @@
                     <h2 class="page-header-title">{% block page_title %}Dashboard{% endblock %}</h2>
                 </div>
 
-                <!-- Top-Right Header Alerts Button (Replaces removed time widget) -->
+                <!-- Top-Right Header Alerts Icon Button (Clean icon only, no text) -->
                 <div class="position-relative">
-                    <button id="alerts-toggle-btn" onclick="toggleAlertsDrawer()" class="btn bg-white border shadow-sm rounded-4 p-2 px-3 d-flex align-items-center gap-2 position-relative" style="transition: var(--transition-smooth);" title="Toggle System Alerts">
-                        <div class="position-relative d-inline-block">
-                            <i data-lucide="bell" style="width: 20px; height: 20px; color: var(--text-dark);"></i>
-                            {% if dse_alerts_count > 0 %}
-                                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                                    <span class="visually-hidden">Active Alerts</span>
-                                </span>
-                            {% endif %}
-                        </div>
-                        <span class="font-mono text-dark fw-bold small">Alerts</span>
+                    <button id="alerts-toggle-btn" onclick="toggleAlertsDrawer()" class="btn bg-white border shadow-sm rounded-circle p-2 d-flex align-items-center justify-content-center position-relative" style="width: 44px; height: 44px; transition: var(--transition-smooth);" title="Toggle System Alerts">
+                        <i data-lucide="bell" style="width: 20px; height: 20px; color: var(--text-dark);"></i>
                         {% if dse_alerts_count > 0 %}
-                            <span class="badge bg-danger rounded-pill font-mono" style="font-size: 0.72rem;">{{ dse_alerts_count }}</span>
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                <span class="visually-hidden">Active Alerts</span>
+                            </span>
                         {% endif %}
                     </button>
                 </div>
