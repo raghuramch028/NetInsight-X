@@ -140,49 +140,77 @@ class BandwidthOptimizer:
             return self._fallback_allocation(c_priorities, m_min, M_max, B_capacity, "failure")
 
     def _fallback_allocation(self, priorities: list[float], min_bounds: list[float], max_bounds: list[float], total_capacity: float, status: str) -> dict:
-        """Computes a proportional fallback allocation when solver fails or is infeasible.
+        """Computes a priority-weight driven fallback allocation when total capacity is below minimum bounds.
 
-        Allocation Heuristic:
-            If total capacity is enough for minimum QoS requirements:
-                Allocate minimum bounds first.
-                Distribute remaining capacity proportionally based on priorities and upper bounds.
-            Else (extremely congested):
-                Scale down minimum bounds proportionally so that the sum matches total capacity.
+        Corrected Starvation Fallback Algorithm:
+            - Eliminates baseline footprint distortion (w_i * m_i).
+            - When total_capacity < sum(m_min), allocates bandwidth strictly proportional to priority weights (w_i / sum(w_k)).
+              This ensures Critical Services (w=3.0) receives 1.5x the bandwidth of Streaming (w=2.0) during link starvation.
+            - Performs Work-Conserving Elastic Redistribution so no available capacity is wasted up to upper bounds M_i.
         """
-        logger.info(f"Computing proportional fallback allocation (Status: {status})...")
+        logger.info(f"Computing priority-weighted fallback allocation (Status: {status})...")
         n_classes = len(priorities)
-        # Pad or slice min_bounds and max_bounds to ensure len == n_classes and prevent IndexError
         m_min = list(min_bounds)[:n_classes] + [0.0] * max(0, n_classes - len(min_bounds))
         M_max = list(max_bounds)[:n_classes] + [total_capacity] * max(0, n_classes - len(max_bounds))
 
         allocations = [0.0] * n_classes
         sum_min = sum(m_min)
+        total_priority = sum(priorities)
 
         if sum_min <= total_capacity:
-            # Phase 1: Allocate minimums
+            # Phase 1: Allocate guaranteed minimums
             allocations = [float(m) for m in m_min]
             remaining = total_capacity - sum_min
 
-            # Phase 2: Allocate remaining proportionally to weights, respecting max limits
-            total_priority = sum(priorities)
+            # Phase 2: Work-Conserving Allocation of remaining capacity proportionally to priority weights
             if total_priority > 0 and remaining > 0:
                 for i in range(n_classes):
                     weight_ratio = priorities[i] / total_priority
                     added = weight_ratio * remaining
-                    max_addition = M_max[i] - allocations[i]
+                    max_addition = max(0.0, M_max[i] - allocations[i])
                     allocations[i] += min(added, max_addition)
+
+            # Phase 3: Work-Conserving Elastic Redistribution for unused slack capacity
+            used_capacity = sum(allocations)
+            slack = total_capacity - used_capacity
+            if slack > 1e-3:
+                # Distribute remaining slack to uncapped classes in order of priority weight
+                for i in sorted(range(n_classes), key=lambda idx: priorities[idx], reverse=True):
+                    headroom = max(0.0, M_max[i] - allocations[i])
+                    if headroom > 0:
+                        add_slack = min(slack, headroom)
+                        allocations[i] += add_slack
+                        slack -= add_slack
+                        if slack <= 1e-3:
+                            break
         else:
-            # Scale down minimum requirements proportionally to fit total capacity
-            if sum_min > 0:
-                scale = total_capacity / sum_min
-                allocations = [float(m * scale) for m in m_min]
+            # Starvation Fallback (sum_min > total_capacity):
+            # Scale capacity strictly proportional to Priority Weights w_i (w_i / sum(w_k))
+            if total_priority > 0:
+                for i in range(n_classes):
+                    allocations[i] = total_capacity * (priorities[i] / total_priority)
             else:
-                # All minimums are zero; distribute capacity equally
+                # Equal division if all priorities are 0
                 allocations = [total_capacity / max(n_classes, 1)] * n_classes
+
+            # Enforce upper bound caps M_i
+            allocations = [min(allocations[i], float(M_max[i])) for i in range(n_classes)]
+
+            # Reallocate any leftover capacity from capped classes to remaining priority classes
+            used = sum(allocations)
+            slack = total_capacity - used
+            if slack > 1e-3:
+                for i in sorted(range(n_classes), key=lambda idx: priorities[idx], reverse=True):
+                    headroom = max(0.0, M_max[i] - allocations[i])
+                    if headroom > 0:
+                        add_slack = min(slack, headroom)
+                        allocations[i] += add_slack
+                        slack -= add_slack
+                        if slack <= 1e-3:
+                            break
 
         utility = float(sum(p * x for p, x in zip(priorities, allocations, strict=False)))
 
-        # Build mock empty KKT report since solver failed
         kkt_dummy = {
             "is_optimal": False,
             "primal_feasible": False,

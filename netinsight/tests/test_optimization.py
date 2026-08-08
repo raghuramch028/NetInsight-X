@@ -121,5 +121,31 @@ class TestBandwidthOptimization(unittest.TestCase):
 
         self.assertTrue(result["status"].startswith("fallback"))
 
+    def test_pure_priority_weight_starvation_fallback(self):
+        """Verifies that during severe starvation fallback (sum_min > capacity), allocations
+        scale strictly proportional to Priority Weights w_i (w_i / sum(w_k)), ensuring
+        Critical Services (w=3.0) receives 1.5x the bandwidth of Streaming (w=2.0) despite baseline footprint."""
+        priorities = [1.0, 2.0, 0.5, 3.0]  # Web, Streaming, File, Critical
+        min_bounds = [5e6, 15e6, 2e6, 10e6]  # Sum = 32 Mbps
+        max_bounds = [40e6, 60e6, 30e6, 50e6]
+        capacity = 8.5e6  # 8.5 Mbps starvation link
+
+        result = self.optimizer.solve_allocation(
+            priorities=priorities,
+            min_bounds=min_bounds,
+            max_bounds=max_bounds,
+            total_capacity=capacity
+        )
+
+        self.assertTrue(result["status"].startswith("fallback"))
+        alloc = result["allocations"]
+        self.assertAlmostEqual(sum(alloc), capacity, places=2)
+
+        # Critical Services (index 3, weight 3.0) must be 1.5x Streaming (index 1, weight 2.0)
+        self.assertAlmostEqual(alloc[3] / alloc[1], 3.0 / 2.0, places=3)
+        # Critical Services must be 3.0x Web Browsing (index 0, weight 1.0)
+        self.assertAlmostEqual(alloc[3] / alloc[0], 3.0 / 1.0, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()
