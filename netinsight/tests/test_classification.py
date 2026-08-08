@@ -46,11 +46,11 @@ class TestTrafficClassification(TestCase):
         src = "192.168.1.99"
 
         # Simulate sending 5 packets to 3 unique destination IPs within 3 seconds
-        rate, freq = self.classifier.update_ip_cache(src, "10.0.0.1", 1000, 10000.0)
-        rate, freq = self.classifier.update_ip_cache(src, "10.0.0.1", 1000, 10001.0)
-        rate, freq = self.classifier.update_ip_cache(src, "10.0.0.2", 1000, 10002.0)
-        rate, freq = self.classifier.update_ip_cache(src, "10.0.0.3", 1000, 10002.5)
-        rate, freq = self.classifier.update_ip_cache(src, "10.0.0.3", 1000, 10003.0)
+        rate, freq, ports, avg_sz = self.classifier.update_ip_cache(src, "10.0.0.1", 1000, 10000.0)
+        rate, freq, ports, avg_sz = self.classifier.update_ip_cache(src, "10.0.0.1", 1000, 10001.0)
+        rate, freq, ports, avg_sz = self.classifier.update_ip_cache(src, "10.0.0.2", 1000, 10002.0)
+        rate, freq, ports, avg_sz = self.classifier.update_ip_cache(src, "10.0.0.3", 1000, 10002.5)
+        rate, freq, ports, avg_sz = self.classifier.update_ip_cache(src, "10.0.0.3", 1000, 10003.0)
 
         # Rate: 5 packets over 10 second window = 0.5 pkts/sec
         self.assertAlmostEqual(rate, 0.5, places=2)
@@ -87,20 +87,20 @@ class TestTrafficClassification(TestCase):
         }
         self.assertEqual(self.classifier.classify_packet(pkt_dos), "DoS")
 
-        # Test Mirai rule: UDP, high packet rate (>300 pps), high connection frequency (>30)
+        # Test Mirai rule: UDP Amplification or IoT management port target
         pkt_mirai = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",
-            "size": 128,
+            "size": 600,
             "protocol": "UDP",
             "timestamp": 30000.0,
-            "dst_port": 5004,
-            "packet_rate": 400.0,
-            "conn_frequency": 35.0
+            "dst_port": 23,
+            "packet_rate": 40.0,
+            "conn_frequency": 5.0
         }
         self.assertEqual(self.classifier.classify_packet(pkt_mirai), "Mirai")
 
-        # Test Brute Force rule: Port 22 (SSH), packet_rate > 50.0
+        # Test Brute Force rule: Port 22 (SSH) login burst
         pkt_brute = {
             "src_ip": "192.168.1.66",
             "dst_ip": "10.0.0.9",

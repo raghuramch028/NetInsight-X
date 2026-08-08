@@ -135,7 +135,7 @@ class TestTelemetryHandlerFixes(TestCase):
                 "src_ip": "192.168.1.77",
                 "dst_ip": f"10.0.0.{i + 1}",
                 "src_port": 40000,
-                "dst_port": 22,
+                "dst_port": (i % 100) + 1,
                 "protocol": "TCP",
                 "size": 64,
                 "timestamp": now_ts + i * 0.01,

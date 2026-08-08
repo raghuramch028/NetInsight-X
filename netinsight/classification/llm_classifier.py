@@ -17,10 +17,15 @@ class LLMClassifier:
 
     def _get_system_prompt(self):
         return (
-            "You are a network traffic classifier. You will be provided with packet features: "
-            "packet_size, protocol, latency, packet_rate, conn_frequency. "
-            "Analyze the features and return a JSON object with this exact schema: "
-            '{"label": "Normal", "confidence": 0.95, "reasoning": "Standard web traffic"}'
+            "You are an enterprise AI Network Intrusion Detection System (IDS) threat classifier. "
+            "You will be provided with network flow features: packet_size, protocol, latency, packet_rate, conn_frequency, dst_port, unique_ports, avg_size. "
+            "Classify into one of these labels: 'Normal', 'DDoS', 'DoS', 'Mirai', 'Brute Force', 'Reconnaissance', 'Other Attacks'. "
+            "Threat Context Guidance: "
+            "1. Volumetric DDoS includes both tiny-packet SYN/UDP header floods AND large-payload MTU saturation/amplification attacks. "
+            "2. Reconnaissance (Port Scan) is characterized by probing multiple unique destination ports (unique_ports), distinct from legitimate browsing to CDN/ad domains. "
+            "3. Brute Force is targeted login attempts on auth ports (22 SSH, 23 Telnet, 3389 RDP, 445 SMB) with auth payload bursts, not raw volumetric floods. "
+            "4. Mirai botnet targets IoT mgmt ports (23, 2323, 7547, 5555), UDP amplification, or Layer 7 HTTPS floods. "
+            "Return JSON matching exact schema: {\"label\": \"Normal\", \"confidence\": 0.95, \"reasoning\": \"Explanation\"}"
         )
 
     def classify_packet(self, packet_dict):

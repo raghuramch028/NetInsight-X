@@ -41,8 +41,12 @@ class TrafficClassifier:
             logger.debug(f"Could not read confidence threshold from SystemSettings: {e}")
         return self._DEFAULT_CONFIDENCE_THRESHOLD
 
-    def update_ip_cache(self, src_ip: str, dst_ip: str, size: int, timestamp: float) -> tuple[float, float]:
-        """Updates cache and computes packet rate and unique connection frequency."""
+    def update_ip_cache(
+        self, src_ip: str, dst_ip: str, size: int, timestamp: float, dst_port: int = 0
+    ) -> tuple[float, float, float, float]:
+        """Updates cache and computes packet rate, unique destination IP frequency,
+        unique destination port frequency, and average packet size.
+        """
         with self.cache_lock:
             now = timestamp
             win_dur = max(1.0, float(self.window_duration))
@@ -51,39 +55,39 @@ class TrafficClassifier:
             if src_ip not in self.ip_history:
                 self.ip_history[src_ip] = []
 
-            # Add current record
-            self.ip_history[src_ip].append((now, dst_ip, size))
+            # Store (timestamp, dst_ip, size, dst_port) tuple
+            self.ip_history[src_ip].append((now, dst_ip, size, dst_port))
 
             # Prune old records
             self.ip_history[src_ip] = [item for item in self.ip_history[src_ip] if item[0] >= cutoff]
 
-            # Prune empty IP entries to prevent unbounded memory growth
             if not self.ip_history[src_ip]:
                 del self.ip_history[src_ip]
-                return 0.0, 1.0
+                return 0.0, 1.0, 1.0, float(size)
 
             history = self.ip_history[src_ip]
             packet_count = len(history)
             packet_rate = packet_count / win_dur
 
             unique_dests = len({item[1] for item in history})
+            unique_ports = len({item[3] for item in history if item[3] > 0})
+            total_bytes = sum(item[2] for item in history)
+            avg_size = total_bytes / float(packet_count) if packet_count > 0 else float(size)
 
             MAX_IP_CACHE = 2000
             if len(self.ip_history) > MAX_IP_CACHE:
-                # Evict oldest 500 IP entries to prevent unbounded memory growth
                 stale_ips = [ip for ip, data in self.ip_history.items() if not data or (now - data[-1][0]) > win_dur]
                 for ip in stale_ips:
                     del self.ip_history[ip]
                 if len(self.ip_history) > MAX_IP_CACHE:
-                    # Force prune oldest keys if still exceeding cap
                     excess = len(self.ip_history) - (MAX_IP_CACHE - 500)
                     for ip in list(self.ip_history.keys())[:excess]:
                         del self.ip_history[ip]
 
-            return float(packet_rate), float(unique_dests)
+            return float(packet_rate), float(unique_dests), float(unique_ports), float(avg_size)
 
     def _classify_rule_based(self, packet_dict: dict) -> str:
-        """Executes fast, deterministic heuristic IDS rules on packet dictionary."""
+        """Executes enterprise-grade deterministic heuristic IDS rules based on real-world threat indicators."""
         src_ip = packet_dict.get("src_ip", "0.0.0.0")
         dst_ip = packet_dict.get("dst_ip", "0.0.0.0")
         size = int(packet_dict.get("size", 0))
@@ -94,26 +98,56 @@ class TrafficClassifier:
 
         packet_rate = packet_dict.get("packet_rate")
         conn_frequency = packet_dict.get("conn_frequency")
+        unique_ports = packet_dict.get("unique_ports")
+        avg_size = packet_dict.get("avg_size")
 
-        if packet_rate is None or conn_frequency is None:
-            calc_rate, calc_freq = self.update_ip_cache(src_ip, dst_ip, size, timestamp)
+        if packet_rate is None or conn_frequency is None or unique_ports is None or avg_size is None:
+            calc_rate, calc_freq, calc_ports, calc_avg_size = self.update_ip_cache(src_ip, dst_ip, size, timestamp, dst_port)
             if packet_rate is None:
                 packet_rate = calc_rate
             if conn_frequency is None:
                 conn_frequency = calc_freq
+            if unique_ports is None:
+                unique_ports = calc_ports
+            if avg_size is None:
+                avg_size = calc_avg_size
 
-        if packet_rate > 1000.0 and size < 200:
+        # 1. Volumetric DDoS Attack Detection (Both Small Packet Floods AND Large Payload Amplification Saturation)
+        throughput_bps = (packet_rate * avg_size * 8.0)
+        is_small_pkt_flood = packet_rate > 800.0 and avg_size < 300
+        is_amplification_flood = avg_size >= 1000 and throughput_bps >= 35_000_000.0  # 35 Mbps MTU saturation
+        if is_small_pkt_flood or is_amplification_flood or packet_rate > 1000.0:
             return "DDoS"
-        if packet_rate > 500.0:
+
+        # 2. DoS Attack Detection (Single-target high-frequency packet floods)
+        if packet_rate > 450.0:
             return "DoS"
-        if proto_str == "UDP" and packet_rate > 300.0 and conn_frequency > 30.0:
+
+        # 3. Mirai / IoT Botnet Detection (IoT Mgmt Ports 23/2323/7547/5555, UDP Amplification, or Layer 7 floods)
+        iot_ports = {23, 2323, 7547, 5555}
+        is_iot_scan = (dst_port in iot_ports or src_port in iot_ports) and packet_rate > 25.0
+        is_udp_amplification = proto_str == "UDP" and packet_rate > 200.0 and conn_frequency > 15.0 and avg_size > 500
+        is_l7_flood = (dst_port in {80, 443}) and packet_rate > 350.0 and avg_size > 400
+        if is_iot_scan or is_udp_amplification or is_l7_flood:
             return "Mirai"
-        if (dst_port in [22, 23, 3389, 445] or src_port in [22, 23, 3389, 445]) and packet_rate > 50.0:
+
+        # 4. Brute Force Authentication Attack Detection (Auth Login Ports 22 SSH, 23 Telnet, 3389 RDP, 445 SMB, 21 FTP)
+        auth_ports = {22, 23, 3389, 445, 21, 110, 143}
+        is_auth_target = (dst_port in auth_ports or src_port in auth_ports)
+        # True brute force requires connection bursts with login attempt payloads, not raw volumetric floods
+        if is_auth_target and (15.0 <= packet_rate <= 350.0) and (size < 1200):
             return "Brute Force"
-        if conn_frequency > 50.0 or (packet_rate > 30.0 and conn_frequency > 25.0):
+
+        # 5. Reconnaissance / Port Scan Detection (True Port Scanning targets wide destination port sequences)
+        # Legitimate heavy web browsing opens many IPs on standard HTTP/S ports (80/443), whereas real port scans probe many unique ports
+        is_port_scan = unique_ports >= 20.0 or (conn_frequency > 35.0 and unique_ports >= 10.0)
+        if is_port_scan:
             return "Reconnaissance"
-        if proto_str == "ICMP" and packet_rate > 100.0:
+
+        # 6. Other ICMP/Misc Attacks
+        if proto_str == "ICMP" and packet_rate > 80.0:
             return "Other Attacks"
+
         return "Normal"
 
     def classify_packet(self, packet_dict: dict) -> str:
