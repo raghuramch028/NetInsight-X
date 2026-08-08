@@ -482,10 +482,6 @@
                     <span class="text-secondary small font-mono">Autonomous Decision Support System</span>
                     <h2 class="page-header-title">{% block page_title %}Dashboard{% endblock %}</h2>
                 </div>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="text-secondary small font-mono"><i data-lucide="clock" class="d-inline-block me-1 align-text-top" style="width:14px;height:14px;"></i>TIME:</span>
-                    <span id="system-time" class="font-mono text-dark fw-bold"></span>
-                </div>
             </div>
 
             {% block content %}{% endblock %}
@@ -527,16 +523,6 @@
             const container = document.getElementById('app-window-container');
             if (container) container.classList.add('sidebar-collapsed');
         }
-
-        function updateTime() {
-            const now = new Date();
-            const el = document.getElementById('system-time');
-            if (el) {
-                el.innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-            }
-        }
-        setInterval(updateTime, 1000);
-        updateTime();
 
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
