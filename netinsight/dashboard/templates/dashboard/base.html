@@ -546,16 +546,19 @@
             panel.style.display = isHidden ? 'block' : 'none';
         }
 
+        let currentAlertFilter = 'all';
+
         function filterAlerts(severity) {
+            currentAlertFilter = severity || 'all';
             document.querySelectorAll('#alerts-drawer-panel .btn').forEach(btn => {
                 if (btn.id.startsWith('alert-tab-')) {
                     btn.className = 'btn btn-sm text-secondary rounded-pill flex-fill py-1 fw-bold';
                 }
             });
-            const activeTab = document.getElementById(`alert-tab-${severity}`);
+            const activeTab = document.getElementById(`alert-tab-${currentAlertFilter}`);
             if (activeTab) activeTab.className = 'btn btn-sm btn-dark rounded-pill flex-fill py-1 fw-bold';
 
-            const targetSev = (severity || 'all').toLowerCase();
+            const targetSev = currentAlertFilter.toLowerCase();
             const items = document.querySelectorAll('.alert-item-card');
             items.forEach(item => {
                 const itemSev = (item.getAttribute('data-severity') || '').toLowerCase();
@@ -622,6 +625,7 @@
 
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            filterAlerts(currentAlertFilter);
         }
 
         document.addEventListener('keydown', (e) => {
