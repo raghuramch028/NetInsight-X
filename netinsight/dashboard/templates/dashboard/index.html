@@ -310,13 +310,14 @@
 
         fetch("{% url 'dashboard:api_live_packets' %}")
             .then(res => res.json())
-            .then(packets => {
+            .then(data => {
+                const packets = (data && Array.isArray(data.packets)) ? data.packets : (Array.isArray(data) ? data : []);
                 const tbody = document.getElementById('packet-tbody');
                 const badge = document.getElementById('packet-count-badge');
-                if (badge) badge.innerText = packets ? packets.length : 0;
+                if (badge) badge.innerText = packets.length;
                 if (!tbody) return;
 
-                if (!packets || packets.length === 0) {
+                if (packets.length === 0) {
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="9" class="text-center text-secondary py-4 font-mono">Listening for edge packet stream headers...</td>
