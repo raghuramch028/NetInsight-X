@@ -516,9 +516,7 @@
             const scriptEl = document.getElementById('hud-presenter-script');
             const stepBadge = document.getElementById('hud-step-badge');
 
-            // -------------------------------------------------------------
             // STEP 1: Telemetry Ingest & Real-Time Metrics Ramp-up
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 1 OF 6: TELEMETRY INGEST';
             if (scriptEl) scriptEl.innerText = `"We begin by monitoring live telemetry from edge agents, tracking active throughput (${s.throughput_mbps.toFixed(1)} Mbps) and packet arrival rate (${s.packet_rate.toFixed(0)} pps)."`;
             
@@ -540,9 +538,7 @@
             }
             if (!await waitDelay(3000)) return;
 
-            // -------------------------------------------------------------
             // STEP 2: DeepSeek AI Threat Classification Breakdown
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 2 OF 6: DEEPSEEK AI CLASSIFIER';
             if (scriptEl) scriptEl.innerText = `"DeepSeek AI parses the packet feature vector and classifies network traffic into threat profiles (${s.threat_type}) with 98.4% model confidence."`;
             
@@ -552,7 +548,6 @@
             threatEl.className = isDDoS ? 'text-danger fw-bold' : 'text-success fw-bold';
             document.getElementById('demo-ai-reasoning').innerHTML = `<i data-lucide="sparkles" class="me-1 align-text-top" style="color: var(--accent-terracotta); width:14px;height:14px;"></i><strong>AI Reasoning:</strong> ${s.reasoning}`;
             
-            // Pop up DeepSeek Breakdown Modal Card
             const dsModal = document.getElementById('modal-deepseek-breakdown');
             if (dsModal) {
                 document.getElementById('ds-feat-size').innerText = isDDoS ? '1200 Bytes' : '600 Bytes';
@@ -565,9 +560,7 @@
             if (!await waitDelay(3500)) return;
             if (dsModal) dsModal.style.display = 'none';
 
-            // -------------------------------------------------------------
             // STEP 3: HMM Hidden State Viterbi Decoding & Topology Shift
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 3 OF 6: HMM VITERBI STATE DECODER';
             if (scriptEl) scriptEl.innerText = `"The Hidden Markov Model evaluates Viterbi decoding over state transition matrices to infer unobserved hidden network states (${s.hmm_state})."`;
             
@@ -589,9 +582,7 @@
             }
             if (!await waitDelay(3200)) return;
 
-            // -------------------------------------------------------------
             // STEP 4: MDP Bellman Policy Optimization
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 4 OF 6: MDP BELLMAN POLICY SOLVER';
             if (scriptEl) scriptEl.innerText = `"Markov Decision Process evaluates Bellman expectation equations to pick the optimal high-level advisory policy (${s.mdp_action})."`;
             
@@ -605,9 +596,7 @@
             }
             if (!await waitDelay(3200)) return;
 
-            // -------------------------------------------------------------
             // STEP 5: CVXOPT LP Solver & Live KKT Proof Breakdown
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 5 OF 6: CVXOPT LP SOLVER & KKT PROOF';
             if (scriptEl) scriptEl.innerText = `"CVXOPT Linear Program Solver solves continuous bandwidth allocations while verifying all 4 Karush-Kuhn-Tucker (KKT) optimality conditions."`;
             
@@ -615,7 +604,6 @@
             moveVirtualCursorToElement(chartCanvas || document.getElementById('demo-stat-lp'), `5. CVXOPT LP Solver: KKT Verified Solution (Max Viol: ${kktViol})`);
             document.getElementById('demo-stat-lp').innerText = s.lp_status.toUpperCase();
             
-            // Pop up KKT Verification Checklist Card
             const kktModal = document.getElementById('modal-kkt-breakdown');
             if (kktModal) kktModal.style.display = 'block';
 
@@ -632,9 +620,7 @@
             if (!await waitDelay(3800)) return;
             if (kktModal) kktModal.style.display = 'none';
 
-            // -------------------------------------------------------------
             // STEP 6: OS Kernel Enforcement & Live Packet Table Stream
-            // -------------------------------------------------------------
             if (stepBadge) stepBadge.innerText = 'STEP 6 OF 6: WINDOWS NETQOS ENFORCEMENT';
             if (scriptEl) scriptEl.innerText = `"Finally, OS Kernel rules dynamically enforce exact bandwidth caps (Critical Services: ${s.enforced_qos.critical_services_mbps.toFixed(1)} Mbps)."`;
             
@@ -667,24 +653,35 @@
         }
     }
 
-    function resetGuidedDemo() {
+    async function resetGuidedDemo() {
         activeDemoToken++;
         isDemoPaused = false;
         isDemoStepPaused = false;
         stopVirtualCursor();
 
-        // 1. Remove scenario URL query params from browser address bar
+        // 1. Trigger backend DB state reset to live baseline
+        try {
+            await fetch("{% url 'dashboard:api_trigger_scenario' %}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ scenario_id: 0 })
+            });
+        } catch(e) {
+            console.warn("[Reset Demo] Reset API call notice:", e);
+        }
+
+        // 2. Remove scenario URL query params from browser address bar
         if (window.history.replaceState) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // 2. Hide status banner & HUD dock bar
+        // 3. Hide status banner & HUD dock bar
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'none';
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'none';
 
-        // 3. Reset topology node colors
+        // 4. Reset topology node colors
         if (nodesDataSet) {
             nodesDataSet.update({
                 id: 'hotspot',
@@ -693,7 +690,7 @@
             });
         }
 
-        // 4. Trigger immediate metrics update poll
+        // 5. Trigger immediate metrics update poll
         updateDashboard();
     }
 

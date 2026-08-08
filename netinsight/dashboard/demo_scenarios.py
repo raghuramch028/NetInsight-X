@@ -43,7 +43,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
     close_old_connections()
     now_ts = time.time()
 
-    # 1. Get or create primary demo agent
+    # Get or create primary demo agent
     demo_agent, _ = Agent.objects.get_or_create(
         mac_address="de:mo:00:00:00:01",
         defaults={
@@ -53,6 +53,43 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             "ip_address": "192.168.1.100",
         },
     )
+
+    if scenario_id == 0:
+        # Scenario 0: Reset Demo Simulation to Live Stream
+        StateHistory.objects.create(
+            timestamp=now_ts,
+            network_state="Normal",
+            bandwidth_utilization=0.0,
+            packet_loss=0.0,
+            latency=0.0,
+        )
+        ThreatHistory.objects.all().delete()
+        demo_agent.cpu_usage = 12.0
+        demo_agent.memory_usage = 28.0
+        demo_agent.active_connections = 1
+        demo_agent.last_seen = timezone.now()
+        demo_agent.save()
+
+        return {
+            "scenario_id": 0,
+            "scenario_title": "Live Stream Restored",
+            "throughput_mbps": 0.0,
+            "link_capacity_mbps": 100.0,
+            "packet_rate": 0.0,
+            "latency_ms": 0.0,
+            "packet_loss": 0.0,
+            "threat_type": "Normal",
+            "reasoning": "Demo simulation ended. Restored real-time edge agent live telemetry polling stream.",
+            "hmm_state": "Normal",
+            "mdp_action": "Reallocate Bandwidth",
+            "lp_status": "optimal",
+            "kkt_optimal": True,
+            "kkt_primal_violation": 1e-7,
+            "kkt_stationarity_violation": 1e-7,
+            "enforced_qos": {"web_browsing_mbps": 25.0, "streaming_mbps": 30.0, "file_transfer_mbps": 5.0, "critical_services_mbps": 40.0},
+            "os_enforcement_applied": False,
+            "timestamp": now_ts,
+        }
 
     if scenario_id == 1:
         # Scenario 1: Baseline Normal Traffic (100 Mbps Link)
@@ -157,14 +194,14 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             },
         ]
 
-    # 2. Update agent stats
+    # Update agent stats
     demo_agent.cpu_usage = cpu_usage
     demo_agent.memory_usage = mem_usage
     demo_agent.active_connections = conn_count
     demo_agent.last_seen = timezone.now()
     demo_agent.save()
 
-    # 3. Create Metric & State History Records
+    # Create Metric & State History Records
     MetricRecord.objects.create(
         timestamp=now_ts,
         throughput=tp_val,
@@ -189,7 +226,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             severity="Critical" if threat_type == "DDoS" else "Warning",
         )
 
-    # 4. Save sample packets and flow records
+    # Save sample packets and flow records
     for pkt in sample_packets:
         PacketRecord.objects.create(
             agent=demo_agent,
@@ -203,7 +240,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             ttl=pkt["ttl"],
         )
 
-    # 5. Execute HMM, MDP, and CVXOPT LP Solver
+    # Execute HMM, MDP, and CVXOPT LP Solver
     hmm_model = get_hmm_predictor()
     mdp_engine = get_mdp_engine()
     optimizer = get_lp_optimizer()
@@ -259,7 +296,7 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         "recommended_policy": recommended_action,
     }
 
-    # 6. Apply Windows NetQosPolicy if on Windows
+    # Apply Windows NetQosPolicy if on Windows
     os_enforcement_applied = False
     if platform.system().lower() == "windows":
         try:
