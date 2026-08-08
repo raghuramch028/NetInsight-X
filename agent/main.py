@@ -28,7 +28,6 @@ class NetInsightAgent:
         """Applies dynamic QoS shaper policies locally based on optimal limits from server."""
         policy = qos_limits.get("recommended_policy", "Reallocate Bandwidth")
 
-        # Safely extract QoS limits with sensible defaults
         qos_limits.setdefault('web_browsing_mbps', 5.0)
         qos_limits.setdefault('streaming_mbps', 15.0)
         qos_limits.setdefault('file_transfer_mbps', 2.0)
@@ -42,12 +41,10 @@ class NetInsightAgent:
             f"Critical={qos_limits['critical_services_mbps']:.2f} Mbps"
         )
 
-        # Execute platform-aware system shaper commands
         system_platform = platform.system().lower()
 
         try:
             if system_platform == "linux":
-                # Real Linux tc (Traffic Control) queue adjustment
                 interface = config.CAPTURE_INTERFACE or "eth0"
                 total_mbps = qos_limits['web_browsing_mbps'] + qos_limits['streaming_mbps'] + qos_limits['file_transfer_mbps'] + qos_limits['critical_services_mbps']
                 rate_limit = f"{total_mbps:.1f}mbit"
@@ -56,7 +53,6 @@ class NetInsightAgent:
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             elif system_platform == "windows":
-                # Real Windows PowerShell QoS policy throttling
                 check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Throttle' -ErrorAction Stop"]
                 check_result = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if check_result.returncode != 0:
@@ -99,11 +95,6 @@ class NetInsightAgent:
         signal.signal(signal.SIGINT, self.handle_shutdown)
         signal.signal(signal.SIGTERM, self.handle_shutdown)
 
-        if config.HOTSPOT_SSID:
-            current_ssid = get_current_ssid()
-            if current_ssid and current_ssid != config.HOTSPOT_SSID:
-                logger.info(f"Connected network SSID: '{current_ssid}' (Target AP: '{config.HOTSPOT_SSID}'). Proceeding with agent startup.")
-
         mac_addr = get_mac_address()
         hostname = self.collector.hostname
         device_type = self.collector.os_type
@@ -115,11 +106,23 @@ class NetInsightAgent:
         self.sniffer.start()
 
         self.is_running = True
-        logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s)...")
+        logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s, Target Hotspot: '{config.HOTSPOT_SSID}')...")
 
         backoff = config.TELEMETRY_INTERVAL
 
         while self.is_running:
+            # Enforce Wi-Fi Hotspot restriction
+            if config.HOTSPOT_SSID:
+                current_ssid = get_current_ssid()
+                if current_ssid and current_ssid != config.HOTSPOT_SSID:
+                    logger.warning(
+                        f"[HOTSPOT RESTRICTION] Connected to Wi-Fi '{current_ssid}', but target hotspot is '{config.HOTSPOT_SSID}'. "
+                        "Telemetry upload paused until connected to hotspot."
+                    )
+                    self.sniffer.get_and_clear_packets()
+                    time.sleep(config.TELEMETRY_INTERVAL)
+                    continue
+
             start_time = time.time()
 
             if not self.sender.agent_id:
