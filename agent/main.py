@@ -53,10 +53,8 @@ class NetInsightAgent:
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             elif system_platform == "windows":
-                # Remove any existing global OS throttle policy so local speed tests and web traffic run unthrottled
-                clean_cmd = ["powershell", "-Command", "Remove-NetQosPolicy -Name 'NetInsight-Throttle' -Confirm:$false -ErrorAction SilentlyContinue"]
-                subprocess.run(clean_cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                logger.info("[SHAPER] Maintaining unthrottled real network link performance.")
+                from agent.collector import apply_windows_qos_caps
+                apply_windows_qos_caps(qos_limits)
 
         except Exception as e:
             logger.warning(f"[SHAPER] Hardware shaping notice: {e}")
