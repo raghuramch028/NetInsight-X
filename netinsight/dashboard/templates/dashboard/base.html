@@ -458,7 +458,7 @@
                             <i data-lucide="bell" style="width: 18px; height: 18px; color: var(--accent-terracotta);"></i>
                         </div>
                         <h4 class="m-0 editorial-serif h5 text-dark fw-bold">Alerts</h4>
-                        <span class="pill-badge terracotta font-mono ms-1" style="font-size: 0.72rem;">{{ dse_alerts_count }} Active</span>
+                        <span id="alerts-badge-count-text" class="pill-badge terracotta font-mono ms-1" style="font-size: 0.72rem;">{{ dse_alerts_count }} Active</span>
                     </div>
                     <button onclick="toggleAlertsDrawer()" class="btn-close shadow-none" aria-label="Close Alerts Drawer"></button>
                 </div>
@@ -474,7 +474,7 @@
                 <!-- Scrollable List of Alerts -->
                 <div id="alerts-drawer-list" class="d-flex flex-column gap-2" style="max-height: 460px; overflow-y: auto;">
                     {% for alert in dse_alerts %}
-                        <div class="p-3 rounded-3 border alert-item-card alert-severity-{{ alert.severity }}" style="background: var(--bg-main-canvas); border-color: rgba(0,0,0,0.06) !important;">
+                        <div class="p-3 rounded-3 border alert-item-card alert-severity-{{ alert.severity }}" data-severity="{{ alert.severity }}" style="background: var(--bg-main-canvas); border-color: rgba(0,0,0,0.06) !important;">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <div class="d-flex align-items-center gap-2">
                                     <i data-lucide="{% if alert.severity == 'Critical' %}shield-alert{% elif alert.severity == 'Warning' %}alert-triangle{% else %}info{% endif %}" style="width:16px;height:16px;" class="{% if alert.severity == 'Critical' %}text-danger{% elif alert.severity == 'Warning' %}text-warning{% else %}text-info{% endif %}"></i>
@@ -555,14 +555,73 @@
             const activeTab = document.getElementById(`alert-tab-${severity}`);
             if (activeTab) activeTab.className = 'btn btn-sm btn-dark rounded-pill flex-fill py-1 fw-bold';
 
+            const targetSev = (severity || 'all').toLowerCase();
             const items = document.querySelectorAll('.alert-item-card');
             items.forEach(item => {
-                if (severity === 'all' || item.classList.contains(`alert-severity-${severity}`)) {
+                const itemSev = (item.getAttribute('data-severity') || '').toLowerCase();
+                const classList = Array.from(item.classList).map(c => c.toLowerCase());
+                if (targetSev === 'all' || itemSev === targetSev || classList.includes(`alert-severity-${targetSev}`)) {
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
                 }
             });
+        }
+
+        function renderDSEAlerts(alertsList) {
+            if (!Array.isArray(alertsList)) return;
+            const container = document.getElementById('alerts-drawer-list');
+            const countText = document.getElementById('alerts-badge-count-text');
+            if (countText) countText.innerText = `${alertsList.length} Active`;
+
+            if (!container) return;
+
+            if (alertsList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-secondary font-mono small">
+                        <i data-lucide="check-circle" class="d-block mx-auto mb-2 text-success" style="width:28px;height:28px;"></i>
+                        No active alerts. All network systems operating within normal parameters.
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            let html = '';
+            alertsList.forEach(alert => {
+                const sev = alert.severity || 'Warning';
+                const sevLower = sev.toLowerCase();
+                const isCrit = sevLower === 'critical';
+                const isWarn = sevLower === 'warning';
+                const icon = isCrit ? 'shield-alert' : (isWarn ? 'alert-triangle' : 'info');
+                const iconColor = isCrit ? 'text-danger' : (isWarn ? 'text-warning' : 'text-info');
+                const badgeColor = isCrit ? 'rose' : (isWarn ? 'terracotta' : 'emerald');
+                const moduleName = alert.module || 'QoS Performance';
+                const msg = alert.message || alert.description || '';
+                const act = alert.action || alert.recommendation || 'Monitor network conditions';
+
+                html += `
+                    <div class="p-3 rounded-3 border alert-item-card alert-severity-${sev}" data-severity="${sev}" style="background: var(--bg-main-canvas); border-color: rgba(0,0,0,0.06) !important;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <i data-lucide="${icon}" style="width:16px;height:16px;" class="${iconColor}"></i>
+                                <span class="font-mono fw-bold" style="font-size:0.72rem; color: var(--text-muted);">${moduleName}</span>
+                            </div>
+                            <span class="pill-badge ${badgeColor} font-mono" style="font-size:0.68rem; padding: 2px 8px;">
+                                ${sev}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">${alert.title || 'System Alert'}</div>
+                        <div class="text-secondary small mb-2" style="font-size: 0.8rem; line-height: 1.4;">${msg}</div>
+                        <div class="p-2 rounded bg-white border font-mono small text-dark" style="font-size:0.75rem;">
+                            <i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;color:var(--accent-terracotta);"></i><strong>Action:</strong> ${act}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         document.addEventListener('keydown', (e) => {

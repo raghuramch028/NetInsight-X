@@ -34,8 +34,11 @@ class DecisionSupportEngine:
             if bandwidth_util >= 85.0:
                 alerts.append({
                     "id": "alert-congestion-high",
-                    "severity": "CRITICAL",
+                    "severity": "Critical",
+                    "module": "Bandwidth Optimizer",
                     "title": "Severe Network Link Congestion",
+                    "message": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Autonomous LP Bandwidth Optimizer has dynamically adjusted QoS bounds.",
+                    "action": "Prioritize Critical Services & Cap File Transfer Bandwidth",
                     "description": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Autonomous LP Bandwidth Optimizer has dynamically adjusted QoS bounds.",
                     "recommendation": "Prioritize Critical Services & Cap File Transfer Bandwidth",
                     "timestamp": latest.get("timestamp", 0)
@@ -43,8 +46,11 @@ class DecisionSupportEngine:
             elif bandwidth_util >= 60.0:
                 alerts.append({
                     "id": "alert-congestion-warn",
-                    "severity": "WARNING",
+                    "severity": "Warning",
+                    "module": "Bandwidth Optimizer",
                     "title": "High Link Utilization",
+                    "message": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). LP Optimizer is actively balancing traffic flow.",
+                    "action": "Monitor Streaming and Bulk Data Allocations",
                     "description": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). LP Optimizer is actively balancing traffic flow.",
                     "recommendation": "Monitor Streaming and Bulk Data Allocations",
                     "timestamp": latest.get("timestamp", 0)
@@ -54,8 +60,11 @@ class DecisionSupportEngine:
             if latency >= 0.15:
                 alerts.append({
                     "id": "alert-latency-high",
-                    "severity": "WARNING",
+                    "severity": "Warning",
+                    "module": "QoS Performance",
                     "title": "Elevated Round-Trip Latency",
+                    "message": f"Measured RTT latency is {(latency * 1000):.0f} ms.",
+                    "action": "Verify edge agent Wi-Fi signal and local link quality",
                     "description": f"Measured RTT latency is {(latency * 1000):.0f} ms.",
                     "recommendation": "Verify edge agent Wi-Fi signal and local link quality",
                     "timestamp": latest.get("timestamp", 0)
@@ -65,8 +74,11 @@ class DecisionSupportEngine:
             if packet_loss >= 5.0:
                 alerts.append({
                     "id": "alert-loss-high",
-                    "severity": "CRITICAL",
+                    "severity": "Warning" if packet_loss < 20.0 else "Critical",
+                    "module": "QoS Performance",
                     "title": "High Packet Loss Detected",
+                    "message": f"Packet loss rate is currently {packet_loss:.1f}%.",
+                    "action": "Throttle non-critical streaming to prevent queue drop cascades",
                     "description": f"Packet loss rate is currently {packet_loss:.1f}%.",
                     "recommendation": "Throttle non-critical streaming to prevent queue drop cascades",
                     "timestamp": latest.get("timestamp", 0)
@@ -76,8 +88,11 @@ class DecisionSupportEngine:
             if last_reasoning and "Normal" not in last_reasoning and "Heuristic" not in last_reasoning:
                 alerts.append({
                     "id": "alert-ai-threat",
-                    "severity": "CRITICAL",
+                    "severity": "Critical",
+                    "module": "DeepSeek AI",
                     "title": "DeepSeek AI Threat Incident",
+                    "message": last_reasoning,
+                    "action": "Enforce strict local QoS rate limits on suspicious ports",
                     "description": last_reasoning,
                     "recommendation": "Enforce strict local QoS rate limits on suspicious ports",
                     "timestamp": latest.get("timestamp", 0)

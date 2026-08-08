@@ -435,6 +435,10 @@
                 labels.shift();
                 labels.push(new Date(data.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
                 liveChart.update();
+
+                if (typeof renderDSEAlerts === 'function' && data.dse_alerts) {
+                    renderDSEAlerts(data.dse_alerts);
+                }
             })
             .catch(err => console.warn('[NetInsight] Poll failed:', err));
     }
