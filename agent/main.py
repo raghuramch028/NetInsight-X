@@ -90,7 +90,7 @@ class NetInsightAgent:
         device_type = self.collector.os_type
         vendor = self.collector.vendor
 
-        logger.info(f"Local Host Details: MAC={mac_addr}, Hostname={hostname}, OS={device_type}")
+        logger.info(f"Local Host Details: MAC={mac_addr}, Hostname={hostname}, OS={device_type}, Vendor={vendor}")
 
         self.sniffer.start()
         self.is_running = True

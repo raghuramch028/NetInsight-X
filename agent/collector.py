@@ -15,7 +15,7 @@ def apply_windows_qos_caps(enforced_qos: dict) -> bool:
     try:
         crit_mbps = float(enforced_qos.get("critical_services_mbps", 40.0))
         bytes_per_sec = int(crit_mbps * 125000)
-        
+
         # Check if policy exists
         check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Critical' -ErrorAction Stop"]
         res = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -33,7 +33,7 @@ def apply_windows_qos_caps(enforced_qos: dict) -> bool:
                 f"Set-NetQosPolicy -Name 'NetInsight-Critical' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"
             ]
             subprocess.run(set_cmd, capture_output=True, timeout=5)
-            
+
         logger.info(f"Successfully configured Windows NetQosPolicy (Critical Services: {crit_mbps:.1f} Mbps / {bytes_per_sec} Bps)")
         return True
     except Exception as e:

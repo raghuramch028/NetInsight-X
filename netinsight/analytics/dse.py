@@ -5,7 +5,6 @@ to generate actionable advisory alerts for autonomous bandwidth optimization and
 """
 import logging
 
-from netinsight.config import settings
 from netinsight.config.singletons import get_analytics_engine, get_traffic_classifier
 
 logger = logging.getLogger(__name__)
@@ -21,13 +20,11 @@ class DecisionSupportEngine:
             analytics = get_analytics_engine()
             latest = analytics.get_latest_metrics()
 
-            throughput = latest.get("throughput", 0.0)
             latency = latest.get("latency", 0.0)
             packet_loss = latest.get("packet_loss", 0.0)
             bandwidth_util = latest.get("bandwidth_util", 0.0)
 
             classifier = get_traffic_classifier()
-            last_engine = getattr(classifier, "last_engine_used", "DeepSeek AI")
             last_reasoning = getattr(classifier, "last_llm_reasoning", "")
 
             # 1. Congestion & High Bandwidth Utilization Alert

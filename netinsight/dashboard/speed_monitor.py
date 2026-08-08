@@ -50,7 +50,7 @@ def get_google_mlab_endpoints() -> list[str]:
 
 def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 10.0) -> float | None:
     """Executes a Google M-Lab / NDT7 multi-stream parallel socket throughput speed test.
-    
+
     1. Spawns 4 concurrent TCP streams using browser User-Agent headers.
     2. Measures total bytes downloaded over a 10.0 second steady-state sampling window (matching Google Search speed test).
     3. Computes exact steady-state bandwidth in bits per second (bps).

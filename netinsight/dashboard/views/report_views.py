@@ -8,9 +8,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 

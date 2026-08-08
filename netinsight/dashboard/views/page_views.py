@@ -6,7 +6,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.views.decorators.clickjacking import xframe_options_exempt
 
 from netinsight.config import settings
 from netinsight.config.singletons import (
