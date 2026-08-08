@@ -119,15 +119,24 @@
         }
 
         .sidebar-brand-icon {
-            width: 28px;
-            height: 28px;
-            background-color: var(--accent-terracotta);
-            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            background-color: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
+            color: #ffffff !important;
             flex-shrink: 0;
+        }
+
+        /* ALL SIDEBAR ICONS ARE CLEAN WHITE */
+        .sidebar svg,
+        .sidebar-brand-icon svg,
+        .nav-item-link svg {
+            color: #ffffff !important;
+            stroke: #ffffff !important;
         }
 
         .nav-menu {
@@ -155,17 +164,13 @@
 
         .nav-item-link:hover {
             color: #ffffff;
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255, 255, 255, 0.06);
         }
 
         .nav-item-link.active {
             color: #ffffff;
             background-color: var(--bg-sidebar-active);
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-        }
-
-        .nav-item-link.active svg {
-            color: var(--accent-terracotta);
         }
 
         /* -------------------------------------------------------------
@@ -466,20 +471,20 @@
                     </li>
                     <li>
                         <button onclick="triggerPresentationScenario(1);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
-                            <i data-lucide="play-circle" style="color: var(--accent-emerald);"></i>
-                            <span>▶ Scenario 1: Baseline</span>
+                            <i data-lucide="play-circle"></i>
+                            <span>Scenario 1: Baseline</span>
                         </button>
                     </li>
                     <li>
                         <button onclick="triggerPresentationScenario(2);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
-                            <i data-lucide="shield-alert" style="color: var(--accent-rose);"></i>
-                            <span>▶ Scenario 2: DDoS Attack</span>
+                            <i data-lucide="shield-alert"></i>
+                            <span>Scenario 2: DDoS Attack</span>
                         </button>
                     </li>
                     <li>
                         <button onclick="triggerPresentationScenario(0);" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
                             <i data-lucide="rotate-ccw"></i>
-                            <span>↺ Reset Live Stream</span>
+                            <span>Reset Live Stream</span>
                         </button>
                     </li>
                 </ul>
