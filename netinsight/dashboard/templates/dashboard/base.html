@@ -287,6 +287,47 @@
             border-bottom: 1px solid rgba(0,0,0,0.04) !important;
         }
 
+        /* -------------------------------------------------------------
+           Global Sleek & Prominent Visible Custom Scrollbars
+        ------------------------------------------------------------- */
+        * {
+            scrollbar-width: auto;
+            scrollbar-color: var(--accent-terracotta) rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--accent-terracotta);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #c85a3c;
+        }
+
+        .main-content::-webkit-scrollbar,
+        .table-responsive::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .main-content::-webkit-scrollbar-thumb,
+        .table-responsive::-webkit-scrollbar-thumb {
+            background-color: var(--accent-terracotta);
+            border-radius: 10px;
+        }
+
         /* Animated Pointer Virtual Cursor & HUD */
         #demo-virtual-cursor {
             position: fixed;
