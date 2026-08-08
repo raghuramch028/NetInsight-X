@@ -333,16 +333,6 @@
     <!-- Main Nomi AI Outer App Window Frame -->
     <div id="app-window-container">
 
-        <!-- Animated Pointer Virtual Cursor -->
-        <div id="demo-virtual-cursor">
-            <svg class="cursor-pointer-icon" viewBox="0 0 24 24">
-                <path d="M3 3l7 18 3-7 7-3L3 3z" />
-            </svg>
-            <div id="cursor-tooltip" class="cursor-tooltip-bubble">
-                Walkthrough Step Initializing...
-            </div>
-        </div>
-
         <!-- Nomi AI Charcoal Left Sidebar -->
         <div class="sidebar">
             <div>
@@ -382,6 +372,12 @@
                         <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
                             <i data-lucide="fingerprint"></i>
                             <span>Traffic Classifier</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:reports' %}" class="nav-item-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                            <i data-lucide="file-text"></i>
+                            <span>Reports & Exports</span>
                         </a>
                     </li>
                     <li>

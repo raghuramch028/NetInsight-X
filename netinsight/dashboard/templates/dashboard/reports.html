@@ -29,31 +29,16 @@
 {% if data_available %}
     <div class="row g-4 mb-4">
         <!-- Plot 1: Throughput and Latency Correlation -->
-        <div class="col-lg-8">
+        <div class="col-lg-12">
             <div class="saas-card">
                 <h5 class="mb-4 text-dark editorial-serif h6">
                     <i data-lucide="line-chart" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>Throughput & Latency Correlation Matrix
                 </h5>
                 <div class="text-center p-3 rounded border bg-light">
-                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow-sm" style="max-height: 450px;">
+                    <img src="data:image/png;base64,{{ plots.throughput_latency }}" alt="Throughput and Latency Correlation Plot" class="img-fluid rounded shadow-sm" style="max-height: 480px;">
                 </div>
                 <div class="mt-3 text-secondary small">
                     This dual-axis time-series visualization traces how passive handshake latency scales alongside overall throughput. Spikes in throughput typically correspond to latency jumps due to queueing delays.
-                </div>
-            </div>
-        </div>
-
-        <!-- Plot 2: State History Distribution -->
-        <div class="col-lg-4">
-            <div class="saas-card h-100">
-                <h5 class="mb-4 text-dark editorial-serif h6">
-                    <i data-lucide="bar-chart-2" class="d-inline-block me-2" style="color: var(--accent-amber); width:16px;height:16px;vertical-align:-2px;"></i>Operational State Occurrence
-                </h5>
-                <div class="text-center p-3 rounded border bg-light">
-                    <img src="data:image/png;base64,{{ plots.states_distribution }}" alt="Operational States Count Plot" class="img-fluid rounded shadow-sm" style="max-height: 400px;">
-                </div>
-                <div class="mt-3 text-secondary small">
-                    Count distribution of classified operational states (NORMAL, BUSY, CONGESTED, FAILURE) logged in the database.
                 </div>
             </div>
         </div>
