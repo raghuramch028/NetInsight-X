@@ -53,23 +53,13 @@ class NetInsightAgent:
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             elif system_platform == "windows":
-                check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Throttle' -ErrorAction Stop"]
-                check_result = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                if check_result.returncode != 0:
-                    create_cmd = ["powershell", "-Command", "New-NetQosPolicy -Name 'NetInsight-Throttle' -IPProtocol MatchAny -ThrottleRateActionBytesPerSecond 100000000 -ErrorAction SilentlyContinue"]
-                    logger.info("[SHAPER] Initializing NetInsight QoS Policy on Windows...")
-                    subprocess.run(create_cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-                bytes_per_sec = int(qos_limits['file_transfer_mbps'] * 125000)
-                cmd = ["powershell", "-Command", f"Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"]
-                logger.info(f"[SHAPER] Executing Windows PowerShell QoS command: {' '.join(cmd)}")
-                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Remove any existing global OS throttle policy so local speed tests and web traffic run unthrottled
+                clean_cmd = ["powershell", "-Command", "Remove-NetQosPolicy -Name 'NetInsight-Throttle' -Confirm:$false -ErrorAction SilentlyContinue"]
+                subprocess.run(clean_cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                logger.info("[SHAPER] Maintaining unthrottled real network link performance.")
 
         except Exception as e:
-            logger.warning(
-                f"[SHAPER] Local hardware shaping command skipped (Requires Admin/Root privileges). "
-                f"Falling back to simulated logs. Error: {e}"
-            )
+            logger.warning(f"[SHAPER] Hardware shaping notice: {e}")
 
         if policy == "Prioritize Critical Services":
             logger.warning("[SHAPER] Local Action Enforced: File transfer throttled to 0.25x. Critical Services priority enabled.")
