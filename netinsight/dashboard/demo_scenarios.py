@@ -92,7 +92,36 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         ]
 
     elif scenario_id == 2:
-        # Scenario 2: Mobile Hotspot Capacity Constraints (8.5 Mbps Link)
+        # Scenario 2: Volumetric DDoS Cyber Attack Incident Response (100 Mbps Link)
+        capacity_bps = 100e6
+        state_name = "Under Attack"
+        threat_type = "DDoS"
+        cpu_usage = 88.5
+        mem_usage = 76.0
+        conn_count = 180
+        pkt_rate = 1650.0
+        latency_val = 0.320
+        pkt_loss = 12.8
+        tp_val = 94e6
+        reasoning = "NVIDIA DeepSeek AI: Volumetric UDP flood detected (1650 pps, port 5004). Urgent mitigation required."
+
+        sample_packets = [
+            {
+                "src_ip": f"192.168.1.{idx+10}",
+                "dst_ip": "10.0.0.1",
+                "src_port": 60000 + idx,
+                "dst_port": 5004,
+                "protocol": "UDP",
+                "size": 1200,
+                "timestamp": now_ts,
+                "ttl": 64,
+            }
+            for idx in range(6)
+        ]
+
+    else:
+        # Scenario 3: Mobile Hotspot Capacity Constraints (8.5 Mbps Link)
+        scenario_id = 3
         capacity_bps = 8.5e6
         state_name = "Congested"
         threat_type = "Normal"
@@ -128,35 +157,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             },
         ]
 
-    else:
-        # Scenario 3: Volumetric DDoS Cyber Attack Incident Response (100 Mbps Link)
-        scenario_id = 3
-        capacity_bps = 100e6
-        state_name = "Under Attack"
-        threat_type = "DDoS"
-        cpu_usage = 88.5
-        mem_usage = 76.0
-        conn_count = 180
-        pkt_rate = 1650.0
-        latency_val = 0.320
-        pkt_loss = 12.8
-        tp_val = 94e6
-        reasoning = "NVIDIA DeepSeek AI: Volumetric UDP flood detected (1650 pps, port 5004). Urgent mitigation required."
-
-        sample_packets = [
-            {
-                "src_ip": f"192.168.1.{idx+10}",
-                "dst_ip": "10.0.0.1",
-                "src_port": 60000 + idx,
-                "dst_port": 5004,
-                "protocol": "UDP",
-                "size": 1200,
-                "timestamp": now_ts,
-                "ttl": 64,
-            }
-            for idx in range(6)
-        ]
-
     # 2. Update agent stats
     demo_agent.cpu_usage = cpu_usage
     demo_agent.memory_usage = mem_usage
@@ -188,7 +188,6 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
             threat_type=threat_type,
             severity="Critical" if threat_type == "DDoS" else "Warning",
         )
-
 
     # 4. Save sample packets and flow records
     for pkt in sample_packets:
@@ -270,9 +269,13 @@ def trigger_scenario(scenario_id: int) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Windows QoS enforcement demo trigger notice: {e}")
 
+    scenario_label_title = "Scenario 2: DDoS Attack" if scenario_id == 2 else (
+        "Scenario 1: Baseline Normal" if scenario_id == 1 else "Scenario 3: Mobile Hotspot"
+    )
+
     return {
         "scenario_id": scenario_id,
-        "scenario_title": f"Scenario {scenario_id}: {state_name} ({capacity_bps/1e6:.1f} Mbps Link)",
+        "scenario_title": f"{scenario_label_title} ({capacity_bps/1e6:.1f} Mbps Link)",
         "throughput_mbps": float(tp_val / 1e6),
         "link_capacity_mbps": float(capacity_bps / 1e6),
         "packet_rate": float(pkt_rate),
