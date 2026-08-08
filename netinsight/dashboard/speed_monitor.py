@@ -48,20 +48,19 @@ def get_google_mlab_endpoints() -> list[str]:
     return []
 
 
-def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0) -> float | None:
+def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 10.0) -> float | None:
     """Executes a Google M-Lab / NDT7 multi-stream parallel socket throughput speed test.
     
-    1. Queries official Google M-Lab server infrastructure.
-    2. Spawns 4 concurrent TCP streams to saturate link capacity.
-    3. Measures total bytes downloaded over a 5.0 second steady-state sampling window.
-    4. Computes exact steady-state bandwidth in bits per second (bps).
+    1. Spawns 4 concurrent TCP streams using browser User-Agent headers.
+    2. Measures total bytes downloaded over a 10.0 second steady-state sampling window (matching Google Search speed test).
+    3. Computes exact steady-state bandwidth in bits per second (bps).
     """
-    google_urls = get_google_mlab_endpoints()
-    endpoints = google_urls if google_urls else [
-        "https://speed.cloudflare.com/__down?bytes=25000000",
-        "https://speed.cloudflare.com/__down?bytes=25000000",
-        "https://speed.cloudflare.com/__down?bytes=25000000",
-        "https://speed.cloudflare.com/__down?bytes=25000000",
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    endpoints = [
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js",
+        "https://unpkg.com/lucide@0.263.0/dist/umd/lucide.min.js",
+        "https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js",
+        "https://code.jquery.com/jquery-3.7.1.min.js",
     ]
 
     total_bytes_downloaded = 0
@@ -71,20 +70,23 @@ def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0
     def download_stream(url: str):
         nonlocal total_bytes_downloaded
         try:
-            resp = requests.get(url, stream=True, timeout=(3, test_duration + 2))
-            if resp.status_code == 200:
-                for chunk in resp.iter_content(chunk_size=65536):
-                    elapsed = time.perf_counter() - test_start
-                    if elapsed > test_duration:
-                        break
-                    with bytes_lock:
-                        total_bytes_downloaded += len(chunk)
+            # Repeat download loop for test_duration seconds
+            while time.perf_counter() - test_start < test_duration:
+                resp = requests.get(url, headers=headers, stream=True, timeout=(3, 5))
+                if resp.status_code == 200:
+                    for chunk in resp.iter_content(chunk_size=65536):
+                        if time.perf_counter() - test_start >= test_duration:
+                            break
+                        with bytes_lock:
+                            total_bytes_downloaded += len(chunk)
+                else:
+                    time.sleep(0.2)
         except Exception as e:
             logger.debug(f"Speed test stream worker exception: {e}")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(download_stream, endpoints[i % len(endpoints)]) for i in range(num_threads)]
-        concurrent.futures.wait(futures, timeout=test_duration + 2)
+        concurrent.futures.wait(futures, timeout=test_duration + 3)
 
     total_elapsed = time.perf_counter() - test_start
     if total_elapsed > 0 and total_bytes_downloaded > 0:
@@ -94,17 +96,17 @@ def run_google_style_speed_test(num_threads: int = 4, test_duration: float = 5.0
 
 
 def run_speed_test():
-    """Measures dynamic link capacity using Google M-Lab NDT7 parallel streams or local telemetry heuristics."""
+    """Measures dynamic link capacity using 10s multi-stream parallel socket throughput engine."""
     enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", True)
     if not enable_external:
         _run_telemetry_fallback("External speed test disabled (NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST=False).")
         return
 
     try:
-        measured_bps = run_google_style_speed_test(num_threads=4, test_duration=5.0)
+        measured_bps = run_google_style_speed_test(num_threads=4, test_duration=10.0)
         if measured_bps and measured_bps > 0:
             set_current_capacity(measured_bps)
-            logger.info(f"[DYNAMIC CAPACITY] Google M-Lab NDT7 multi-stream speed test completed: {get_current_capacity() / 1e6:.2f} Mbps")
+            logger.info(f"[DYNAMIC CAPACITY] 10s multi-stream speed test completed: {get_current_capacity() / 1e6:.2f} Mbps")
             return
         raise Exception("Multi-stream speed test returned zero bytes")
     except Exception as e:
