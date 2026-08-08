@@ -35,32 +35,33 @@
             --font-sans: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
 
-            --transition-smooth: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            --transition-smooth: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         /* -------------------------------------------------------------
-           Nomi AI App Frame & Layout Architecture
+           Nomi AI App Frame & Fixed Layout Architecture
         ------------------------------------------------------------- */
         body {
             background: linear-gradient(135deg, #e4dad4 0%, #cfc1b8 100%);
             font-family: var(--font-sans);
             color: var(--text-dark);
-            min-height: 100vh;
+            height: 100vh;
             margin: 0;
             padding: 24px;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
+            overflow: hidden; /* Stop outer page scrolling */
         }
 
         #app-window-container {
             width: 100%;
             max-width: 1540px;
+            height: calc(100vh - 48px);
             background: var(--bg-main-canvas);
             border-radius: 26px;
             box-shadow: 0 25px 65px rgba(0, 0, 0, 0.16);
             display: flex;
-            min-height: calc(100vh - 48px);
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.4);
             position: relative;
@@ -75,17 +76,29 @@
         }
 
         /* -------------------------------------------------------------
-           Nomi AI Charcoal Left Sidebar
+           Nomi AI Charcoal Left Sidebar (Stationary Fixed Container)
         ------------------------------------------------------------- */
         .sidebar {
             width: 270px;
             background-color: var(--bg-sidebar);
             color: var(--text-sidebar);
-            padding: 32px 22px;
+            padding: 32px 20px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-brand-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 34px;
+            padding-left: 6px;
+            padding-right: 4px;
         }
 
         .sidebar-brand {
@@ -97,8 +110,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 34px;
-            padding-left: 8px;
         }
 
         .sidebar-brand-icon {
@@ -110,6 +121,7 @@
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            flex-shrink: 0;
         }
 
         .nav-menu {
@@ -150,32 +162,32 @@
             color: var(--accent-terracotta);
         }
 
-        /* Sidebar Profile Footer */
-        .sidebar-user-footer {
-            padding: 14px;
-            border-radius: 16px;
-            background: rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 20px;
+        /* -------------------------------------------------------------
+           Collapsible Sidebar Styles
+        ------------------------------------------------------------- */
+        .sidebar-collapsed .sidebar {
+            width: 78px !important;
+            padding: 32px 14px !important;
         }
-
-        .sidebar-user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background-color: var(--accent-terracotta);
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.85rem;
+        .sidebar-collapsed .brand-text,
+        .sidebar-collapsed .nav-item-link span,
+        .sidebar-collapsed .sidebar-section-header {
+            display: none !important;
+        }
+        .sidebar-collapsed .nav-item-link {
+            justify-content: center !important;
+            padding: 12px !important;
+        }
+        .sidebar-collapsed .sidebar-brand-wrapper {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+        .sidebar-collapsed .sidebar-brand {
+            justify-content: center !important;
         }
 
         /* -------------------------------------------------------------
-           Nomi AI Cream Main Right Canvas & Header
+           Nomi AI Cream Main Right Canvas (Independent Scrollable Container)
         ------------------------------------------------------------- */
         .main-content {
             flex: 1;
@@ -184,6 +196,8 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
+            height: 100%;
+            overflow-y: auto; /* SCROLLS INDEPENDENTLY! */
         }
 
         .top-navbar {
@@ -193,6 +207,7 @@
             margin-bottom: 34px;
             padding-bottom: 22px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
         }
 
         .page-header-title {
@@ -235,7 +250,7 @@
             border-left: 4px solid var(--accent-terracotta) !important;
         }
 
-        /* Nomi AI Terracotta Buttons & Pills */
+        /* Buttons & Badges */
         .btn-primary, .btn-terracotta {
             background-color: var(--accent-terracotta) !important;
             color: #ffffff !important;
@@ -276,9 +291,7 @@
             color: var(--accent-rose);
         }
 
-        /* -------------------------------------------------------------
-           Animated Pointer Virtual Cursor & Nomi AI Floating HUD
-        ------------------------------------------------------------- */
+        /* Animated Pointer Virtual Cursor & HUD */
         #demo-virtual-cursor {
             position: fixed;
             top: 0;
@@ -366,12 +379,21 @@
         <!-- Nomi AI Charcoal Left Sidebar -->
         <div class="sidebar">
             <div>
-                <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
-                    <div class="sidebar-brand-icon">
-                        <i data-lucide="activity" style="width:16px;height:16px;"></i>
-                    </div>
-                    <span>NetInsight-X</span>
-                </a>
+                <!-- Brand Header with Toggle Sidebar Button -->
+                <div class="sidebar-brand-wrapper">
+                    <a href="{% url 'dashboard:index' %}" class="sidebar-brand">
+                        <div class="sidebar-brand-icon">
+                            <i data-lucide="activity" style="width:16px;height:16px;"></i>
+                        </div>
+                        <span class="brand-text">NetInsight-X</span>
+                    </a>
+                    <button id="toggle-sidebar-btn" onclick="toggleSidebar()" class="btn p-1 border-0 bg-transparent text-sidebar" title="Toggle Sidebar Menu">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <path d="M9 3v18"/>
+                        </svg>
+                    </button>
+                </div>
                 
                 <ul class="nav-menu">
                     <li>
@@ -413,7 +435,7 @@
 
                     <!-- Presentation Scenarios Sidebar Section -->
                     <li class="mt-4 pt-3 border-top border-secondary">
-                        <span class="text-secondary small font-mono px-3 d-block mb-2" style="font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;">
+                        <span class="text-secondary small font-mono px-3 d-block mb-2 sidebar-section-header" style="font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;">
                             PRESENTATION DEMOS
                         </span>
                     </li>
@@ -437,18 +459,9 @@
                     </li>
                 </ul>
             </div>
-
-            <!-- User Profile Avatar Footer -->
-            <div class="sidebar-user-footer">
-                <div class="sidebar-user-avatar">RC</div>
-                <div class="d-flex flex-column" style="line-height:1.2;">
-                    <span class="text-white fw-bold small">Raghuram C</span>
-                    <span class="text-secondary small" style="font-size:0.75rem;">System Evaluator</span>
-                </div>
-            </div>
         </div>
 
-        <!-- Nomi AI Warm Cream Main Content Area -->
+        <!-- Nomi AI Warm Cream Main Content Area (Independent Scroll Container) -->
         <div class="main-content">
             <!-- Top Navbar -->
             <div class="top-navbar">
@@ -472,6 +485,20 @@
     <!-- Lucide Icons UMD CDN -->
     <script src="https://unpkg.com/lucide@0.263.0"></script>
     <script>
+        function toggleSidebar() {
+            const container = document.getElementById('app-window-container');
+            if (!container) return;
+            container.classList.toggle('sidebar-collapsed');
+            const isCollapsed = container.classList.contains('sidebar-collapsed');
+            localStorage.setItem('netinsight_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        }
+
+        // Restore sidebar state from localStorage
+        if (localStorage.getItem('netinsight_sidebar_collapsed') === 'true') {
+            const container = document.getElementById('app-window-container');
+            if (container) container.classList.add('sidebar-collapsed');
+        }
+
         function updateTime() {
             const now = new Date();
             const el = document.getElementById('system-time');
