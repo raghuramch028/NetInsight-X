@@ -86,8 +86,8 @@ class TelemetrySender:
             except requests.RequestException as e:
                 logger.error(f"Connection failure during registration: {e}")
 
-            logger.info("Registration failed. Retrying in 3.0 seconds...")
-            time.sleep(3.0)
+            logger.info("Registration failed. Retrying in 1.0 second...")
+            time.sleep(1.0)
 
     def send_telemetry(self, stats: dict, packets: list[dict]) -> tuple[bool, dict | None]:
         """Uploads telemetry payload to server. Returns (success, enforced_qos)."""
