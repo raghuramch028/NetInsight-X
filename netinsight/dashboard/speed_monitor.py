@@ -18,16 +18,15 @@ def get_current_capacity() -> float:
         return float(_CURRENT_CAPACITY)
 
 def set_current_capacity(val: float) -> None:
-    """Thread-safe setter for current dynamic link capacity (clamped between 2 Mbps and 100 Mbps)."""
+    """Thread-safe setter for current real dynamic link capacity (minimum 1.0 Mbps floor, no upper artificial cap)."""
     global _CURRENT_CAPACITY
-    # Clamp capacity between 2.0 Mbps and 100.0 Mbps for baseline stability
-    clamped_val = max(2000000.0, min(100000000.0, float(val)))
+    clamped_val = max(1000000.0, float(val))
     with _CAPACITY_LOCK:
         _CURRENT_CAPACITY = clamped_val
 
 def run_speed_test():
     """Measures dynamic link capacity using configured external speed tests or local telemetry heuristics."""
-    enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", False)
+    enable_external = getattr(settings, "NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST", True)
     if not enable_external:
         _run_telemetry_fallback("External speed test disabled (NETINSIGHT_ENABLE_EXTERNAL_SPEEDTEST=False).")
         return
@@ -56,7 +55,7 @@ def run_speed_test():
         _run_telemetry_fallback(f"Active speed test notice ({e}).")
 
 def get_live_hardware_link_speed() -> float:
-    """Queries OS network interface adapters to detect live link speed (clamped to 100 Mbps max)."""
+    """Queries OS network interface adapters to detect live link speed."""
     try:
         import psutil
         stats = psutil.net_if_stats()
@@ -68,8 +67,7 @@ def get_live_hardware_link_speed() -> float:
         if active_speeds:
             wifi_speeds = [s[1] for s in active_speeds if "wifi" in s[0].lower() or "wlan" in s[0].lower()]
             raw_speed = wifi_speeds[0] if wifi_speeds else max(s[1] for s in active_speeds)
-            # Clamp hardware link speed to 100 Mbps max baseline for UI accuracy
-            return min(100_000_000.0, raw_speed)
+            return raw_speed
     except Exception as e:
         logger.debug(f"Hardware link speed query error: {e}")
     return float(getattr(settings, "LINK_CAPACITY", 100_000_000.0))
