@@ -94,6 +94,14 @@ class NetInsightAgent:
         self.is_running = True
         logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s, Target Hotspot: '{config.HOTSPOT_SSID}')...")
 
+        default_qos = {
+            "critical_services_mbps": 40.0,
+            "streaming_mbps": 60.0,
+            "web_browsing_mbps": 40.0,
+            "file_transfer_mbps": 30.0,
+        }
+        self.apply_local_shaping(default_qos)
+
         backoff = config.TELEMETRY_INTERVAL
 
         while self.is_running:

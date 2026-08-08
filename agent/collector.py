@@ -13,28 +13,40 @@ def apply_windows_qos_caps(enforced_qos: dict) -> bool:
     if platform.system().lower() != "windows":
         return False
     try:
-        crit_mbps = float(enforced_qos.get("critical_services_mbps", 40.0))
-        bytes_per_sec = int(crit_mbps * 125000)
+        policies = {
+            "NetInsight-Critical": float(enforced_qos.get("critical_services_mbps", 40.0)),
+            "NetInsight-Streaming": float(enforced_qos.get("streaming_mbps", 60.0)),
+            "NetInsight-Web": float(enforced_qos.get("web_browsing_mbps", 40.0)),
+            "NetInsight-File": float(enforced_qos.get("file_transfer_mbps", 30.0)),
+        }
 
-        # Check if policy exists
-        check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Critical' -ErrorAction Stop"]
-        res = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if res.returncode != 0:
-            create_cmd = [
-                "powershell",
-                "-Command",
-                f"New-NetQosPolicy -Name 'NetInsight-Critical' -IPProtocol MatchAny -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"
-            ]
-            subprocess.run(create_cmd, capture_output=True, timeout=5)
-        else:
-            set_cmd = [
-                "powershell",
-                "-Command",
-                f"Set-NetQosPolicy -Name 'NetInsight-Critical' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"
-            ]
-            subprocess.run(set_cmd, capture_output=True, timeout=5)
+        success_count = 0
+        for policy_name, mbps in policies.items():
+            bits_per_sec = int(mbps * 1_000_000)
 
-        logger.info(f"Successfully configured Windows NetQosPolicy (Critical Services: {crit_mbps:.1f} Mbps / {bytes_per_sec} Bps)")
+            # Check if policy exists
+            check_cmd = ["powershell", "-Command", f"Get-NetQosPolicy -Name '{policy_name}' -ErrorAction Stop"]
+            res = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if res.returncode != 0:
+                create_cmd = [
+                    "powershell",
+                    "-Command",
+                    f"New-NetQosPolicy -Name '{policy_name}' -IPProtocolMatchCondition Both -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction SilentlyContinue"
+                ]
+                r = subprocess.run(create_cmd, capture_output=True, timeout=5)
+                if r.returncode == 0:
+                    success_count += 1
+            else:
+                set_cmd = [
+                    "powershell",
+                    "-Command",
+                    f"Set-NetQosPolicy -Name '{policy_name}' -ThrottleRateActionBitsPerSecond {bits_per_sec} -ErrorAction SilentlyContinue"
+                ]
+                r = subprocess.run(set_cmd, capture_output=True, timeout=5)
+                if r.returncode == 0:
+                    success_count += 1
+
+        logger.info(f"Successfully configured {success_count} Windows NetQosPolicy rules.")
         return True
     except Exception as e:
         logger.warning(f"Windows NetQosPolicy execution notice: {e}")
