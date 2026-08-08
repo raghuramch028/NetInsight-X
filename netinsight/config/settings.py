@@ -186,6 +186,9 @@ DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 1
 # Demonstration / Replay Mode
 DEMO_MODE = os.environ.get("NETINSIGHT_DEMO_MODE", "True").lower() in ("true", "1", "yes")
 
+# Hotspot AP SSID for edge agent connection tracking
+HOTSPOT_SSID = os.environ.get("HOTSPOT_SSID", "SEM3_PROJECT")
+
 # Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
 NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
 
