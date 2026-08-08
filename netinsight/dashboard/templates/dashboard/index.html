@@ -141,7 +141,7 @@
     </div>
 </div>
 
-<!-- Active Scenario Execution Timeline & Proof Card (SHIFTED DOWN HERE) -->
+<!-- Active Scenario Execution Timeline & Proof Card -->
 <div id="demo-status-banner" class="saas-card mb-4 p-3 rounded" style="display: none; border-color: rgba(223, 110, 84, 0.4) !important;">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <span id="demo-scenario-title" class="font-bold text-dark editorial-serif" style="font-size:1.05rem;"></span>
@@ -406,6 +406,8 @@
             if (!resData.scenario || activeDemoToken !== currentToken) return;
 
             const s = resData.scenario;
+            const activeScenarioNum = s.scenario_id || scenarioId;
+            if (hudLabel) hudLabel.innerText = `SCENARIO ${activeScenarioNum} SIMULATION TOUR`;
             document.getElementById('demo-scenario-title').innerText = s.scenario_title;
             const kktViol = parseFloat(s.kkt_primal_violation).toExponential(2);
             document.getElementById('demo-kkt-proof').innerText = `KKT OPTIMAL (Max Viol: ${kktViol})`;
@@ -530,11 +532,19 @@
         isDemoPaused = false;
         isDemoStepPaused = false;
         stopVirtualCursor();
+
+        // 1. Remove scenario URL query params from browser address bar
+        if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // 2. Hide status banner & HUD dock bar
         const banner = document.getElementById('demo-status-banner');
         if (banner) banner.style.display = 'none';
         const hud = document.getElementById('demo-control-bar');
         if (hud) hud.style.display = 'none';
 
+        // 3. Reset topology node colors
         if (nodesDataSet) {
             nodesDataSet.update({
                 id: 'hotspot',
@@ -542,16 +552,22 @@
                 label: 'Central Node / Server\n(192.168.1.1)'
             });
         }
+
+        // 4. Trigger immediate metrics update poll
         updateDashboard();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
+        if (params.has('reset')) {
+            resetGuidedDemo();
+            return;
+        }
         if (params.has('scenario')) {
             const scenarioId = parseInt(params.get('scenario'));
             setTimeout(() => {
                 playGuidedScenarioDemo(scenarioId);
-            }, 500);
+            }, 400);
         }
     });
 

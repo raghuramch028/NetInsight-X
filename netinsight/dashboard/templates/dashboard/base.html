@@ -395,7 +395,7 @@
                 <button onclick="playGuidedScenarioDemo(currentDemoScenarioId || 1)" class="btn btn-sm btn-outline-dark rounded-circle p-2 d-flex align-items-center justify-content-center" title="Replay Scenario">
                     <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
                 </button>
-                <button onclick="resetGuidedDemo()" class="btn btn-sm btn-terracotta rounded-pill px-3 py-1 text-uppercase" style="font-size:0.75rem;">
+                <button onclick="triggerPresentationScenario(0)" class="btn btn-sm btn-terracotta rounded-pill px-3 py-1 text-uppercase" style="font-size:0.75rem;">
                     <i data-lucide="square" class="d-inline-block me-1 align-text-top" style="width:12px;height:12px;"></i>Exit Demo
                 </button>
             </div>
@@ -471,13 +471,13 @@
                         </button>
                     </li>
                     <li>
-                        <button onclick="triggerPresentationScenario(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
+                        <button onclick="triggerPresentationScenario(2);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
                             <i data-lucide="shield-alert" style="color: var(--accent-rose);"></i>
                             <span>▶ Scenario 2: DDoS Attack</span>
                         </button>
                     </li>
                     <li>
-                        <button onclick="if(typeof resetGuidedDemo === 'function') resetGuidedDemo(); else triggerPresentationScenario(0);" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
+                        <button onclick="triggerPresentationScenario(0);" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
                             <i data-lucide="rotate-ccw"></i>
                             <span>↺ Reset Live Stream</span>
                         </button>
@@ -512,8 +512,11 @@
     <script>
         function triggerPresentationScenario(scenarioId) {
             if (scenarioId === 0) {
-                if (typeof resetGuidedDemo === 'function') resetGuidedDemo();
-                else window.location.href = "{% url 'dashboard:index' %}";
+                if (typeof resetGuidedDemo === 'function') {
+                    resetGuidedDemo();
+                } else {
+                    window.location.href = "{% url 'dashboard:index' %}?reset=1";
+                }
                 return;
             }
             const isLiveMonitor = window.location.pathname === '/' || window.location.pathname.includes('index');
