@@ -136,7 +136,7 @@ def reports_pdf_download(request):
                 a.mac_address,
                 f"{a.cpu_usage}%",
                 f"{a.memory_usage}%",
-                a.last_seen.strftime("%H:%M:%S")
+                a.last_seen.strftime("%H:%M:%S") if a.last_seen else "N/A"
             ])
         t_agents = Table(agent_data, colWidths=[100, 90, 110, 50, 50, 80])
         t_agents.setStyle(TableStyle([
@@ -156,7 +156,7 @@ def reports_pdf_download(request):
         metrics_data = [["Timestamp", "Throughput", "Packet Rate", "Utilization", "Latency"]]
         for m in metrics:
             metrics_data.append([
-                pd.to_datetime(m.timestamp, unit="s").strftime("%H:%M:%S"),
+                pd.to_datetime(m.timestamp, unit="s").strftime("%H:%M:%S") if m.timestamp else "N/A",
                 f"{m.throughput/1e6:.2f} Mbps",
                 f"{m.packet_rate:.1f} pps",
                 f"{m.bandwidth_util:.1f}%",
@@ -179,7 +179,7 @@ def reports_pdf_download(request):
         threat_data = [["Timestamp", "Source Host", "Threat Classified", "Severity Level"]]
         for t in threats:
             threat_data.append([
-                t.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                t.timestamp.strftime("%Y-%m-%d %H:%M:%S") if t.timestamp else "N/A",
                 t.agent.hostname if t.agent else "Unknown",
                 t.threat_type,
                 t.severity
@@ -211,12 +211,11 @@ def reports_csv_download(request):
         response["Content-Disposition"] = 'attachment; filename="netinsight_metrics_history.csv"'
 
         writer = csv.writer(response)
-        # Headers
         writer.writerow(["Timestamp_Unix", "Timestamp_Readable", "Throughput_bps", "Packet_Rate_pps", "Bandwidth_Utilization_pct", "Latency_s", "Packet_Loss_pct"])
 
         records = MetricRecord.objects.all().order_by("-timestamp")[:500]
         for r in records:
-            readable = pd.to_datetime(r.timestamp, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+            readable = pd.to_datetime(r.timestamp, unit="s").strftime("%Y-%m-%d %H:%M:%S") if r.timestamp else "N/A"
             writer.writerow([
                 r.timestamp,
                 readable,
@@ -243,7 +242,6 @@ def reports_json_download(request):
             "threats": []
         }
 
-        # Query recent agents
         for a in Agent.objects.all()[:200]:
             data["agents"].append({
                 "id": str(a.id),
@@ -256,7 +254,6 @@ def reports_json_download(request):
                 "active_connections": a.active_connections
             })
 
-        # Query recent metrics
         for m in MetricRecord.objects.all().order_by("-timestamp")[:100]:
             data["metrics"].append({
                 "timestamp": m.timestamp,
@@ -267,10 +264,9 @@ def reports_json_download(request):
                 "packet_loss": m.packet_loss
             })
 
-        # Query threat records
         for t in ThreatHistory.objects.select_related("agent").order_by("-timestamp")[:200]:
             data["threats"].append({
-                "timestamp": t.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "timestamp": t.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ") if t.timestamp else "N/A",
                 "agent_mac": t.agent.mac_address if t.agent else "Unknown",
                 "threat_type": t.threat_type,
                 "severity": t.severity
@@ -299,78 +295,43 @@ def _generate_throughput_latency_plot(df_metrics: pd.DataFrame) -> str:
     ax1.set_facecolor("#0d111c")
     ax2 = ax1.twinx()
 
-    sns.lineplot(
-        data=df, x="time_formatted", y="throughput_mbps",
-        ax=ax1, color="#3b82f6", label="Throughput (Mbps)",
-        linewidth=2.5, errorbar=None
-    )
-    sns.lineplot(
-        data=df, x="time_formatted", y="latency_ms",
-        ax=ax2, color="#ef4444", label="Latency (ms)",
-        linewidth=2.0, linestyle="--", errorbar=None
-    )
+    ax1.plot(df["time_formatted"], df["throughput_mbps"], color="#3b82f6", linewidth=2, label="Throughput (Mbps)")
+    ax2.plot(df["time_formatted"], df["latency_ms"], color="#ef4444", linewidth=1.5, linestyle="--", label="Latency (ms)")
 
-    ax1.set_xlabel("Time Stamp", fontsize=10, fontweight="bold", color="#94a3b8")
-    ax1.set_ylabel("Throughput (Mbps)", color="#3b82f6", fontsize=10, fontweight="bold")
-    ax2.set_ylabel("Latency (ms)", color="#ef4444", fontsize=10, fontweight="bold")
+    ax1.set_xlabel("Timestamp", color="#94a3b8")
+    ax1.set_ylabel("Throughput (Mbps)", color="#3b82f6")
+    ax2.set_ylabel("Latency (ms)", color="#ef4444")
 
     ax1.tick_params(axis="x", colors="#94a3b8", rotation=45)
     ax1.tick_params(axis="y", colors="#3b82f6")
     ax2.tick_params(axis="y", colors="#ef4444")
-    ax1.grid(color="#ffffff", alpha=0.05)
-    ax2.grid(False)
 
-    n_points = len(df)
-    n_ticks = min(10, n_points)
-    if n_points > 0:
-        tick_positions = np.linspace(0, n_points - 1, n_ticks, dtype=int)
-        ax1.set_xticks(tick_positions)
-        ax1.set_xticklabels([df["time_formatted"].iloc[i] for i in tick_positions], rotation=45)
-
-    fig.suptitle("Network Throughput & Latency Correlation", fontsize=12, fontweight="bold", color="#f1f5f9")
+    plt.title("NetInsight-X Historical Telemetry Performance", color="#ffffff", fontsize=12, pad=15)
     fig.tight_layout()
-    return _plot_to_base64(fig)
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 def _generate_states_distribution_plot(df_states: pd.DataFrame) -> str:
-    """Generates a count plot of operational states."""
-    colors = {
-        "Normal": "#10b981",
-        "Busy": "#3b82f6",
-        "Congested": "#f59e0b",
-        "Under Attack": "#ef4444",
-        "Recovering": "#a855f7"
-    }
-    order = ["Normal", "Busy", "Congested", "Under Attack", "Recovering"]
-
-    fig, ax = plt.subplots(figsize=(6, 5), facecolor="#0d111c")
+    """Generates a network state distribution count bar chart."""
+    fig, ax = plt.subplots(figsize=(8, 4), facecolor="#0d111c")
     ax.set_facecolor("#0d111c")
 
-    sns.countplot(
-        data=df_states, x="network_state", order=order, hue="network_state",
-        palette=colors, legend=False, ax=ax
-    )
-    ax.set_xlabel("Operational Network States", fontsize=10, fontweight="bold", color="#94a3b8")
-    ax.set_ylabel("Occurrences count", fontsize=10, fontweight="bold", color="#94a3b8")
+    counts = df_states["network_state"].value_counts()
+    sns.barplot(x=counts.index, y=counts.values, palette="magma", ax=ax)
+
+    ax.set_xlabel("Inferred Network Hidden State", color="#94a3b8")
+    ax.set_ylabel("State Count", color="#94a3b8")
     ax.tick_params(colors="#94a3b8")
-    ax.set_title("Distribution of Operational States", fontsize=11, fontweight="bold", color="#f1f5f9")
-    ax.grid(color="#ffffff", alpha=0.05, axis="y")
+    for spine in ax.spines.values():
+        spine.set_color("#334155")
+
+    plt.title("HMM Network State Frequency Distribution", color="#ffffff", fontsize=12, pad=15)
     fig.tight_layout()
 
-    return _plot_to_base64(fig)
-
-def _plot_to_base64(fig) -> str:
-    """Helper converting Matplotlib figure object to base64 PNG string."""
-    import gc
-    try:
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", facecolor="#0d111c")
-        buf.seek(0)
-        encoded = base64.b64encode(buf.read()).decode("utf-8")
-        return encoded
-    finally:
-        fig.clear()
-        plt.close(fig)
-        plt.close('all')
-        del fig
-        gc.collect()
-
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")

@@ -18,6 +18,13 @@ class TestDemoScenarios(TestCase):
     def setUp(self):
         self.client = Client()
 
+    def test_scenario_0_reset_to_live(self):
+        """Verifies Scenario 0 resets database state back to live baseline."""
+        res = trigger_scenario(0)
+        self.assertEqual(res["scenario_id"], 0)
+        self.assertEqual(res["threat_type"], "Normal")
+        self.assertEqual(res["hmm_state"], "Normal")
+
     def test_scenario_1_normal_baseline(self):
         """Verifies Scenario 1 triggers baseline 100 Mbps execution pipeline."""
         res = trigger_scenario(1)
@@ -52,6 +59,15 @@ class TestDemoScenarios(TestCase):
         self.assertEqual(data["status"], "success")
         self.assertIn("scenario", data)
         self.assertEqual(data["scenario"]["threat_type"], "DDoS")
+
+    def test_api_trigger_scenario_reset_endpoint(self):
+        """Verifies /api/v1/demo/trigger REST API with scenario_id=0 resets DB state."""
+        url = reverse("dashboard:api_trigger_scenario")
+        res = self.client.post(url, {"scenario_id": 0}, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["scenario"]["scenario_id"], 0)
 
 
 if __name__ == "__main__":

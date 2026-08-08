@@ -49,7 +49,6 @@ class NetInsightAgent:
             if system_platform == "linux":
                 # Real Linux tc (Traffic Control) queue adjustment
                 interface = config.CAPTURE_INTERFACE or "eth0"
-                # Limit total rate to link capacity using TBF
                 total_mbps = qos_limits['web_browsing_mbps'] + qos_limits['streaming_mbps'] + qos_limits['file_transfer_mbps'] + qos_limits['critical_services_mbps']
                 rate_limit = f"{total_mbps:.1f}mbit"
                 cmd = ["sudo", "tc", "qdisc", "change", "dev", interface, "root", "tbf", "rate", rate_limit, "burst", "32k", "latency", "400ms"]
@@ -58,7 +57,6 @@ class NetInsightAgent:
 
             elif system_platform == "windows":
                 # Real Windows PowerShell QoS policy throttling
-                # Ensure the system-wide QoS policy exists on startup
                 check_cmd = ["powershell", "-Command", "Get-NetQosPolicy -Name 'NetInsight-Throttle' -ErrorAction Stop"]
                 check_result = subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if check_result.returncode != 0:
@@ -66,7 +64,6 @@ class NetInsightAgent:
                     logger.info("[SHAPER] Initializing NetInsight QoS Policy on Windows...")
                     subprocess.run(create_cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-                # Throttle file transfers (e.g. 2 Mbps -> 256KB/s)
                 bytes_per_sec = int(qos_limits['file_transfer_mbps'] * 125000)
                 cmd = ["powershell", "-Command", f"Set-NetQosPolicy -Name 'NetInsight-Throttle' -ThrottleRateActionBytesPerSecond {bytes_per_sec} -ErrorAction SilentlyContinue"]
                 logger.info(f"[SHAPER] Executing Windows PowerShell QoS command: {' '.join(cmd)}")
@@ -78,7 +75,6 @@ class NetInsightAgent:
                 f"Falling back to simulated logs. Error: {e}"
             )
 
-        # Simulate local rate-limiting (throttling agent capture rate or introducing delays)
         if policy == "Prioritize Critical Services":
             logger.warning("[SHAPER] Local Action Enforced: File transfer throttled to 0.25x. Critical Services priority enabled.")
         elif policy == "Reroute Traffic":
@@ -100,25 +96,14 @@ class NetInsightAgent:
 
     def run(self):
         """Executes the registration sequence and starts telemetry loops."""
-        # Bind shutdown handlers
         signal.signal(signal.SIGINT, self.handle_shutdown)
         signal.signal(signal.SIGTERM, self.handle_shutdown)
 
-        # Check SSID restriction if configured
         if config.HOTSPOT_SSID:
             current_ssid = get_current_ssid()
-            ssid_retries = 0
-            max_ssid_retries = int(os.environ.get("NETINSIGHT_SSID_MAX_RETRIES", "6"))
-            while current_ssid != config.HOTSPOT_SSID:
-                ssid_retries += 1
-                if ssid_retries > max_ssid_retries:
-                    logger.warning(f"SSID check failed after {max_ssid_retries} retries. Proceeding without SSID restriction.")
-                    break
-                logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Waiting to connect to hotspot... (attempt {ssid_retries}/{max_ssid_retries})")
-                time.sleep(5)
-                current_ssid = get_current_ssid()
+            if current_ssid and current_ssid != config.HOTSPOT_SSID:
+                logger.info(f"Connected network SSID: '{current_ssid}' (Target AP: '{config.HOTSPOT_SSID}'). Proceeding with agent startup.")
 
-        # 1. Device Registration Sequence
         mac_addr = get_mac_address()
         hostname = self.collector.hostname
         device_type = self.collector.os_type
@@ -126,46 +111,27 @@ class NetInsightAgent:
 
         logger.info(f"Local Host Details: MAC={mac_addr}, Hostname={hostname}, OS={device_type}")
 
-        # Blocks until registered
         self.sender.register(mac_addr, hostname, device_type, vendor)
-
-        # 2. Start Packet Capture Session
         self.sniffer.start()
 
-        # 3. Main Telemetry Upload Loop
         self.is_running = True
         logger.info(f"Starting telemetry loop (Interval: {config.TELEMETRY_INTERVAL}s)...")
 
         backoff = config.TELEMETRY_INTERVAL
 
         while self.is_running:
-            # Check SSID restriction if configured
-            if config.HOTSPOT_SSID:
-                current_ssid = get_current_ssid()
-                if current_ssid != config.HOTSPOT_SSID:
-                    logger.warning(f"Device is connected to '{current_ssid}', but HOTSPOT_SSID is set to '{config.HOTSPOT_SSID}'. Skipping telemetry upload...")
-                    # Clear sniffer packets so they don't pile up in memory
-                    self.sniffer.get_and_clear_packets()
-                    time.sleep(config.TELEMETRY_INTERVAL)
-                    continue
-
             start_time = time.time()
 
-            # Self-healing registration check: re-register if server invalidated agent ID
             if not self.sender.agent_id:
                 logger.warning("Agent ID missing or invalidated. Re-running registration sequence...")
                 mac_addr = get_mac_address()
                 self.sender.register(mac_addr, self.collector.hostname, self.collector.os_type, self.collector.vendor)
 
-            # Gather host stats
             stats = self.collector.collect()
 
-            # Report the previous cycle's measured round-trip time so the server can use a real
-            # latency figure instead of a hardcoded constant. None on the very first cycle.
             if self.sender.last_rtt_seconds is not None:
                 stats["rtt_seconds"] = self.sender.last_rtt_seconds
 
-            # Get new packets and combine with previously failed packets
             new_packets = self.sniffer.get_and_clear_packets()
             failed_packets = []
             if os.path.exists(self.offline_file):
@@ -175,47 +141,45 @@ class NetInsightAgent:
                 except Exception as e:
                     logger.error(f"Error reading offline buffer: {e}")
 
-            packets_to_send = failed_packets + new_packets
+            all_packets = failed_packets + new_packets
+            batch_to_send = all_packets[:100]
+            remaining_packets = all_packets[100:]
 
-            # Bounded limit for transmission safety (send at most 100 recent packets to prevent server timeouts)
-            max_send = 100
-            if len(packets_to_send) > max_send:
-                logger.info(f"Packet batch size ({len(packets_to_send)}) exceeds transmission safety cap ({max_send}). Sampling the latest {max_send} packets.")
-                packets_to_send = packets_to_send[-max_send:]
-
-            # Try uploading
-            success, qos_limits = self.sender.send_telemetry(stats, packets_to_send)
+            success, qos_limits = self.sender.send_telemetry(stats, batch_to_send)
 
             if success:
-                # Clear queue on success
-                if os.path.exists(self.offline_file):
+                if remaining_packets:
+                    remaining_packets = remaining_packets[-200:]
                     try:
-                        os.remove(self.offline_file)
+                        with open(self.offline_file, "w", encoding="utf-8") as f:
+                            json.dump(remaining_packets, f)
                     except Exception as e:
-                        logger.error(f"Failed to remove offline buffer: {e}")
-                backoff = config.TELEMETRY_INTERVAL  # Reset backoff on success
+                        logger.error(f"Failed to write remaining packets to offline buffer: {e}")
+                else:
+                    if os.path.exists(self.offline_file):
+                        try:
+                            os.remove(self.offline_file)
+                        except Exception as e:
+                            logger.error(f"Failed to remove offline buffer: {e}")
+                backoff = config.TELEMETRY_INTERVAL
 
-                # Apply dynamic QoS shaping constraints locally (Closed-loop feedback execution)
                 if qos_limits:
                     self.apply_local_shaping(qos_limits)
             else:
-                # Save queue on failure (cap at 200 to prevent large retry batches)
-                if len(packets_to_send) > 200:
-                    packets_to_send = packets_to_send[-200:]
+                to_buffer = all_packets[-200:]
                 try:
                     with open(self.offline_file, "w", encoding="utf-8") as f:
-                        json.dump(packets_to_send, f)
+                        json.dump(to_buffer, f)
                 except Exception as e:
                     logger.error(f"Failed to write to offline buffer: {e}")
-                logger.warning(f"Telemetry upload failed. Saved {len(packets_to_send)} packets to disk-buffered queue.")
+                logger.warning(f"Telemetry upload failed. Saved {len(to_buffer)} packets to disk-buffered queue.")
 
-                # Force a constant fast retry interval instead of exponential backoff
                 backoff = config.TELEMETRY_INTERVAL
 
-            # Rest of the loop interval calculation
             elapsed = time.time() - start_time
             sleep_time = max(0.1, backoff - elapsed)
             time.sleep(sleep_time)
+
 
 if __name__ == "__main__":
     import argparse
