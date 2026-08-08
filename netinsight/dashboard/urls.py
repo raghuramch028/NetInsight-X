@@ -27,7 +27,6 @@ urlpatterns = [
     path("api/live-metrics/", views.api_live_metrics, name="api_live_metrics"),
     path("api/live-packets/", views.api_live_packets, name="api_live_packets"),
     path("api/v1/stream/metrics/", views.api_stream_metrics, name="api_stream_metrics"),
-    path("api/v1/demo/trigger", views.api_trigger_scenario, name="api_trigger_scenario"),
 
 
     # Reports exports API downloads

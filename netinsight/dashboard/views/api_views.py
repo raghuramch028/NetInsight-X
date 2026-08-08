@@ -344,18 +344,3 @@ async def api_stream_metrics(request):
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
-
-
-@_require_dashboard_auth
-@api_view(["POST"])
-def api_trigger_scenario(request):
-    """API endpoint to trigger a presentation demo scenario."""
-    try:
-        from netinsight.dashboard.demo_scenarios import trigger_scenario
-        data = request.data or {}
-        scenario_id = int(data.get("scenario_id", 1))
-        result = trigger_scenario(scenario_id)
-        return Response({"status": "success", "scenario": _to_native_types(result)}, status=200)
-    except Exception as e:
-        logger.error(f"Error triggering demo scenario: {e}", exc_info=True)
-        return Response({"error": str(e)}, status=500)

@@ -390,37 +390,6 @@
                             <span>Settings</span>
                         </a>
                     </li>
-
-                    <!-- Presentation Scenarios Sidebar Section -->
-                    <li class="mt-4 pt-3 border-top border-secondary">
-                        <span class="text-sidebar small font-mono px-3 d-block mb-2 sidebar-section-header" style="font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;">
-                            PRESENTATION DEMOS
-                        </span>
-                    </li>
-                    <li>
-                        <button onclick="triggerPresentationScenario(1);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
-                            <i data-lucide="play-circle"></i>
-                            <span>Scenario 1: Baseline</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button onclick="triggerPresentationScenario(2);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
-                            <i data-lucide="shield-alert"></i>
-                            <span>Scenario 2: DDoS Attack</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button onclick="triggerPresentationScenario(3);" class="nav-item-link text-start w-100 bg-transparent border-0 text-white">
-                            <i data-lucide="wifi-off"></i>
-                            <span>Scenario 3: Mobile Hotspot</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button onclick="triggerPresentationScenario(0);" class="nav-item-link text-start w-100 bg-transparent border-0 text-sidebar">
-                            <i data-lucide="rotate-ccw"></i>
-                            <span>Reset Live Stream</span>
-                        </button>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -511,23 +480,6 @@
     <!-- Lucide Icons UMD CDN -->
     <script src="https://unpkg.com/lucide@0.263.0"></script>
     <script>
-        function triggerPresentationScenario(scenarioId) {
-            if (scenarioId === 0) {
-                if (typeof resetGuidedDemo === 'function') {
-                    resetGuidedDemo();
-                } else {
-                    window.location.href = "{% url 'dashboard:index' %}?reset=1";
-                }
-                return;
-            }
-            const isLiveMonitor = window.location.pathname === '/' || window.location.pathname.includes('index');
-            if (isLiveMonitor && typeof playGuidedScenarioDemo === 'function') {
-                playGuidedScenarioDemo(scenarioId);
-            } else {
-                window.location.href = "{% url 'dashboard:index' %}?scenario=" + scenarioId;
-            }
-        }
-
         function toggleSidebar() {
             const container = document.getElementById('app-window-container');
             if (!container) return;
