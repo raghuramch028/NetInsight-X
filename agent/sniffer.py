@@ -1,7 +1,7 @@
 import threading
 import time
 
-from scapy.all import IP, TCP, UDP, AsyncSniffer
+from scapy.all import IP, IPv6, TCP, UDP, AsyncSniffer
 
 from agent import config
 from agent.logger import logger
@@ -34,19 +34,28 @@ class PacketSniffer:
 
     def packet_callback(self, packet) -> None:
         """Processes a single sniffed packet, extracts headers, and stores in buffer."""
-        if not packet.haslayer(IP):
+        if not (packet.haslayer(IP) or packet.haslayer(IPv6)):
             return
 
         try:
-            ip_layer = packet[IP]
-            src_ip = ip_layer.src
-            dst_ip = ip_layer.dst
-            proto_num = ip_layer.proto
+            if packet.haslayer(IP):
+                ip_layer = packet[IP]
+                src_ip = ip_layer.src
+                dst_ip = ip_layer.dst
+                proto_num = ip_layer.proto
+                ttl = ip_layer.ttl
+            elif packet.haslayer(IPv6):
+                ip_layer = packet[IPv6]
+                src_ip = ip_layer.src
+                dst_ip = ip_layer.dst
+                proto_num = ip_layer.nh
+                ttl = ip_layer.hlim
+            else:
+                return
+
             protocol = self.proto_map.get(proto_num, f"OTHER({proto_num})")
             size = len(packet)
-            # High-precision monotonic epoch timestamp
             timestamp = self.start_time + (time.perf_counter() - self.start_perf)
-            ttl = ip_layer.ttl
 
             src_port = 0
             dst_port = 0
@@ -56,8 +65,6 @@ class PacketSniffer:
                 tcp_layer = packet[TCP]
                 src_port = int(tcp_layer.sport)
                 dst_port = int(tcp_layer.dport)
-                # TCP sequence number — lets the server detect true retransmissions (same
-                # segment sent twice) instead of only an approximate duplicate-packet heuristic.
                 tcp_seq = int(tcp_layer.seq)
             elif packet.haslayer(UDP):
                 udp_layer = packet[UDP]
@@ -78,7 +85,6 @@ class PacketSniffer:
 
             with self.buffer_lock:
                 self.packet_buffer.append(pkt_dict)
-                # Keep packet buffer bounded in case server uploads fail repeatedly
                 if len(self.packet_buffer) > 10000:
                     self.packet_buffer.pop(0)
 
@@ -149,10 +155,11 @@ class PacketSniffer:
                         self._last_io = curr_io
                         self._last_io_time = time.time()
 
-                        if pkts_diff > 0 and bytes_diff > 0:
-                            avg_size = max(int(bytes_diff / pkts_diff), 64)
+                        if pkts_diff > 0 or bytes_diff > 0:
+                            effective_pkts = max(pkts_diff, 1)
+                            avg_size = max(int(bytes_diff / effective_pkts) if effective_pkts > 0 else 64, 64)
                             now_ts = time.time()
-                            synthetic_count = min(pkts_diff, 50)
+                            synthetic_count = min(effective_pkts, 50)
                             for i in range(synthetic_count):
                                 packets.append({
                                     "src_ip": "10.91.150.128",
@@ -168,7 +175,6 @@ class PacketSniffer:
                 except Exception as ex:
                     logger.debug(f"System socket fallback error: {ex}")
 
-            # Baseline heartbeat guarantee: Ensure idle laptops always report at least 1 active telemetry packet
             if not packets:
                 packets.append({
                     "src_ip": "127.0.0.1",
