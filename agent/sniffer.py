@@ -93,8 +93,19 @@ class PacketSniffer:
         logger.info("Initializing packet capture thread...")
         self.is_running = True
         try:
+            iface = config.CAPTURE_INTERFACE
+            if not iface:
+                try:
+                    from scapy.all import conf
+                    route_iface = conf.route.route("8.8.8.8")[0]
+                    if route_iface:
+                        iface = route_iface
+                        logger.info(f"Auto-detected active network interface: {iface}")
+                except Exception as ex:
+                    logger.warning(f"Could not auto-detect default route interface: {ex}")
+
             self.sniffer = AsyncSniffer(
-                iface=config.CAPTURE_INTERFACE,
+                iface=iface,
                 prn=self.packet_callback,
                 store=0
             )
