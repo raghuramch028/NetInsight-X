@@ -15,7 +15,20 @@ class PacketSniffer:
         self.buffer_lock = threading.Lock()
         self.sniffer = None
         self.is_running = False
-        self.proto_map = {1: "ICMP", 6: "TCP", 17: "UDP"}
+        self.proto_map = {
+            1: "ICMP",
+            2: "IGMP",
+            6: "TCP",
+            17: "UDP",
+            41: "IPv6",
+            47: "GRE",
+            50: "ESP",
+            51: "AH",
+            58: "ICMPv6",
+            88: "EIGRP",
+            89: "OSPF",
+            112: "VRRP",
+        }
         self.start_time = time.time()
         self.start_perf = time.perf_counter()
 

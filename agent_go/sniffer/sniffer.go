@@ -133,6 +133,10 @@ func (s *PacketSniffer) processPacket(packet gopacket.Packet) {
 			icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
 			if icmpLayer != nil {
 				protocol = "ICMP"
+			} else if ip.Protocol == 2 {
+				protocol = "IGMP"
+			} else {
+				protocol = fmt.Sprintf("OTHER(%d)", ip.Protocol)
 			}
 		}
 	}
