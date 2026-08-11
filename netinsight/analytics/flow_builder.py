@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 classifier = get_shared_classifier()
 
 PROTOCOL_NAME_MAP = {
+    "0": "MLD", "MLD": "MLD", "OTHER(0)": "MLD", "HOPOPT": "MLD",
     "1": "ICMP", "ICMP": "ICMP", "OTHER(1)": "ICMP",
     "2": "IGMP", "IGMP": "IGMP", "OTHER(2)": "IGMP",
     "6": "TCP", "TCP": "TCP", "OTHER(6)": "TCP",

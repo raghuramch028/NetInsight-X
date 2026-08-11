@@ -16,6 +16,7 @@ class PacketSniffer:
         self.sniffer = None
         self.is_running = False
         self.proto_map = {
+            0: "MLD",
             1: "ICMP",
             2: "IGMP",
             6: "TCP",
