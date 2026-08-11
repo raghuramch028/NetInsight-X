@@ -273,6 +273,7 @@ def api_live_packets(request):
         if active_agents_count == 0:
             return JsonResponse({"packets": []})
 
+        from netinsight.analytics.flow_builder import normalize_protocol_name
         packets_qs = PacketRecord.objects.select_related("agent").order_by("-id")[:20]
         records = [
             {
@@ -281,7 +282,7 @@ def api_live_packets(request):
                 "dst_ip": r.dst_ip,
                 "src_port": r.src_port,
                 "dst_port": r.dst_port,
-                "protocol": r.protocol,
+                "protocol": normalize_protocol_name(r.protocol),
                 "size": r.size,
                 "timestamp": r.timestamp,
                 "ttl": r.ttl,
