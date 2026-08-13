@@ -7,26 +7,19 @@
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![AI Engine: NVIDIA NIM](https://img.shields.io/badge/AI_Engine-NVIDIA_DeepSeek_AI-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
 
-NetInsight-X is an intelligent, high-performance distributed network management, security analysis, and Decision Support System (DSS). Designed for real-time operational visibility, NetInsight-X combines multi-agent edge packet capture, **NVIDIA DeepSeek AI** cloud inference, stochastic state forecasting (**Hidden Markov Model & Markov Chains**), convex bandwidth optimization (**CVXOPT LP + KKT Verification**), and policy recommendation (**Markov Decision Process / Bellman Value Iteration**).
+NetInsight-X is an intelligent, high-performance distributed network management, security analysis, and Decision Support System (DSS). Designed for real-time operational visibility, NetInsight-X combines multi-agent edge packet capture, **NVIDIA DeepSeek AI** cloud inference, enterprise IDS heuristic security rules, and convex bandwidth optimization (**CVXOPT LP + KKT Verification**).
 
 ---
 
 ## 🚀 Key Features
 
 * **🛰️ Distributed Multi-Agent Sniffers:**
-  - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet headers capture and host telemetry streaming.
+  - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet header capture and host telemetry streaming.
   - **Go Agent (`agent_go/main.go`)**: High-throughput Go packet sniffer with support for environment-driven hotspot SSID configuration (`HOTSPOT_SSID`).
 
 * **🤖 Hybrid Heuristic / NVIDIA DeepSeek AI Threat Classifier:**
   - Deterministic Intrusion Detection System (IDS) heuristic rules are checked first, covering volumetric threats (DDoS >1000 pps, DoS >500 pps, Mirai >300 pps + high connection frequency, Brute Force >50 pps on common admin ports, Reconnaissance via high connection frequency).
   - Traffic the heuristics can't label falls back to the **NVIDIA NIM API** (`deepseek-ai/deepseek-r1`, configurable via `NVIDIA_MODEL_NAME`) for zero-shot classification with a reasoning summary, when `NVIDIA_API_KEY` is configured. Without an API key, the system runs on heuristics alone.
-
-* **🔮 HMM & Markov State Forecasting:**
-  - Real-time stochastic forecasting across 5 operational network states (*Normal, Busy, Congested, Under Attack, Recovering*) using Viterbi decoding.
-  - Dynamically calculates the 5x5 row-stochastic Markov transition matrix over `StateHistory` Django ORM records.
-
-* **⚡ MDP Decision Support Engine:**
-  - Formulates Bellman Value Iteration policy recommendations (*Reallocate Bandwidth, Prioritize Critical Services, Throttle Streaming*) based on current network states and risk rewards.
 
 * **📐 Convex QoS Bandwidth Optimizer (CVXOPT + KKT):**
   - Solves constrained Linear Programming (LP) bandwidth allocation under dynamic capacity limits (e.g. mobile hotspots at 8.5 Mbps or dynamic speed test capacity).
@@ -53,10 +46,9 @@ NetInsight-X is an intelligent, high-performance distributed network management,
   [ Python Edge Agent ] ──┐     ┌───[ Central Server ]───┐
   (agent/main.py)         │     │  (Django 5.2 Server)   │
                           ├────►│                        ├──► [ NVIDIA NIM API ]
-  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │     (DeepSeek AI / Llama 70B)
-  (agent_go/main.go)      │     │  - HMM & Markov State  │
-                                │  - CVXOPT LP Allocator │
-                                │  - MDP Bellman Engine  │
+  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │     (DeepSeek AI)
+  (agent_go/main.go)      │     │  - CVXOPT LP Allocator │
+                                │  - KKT Verification    │
                                 └────────────────────────┘
 ```
 
@@ -112,7 +104,7 @@ go run main.go -server http://<SERVER-IP>:8000
 
 ## 🧪 Testing & Code Quality
 
-NetInsight-X features a comprehensive, 100% passing automated test suite covering all REST endpoints, mathematical solvers, HMM state engines, view routes, agent HTTP clients, and background-task singleton locking:
+NetInsight-X features a comprehensive, 100% passing automated test suite covering all REST endpoints, mathematical solvers, threat classification engines, view routes, agent HTTP clients, and background-task singleton locking:
 
 ```powershell
 # Run Linter (0 errors)
@@ -194,7 +186,7 @@ NetInsight-X/
 │   ├── config/              # Central settings, labels & environment variables
 │   ├── analytics/           # Flow Builder, Telemetry handler & Topology generator
 │   ├── classification/      # NVIDIA DeepSeek AI engine & heuristic IDS rules
-│   ├── prediction/          # Viterbi HMM state forecasting, Markov estimator & DSE alerting
+│   ├── prediction/          # Network state analytics & alert triggers
 │   ├── optimization/        # CVXOPT LP bandwidth solver & KKT verifier
 │   └── dashboard/           # Django templates, styling, views package & REST routes
 │
