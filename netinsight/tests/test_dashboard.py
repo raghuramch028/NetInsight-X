@@ -14,7 +14,7 @@ import django
 django.setup()
 
 from netinsight.config import settings
-from netinsight.dashboard.models import Agent, MetricRecord
+from netinsight.dashboard.models import Agent
 from netinsight.database import db_manager
 
 
@@ -45,7 +45,6 @@ class TestDashboardViews(TestCase):
             ("dashboard:analytics", {}),
             ("dashboard:optimization", {}),
             ("dashboard:classification", {}),
-            ("dashboard:reports", {})
         ]
 
         for view_name, kwargs in views_to_test:
@@ -93,17 +92,6 @@ class TestDashboardViews(TestCase):
         pkts_data = response.json()
         self.assertIn("packets", pkts_data)
         self.assertIsInstance(pkts_data["packets"], list)
-
-    def test_reports_with_data(self):
-        """Verifies the reports page can generate telemetry charts."""
-        MetricRecord.objects.create(timestamp=time.time() - 10, throughput=1.0, packet_rate=1.0, bandwidth_util=1.0, latency=0.015, packet_loss=0.0)
-        MetricRecord.objects.create(timestamp=time.time() - 5, throughput=2.0, packet_rate=2.0, bandwidth_util=2.0, latency=0.015, packet_loss=0.0)
-        MetricRecord.objects.create(timestamp=time.time(), throughput=3.0, packet_rate=3.0, bandwidth_util=3.0, latency=0.015, packet_loss=0.0)
-
-        url_reports = reverse("dashboard:reports")
-        response = self.client.get(url_reports)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "data:image/png;base64", count=None, status_code=200)
 
     def test_optimization_post_validation(self):
         """Verifies optimization POST handling validates list length and clamping boundaries."""

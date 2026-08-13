@@ -13,7 +13,6 @@ urlpatterns = [
     path("analytics/", views.analytics_view, name="analytics"),
     path("optimization/", views.optimization_view, name="optimization"),
     path("classification/", views.classification_view, name="classification"),
-    path("reports/", views.reports_view, name="reports"),
     path("settings/", views.settings_view, name="settings"),
 
     # REST Telemetry APIs (Versioned)
@@ -27,10 +26,4 @@ urlpatterns = [
     path("api/live-metrics/", views.api_live_metrics, name="api_live_metrics"),
     path("api/live-packets/", views.api_live_packets, name="api_live_packets"),
     path("api/v1/stream/metrics/", views.api_stream_metrics, name="api_stream_metrics"),
-
-
-    # Reports exports API downloads
-    path("reports/pdf/", views.reports_pdf_download, name="reports_pdf_download"),
-    path("reports/csv/", views.reports_csv_download, name="reports_csv_download"),
-    path("reports/json/", views.reports_json_download, name="reports_json_download"),
 ]
