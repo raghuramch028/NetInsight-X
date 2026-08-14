@@ -102,7 +102,7 @@ class SystemSettings(models.Model):
     loss_threshold = models.FloatField(default=0.05)
     latency_threshold = models.FloatField(default=0.15)
     lp_priorities = models.JSONField(default=list)
-    svm_confidence_threshold = models.FloatField(default=0.80)
+    llm_confidence_threshold = models.FloatField(default=0.80)
 
     def __str__(self):
         return "SystemSettings Policy Defaults"

@@ -202,20 +202,19 @@ class TestTrafficClassification(TestCase):
         return mock_response
 
     def test_low_confidence_llm_threat_is_suppressed_to_normal(self):
-        """svm_confidence_threshold (Settings page) previously had no effect on classification —
-        it was a persisted value nothing ever read. A non-Normal LLM label below the configured
-        threshold must now be suppressed rather than raised as a threat."""
+        """llm_confidence_threshold (Settings page) controls minimum LLM confidence.
+        A non-Normal LLM label below the configured threshold must be suppressed to Normal."""
         from unittest.mock import patch
 
         from netinsight.dashboard.models import SystemSettings
-        SystemSettings.objects.create(svm_confidence_threshold=0.80)
+        SystemSettings.objects.create(llm_confidence_threshold=0.80)
 
         clf = TrafficClassifier()
         pkt = {
             "src_ip": "192.168.1.5", "dst_ip": "8.8.8.8", "size": 500, "protocol": "TCP",
             "timestamp": 1000.0, "packet_rate": 2.0, "conn_frequency": 1.0
         }
-        mock_response = self._mock_llm_response("Reconnaissance", 0.55)  # below 0.80 threshold
+        mock_response = self._mock_llm_response("Reconnaissance", 0.55)
 
         with patch.object(clf.llm_classifier, "nvidia_api_key", "fake-key-for-test"), \
              patch("netinsight.classification.llm_classifier.requests.post", return_value=mock_response):
@@ -228,7 +227,7 @@ class TestTrafficClassification(TestCase):
         from unittest.mock import patch
 
         from netinsight.dashboard.models import SystemSettings
-        SystemSettings.objects.create(svm_confidence_threshold=0.80)
+        SystemSettings.objects.create(llm_confidence_threshold=0.80)
 
         clf = TrafficClassifier()
         pkt = {

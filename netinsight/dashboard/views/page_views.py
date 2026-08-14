@@ -240,7 +240,7 @@ def settings_view(request):
             settings_obj.bandwidth_threshold = float(request.POST.get("bandwidth_threshold", 0.75))
             settings_obj.loss_threshold = float(request.POST.get("loss_threshold", 0.05))
             settings_obj.latency_threshold = float(request.POST.get("latency_threshold", 0.15))
-            settings_obj.svm_confidence_threshold = float(request.POST.get("svm_confidence_threshold", 0.80))
+            settings_obj.llm_confidence_threshold = float(request.POST.get("llm_confidence_threshold", 0.80))
             settings_obj.save()
             logger.info("Successfully updated SystemSettings thresholds dynamically.")
             return redirect("dashboard:index")

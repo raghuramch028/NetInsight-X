@@ -28,15 +28,15 @@ class TrafficClassifier:
         self.window_duration = max(1.0, float(window_duration))
 
     def _get_confidence_threshold(self) -> float:
-        """Reads SystemSettings.svm_confidence_threshold (admin-configurable via the Settings
+        """Reads SystemSettings.llm_confidence_threshold (admin-configurable via the Settings
         page). Local import avoids a module-level dependency from classification -> dashboard
         at import time; falls back to a fixed default if the settings row or DB isn't available
         (e.g. this classifier used outside a full Django request context)."""
         try:
             from netinsight.dashboard.models import SystemSettings
             settings_obj = SystemSettings.objects.first()
-            if settings_obj is not None and settings_obj.svm_confidence_threshold is not None:
-                return float(settings_obj.svm_confidence_threshold)
+            if settings_obj is not None and settings_obj.llm_confidence_threshold is not None:
+                return float(settings_obj.llm_confidence_threshold)
         except Exception as e:
             logger.debug(f"Could not read confidence threshold from SystemSettings: {e}")
         return self._DEFAULT_CONFIDENCE_THRESHOLD
