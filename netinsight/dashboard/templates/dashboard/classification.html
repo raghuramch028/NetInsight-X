@@ -115,7 +115,6 @@
                     <th class="text-dark fw-bold bg-light">Destination Host IP</th>
                     <th class="text-dark fw-bold bg-light">Ports Sequence</th>
                     <th class="text-dark fw-bold bg-light">Size (Bytes)</th>
-                    <th class="text-dark fw-bold bg-light">TTL</th>
                     <th class="text-dark fw-bold bg-light">Classification Label</th>
                 </tr>
             </thead>
@@ -135,7 +134,6 @@
                         <td class="font-mono text-dark fw-bold">{{ pkt.dst_ip }}</td>
                         <td><span class="pill-badge font-mono" style="font-size:0.7rem;">{{ pkt.src_port }} &rarr; {{ pkt.dst_port }}</span></td>
                         <td class="font-mono text-dark">{{ pkt.size }} Bytes</td>
-                        <td class="font-mono text-dark">{{ pkt.ttl }}</td>
                         <td>
                             {% if pkt.classification == 'Normal' %}
                                 <span class="pill-badge emerald font-mono" style="font-size:0.7rem;"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:-1px;"></i>Normal</span>

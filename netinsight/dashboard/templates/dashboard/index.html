@@ -172,13 +172,12 @@
                     <th class="text-dark fw-bold bg-light">SRC PORT</th>
                     <th class="text-dark fw-bold bg-light">DST PORT</th>
                     <th class="text-dark fw-bold bg-light">SIZE (BYTES)</th>
-                    <th class="text-dark fw-bold bg-light">TTL</th>
                     <th class="text-dark fw-bold bg-light">TIME</th>
                 </tr>
             </thead>
             <tbody id="packet-tbody">
                 <tr>
-                    <td colspan="9" class="text-center text-secondary py-4 font-mono">Listening for edge packet stream headers...</td>
+                    <td colspan="8" class="text-center text-secondary py-4 font-mono">Listening for edge packet stream headers...</td>
                 </tr>
             </tbody>
         </table>
@@ -341,7 +340,6 @@
                             <td class="font-mono text-dark">${pkt.src_port || 0}</td>
                             <td class="font-mono text-dark">${pkt.dst_port || 0}</td>
                             <td class="font-mono text-dark fw-bold">${pkt.size || 0}</td>
-                            <td class="font-mono text-dark">${pkt.ttl || 64}</td>
                             <td class="font-mono text-secondary">${timeStr}</td>
                         </tr>
                     `;
