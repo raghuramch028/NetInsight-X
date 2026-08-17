@@ -130,7 +130,7 @@
     <div class="col-lg-8">
         <div class="saas-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="editorial-serif h5 m-0 text-dark">Live Throughput & Link Utilization Stream</h4>
+                <h4 class="editorial-serif h5 m-0 text-dark">Live Throughput Stream</h4>
                 <span class="pill-badge terracotta font-mono" style="font-size: 0.75rem;">60s ROLLING WINDOW</span>
             </div>
             <div style="height: 280px; position: relative;">
@@ -210,7 +210,6 @@
 
     const labels = Array(15).fill('');
     const throughputData = Array(15).fill(0);
-    const utilizationData = Array(15).fill(0);
 
     const liveChart = new Chart(ctx, {
         type: 'line',
@@ -226,17 +225,6 @@
                     fill: true,
                     tension: 0.3,
                     yAxisID: 'y'
-                },
-                {
-                    label: 'Utilization (%)',
-                    data: utilizationData,
-                    borderColor: '#489b78',
-                    backgroundColor: 'transparent',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    fill: false,
-                    tension: 0.3,
-                    yAxisID: 'y1'
                 }
             ]
         },
@@ -248,8 +236,7 @@
             },
             scales: {
                 x: { grid: { display: false }, ticks: { color: '#4a4648', font: { size: 10, family: 'JetBrains Mono' } } },
-                y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#df6e54', font: { size: 10, family: 'JetBrains Mono', weight: 'bold' } } },
-                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#489b78', font: { size: 10, family: 'JetBrains Mono', weight: 'bold' } }, min: 0, max: 100 }
+                y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#df6e54', font: { size: 10, family: 'JetBrains Mono', weight: 'bold' } }, min: 0 }
             }
         }
     });
@@ -293,8 +280,6 @@
 
                 throughputData.shift();
                 throughputData.push(parseFloat(mbps));
-                utilizationData.shift();
-                utilizationData.push(parseFloat(data.bandwidth_util.toFixed(2)));
                 
                 labels.shift();
                 labels.push(new Date(data.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
