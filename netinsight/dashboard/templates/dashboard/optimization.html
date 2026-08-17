@@ -35,10 +35,6 @@
                 <div class="ps-3 text-dark fw-bold">x<sub>i</sub> &ge; m<sub>i</sub> &nbsp; (Guaranteed Minimum Bandwidth)</div>
                 <div class="ps-3 text-dark fw-bold">x<sub>i</sub> &le; M<sub>i</sub> &nbsp; (Maximum Bandwidth Cap)</div>
             </div>
-            
-            <p class="text-secondary small mb-0">
-                <strong>Convexity &amp; Optimality:</strong> The objective function is linear (affine), and all constraints define a closed convex polytope. This LP is structurally convex, guaranteeing that the solution found by the CVXOPT interior-point solver is the globally optimal primal-dual pair.
-            </p>
         </div>
     </div>
 
@@ -183,7 +179,7 @@
                 <!-- Condition 1 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">1. Primal Feasibility <span class="font-mono small" style="color: var(--accent-terracotta);">(G·x<sup>*</sup> &minus; h &le; 0)</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">1. Primal Feasibility</div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if constraints are satisfied within bounds</div>
                     </div>
                     <div class="text-end font-mono">
@@ -192,14 +188,13 @@
                         {% else %}
                             <span class="text-danger fw-bold" style="font-size: 0.85rem;"><i data-lucide="x" class="d-inline-block align-middle me-1" style="width:12px;height:12px;"></i>FAIL</span>
                         {% endif %}
-                        <div class="small text-secondary mt-1" style="font-size:0.7rem;">res: {{ kkt.max_primal_violation|stringformat:".2e" }}</div>
                     </div>
                 </li>
                 
                 <!-- Condition 2 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">2. Dual Feasibility <span class="font-mono small" style="color: var(--accent-terracotta);">&lambda;<sup>*</sup> &ge; 0</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">2. Dual Feasibility</div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrange multipliers are non-negative</div>
                     </div>
                     <div class="text-end font-mono">
@@ -208,14 +203,13 @@
                         {% else %}
                             <span class="text-danger fw-bold" style="font-size: 0.85rem;"><i data-lucide="x" class="d-inline-block align-middle me-1" style="width:12px;height:12px;"></i>FAIL</span>
                         {% endif %}
-                        <div class="small text-secondary mt-1" style="font-size:0.7rem;">min: {{ kkt.min_dual_multiplier|stringformat:".2e" }}</div>
                     </div>
                 </li>
 
                 <!-- Condition 3 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-bottom text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">3. Complementary Slackness <span class="font-mono small" style="color: var(--accent-terracotta);">&lambda;<sup>*</sup> · (G·x<sup>*</sup> &minus; h) = 0</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">3. Complementary Slackness</div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if inactive constraints map to zero multipliers</div>
                     </div>
                     <div class="text-end font-mono">
@@ -224,14 +218,13 @@
                         {% else %}
                             <span class="text-danger fw-bold" style="font-size: 0.85rem;"><i data-lucide="x" class="d-inline-block align-middle me-1" style="width:12px;height:12px;"></i>FAIL</span>
                         {% endif %}
-                        <div class="small text-secondary mt-1" style="font-size:0.7rem;">res: {{ kkt.max_complementary_slackness_violation|stringformat:".2e" }}</div>
                     </div>
                 </li>
 
                 <!-- Condition 4 -->
                 <li class="list-group-item bg-transparent py-3 px-0 border-0 text-dark d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">4. Stationarity <span class="font-mono small" style="color: var(--accent-terracotta);">&minus;c + G<sup>T</sup>&lambda;<sup>*</sup> = 0</span></div>
+                        <div class="fw-semibold text-dark" style="font-size: 0.9rem;">4. Stationarity</div>
                         <div class="text-secondary small" style="font-size:0.75rem;">Checks if Lagrangian gradient vanishes at optimum</div>
                     </div>
                     <div class="text-end font-mono">
@@ -240,7 +233,6 @@
                         {% else %}
                             <span class="text-danger fw-bold" style="font-size: 0.85rem;"><i data-lucide="x" class="d-inline-block align-middle me-1" style="width:12px;height:12px;"></i>FAIL</span>
                         {% endif %}
-                        <div class="small text-secondary mt-1" style="font-size:0.7rem;">res: {{ kkt.max_stationarity_violation|stringformat:".2e" }}</div>
                     </div>
                 </li>
             </ul>

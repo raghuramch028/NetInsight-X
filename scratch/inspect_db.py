@@ -5,8 +5,8 @@ def inspect():
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [t[0] for t in cur.fetchall() if not t[0].startswith("sqlite_") and not t[0].startswith("django_") and not t[0].startswith("auth_")]
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+    tables = [t[0] for t in cur.fetchall() if not t[0].startswith("sqlite_")]
 
     print("=== NETINSIGHT.DB CORE APP TABLES ===")
     for table in tables:
