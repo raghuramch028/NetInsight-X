@@ -3,10 +3,9 @@ import time
 from datetime import timedelta
 
 import pandas as pd
-from django.db.models import Avg, Count, Sum
 from django.utils import timezone
 
-from netinsight.dashboard.models import Agent, MetricRecord, PacketRecord
+from netinsight.dashboard.models import Agent, MetricRecord
 
 logger = logging.getLogger(__name__)
 
@@ -70,57 +69,6 @@ class AnalyticsEngine:
             logger.error(f"Error fetching historical metrics: {e}", exc_info=True)
             return pd.DataFrame(columns=["timestamp", "throughput", "packet_rate", "bandwidth_util", "latency", "packet_loss"])
 
-    def get_protocol_distribution(self, window_seconds: float = 60.0) -> pd.DataFrame:
-        """Computes the distribution of protocols within recent time window or overall database."""
-        try:
-            cutoff = time.time() - window_seconds
-            queryset = PacketRecord.objects.filter(timestamp__gte=cutoff).values("protocol").annotate(
-                packet_count=Count("id"),
-                byte_count=Sum("size")
-            )
-            if not queryset.exists():
-                queryset = PacketRecord.objects.values("protocol").annotate(
-                    packet_count=Count("id"),
-                    byte_count=Sum("size")
-                )
-
-            df = pd.DataFrame(list(queryset))
-            if df.empty:
-                return pd.DataFrame(columns=["protocol", "packet_count", "byte_count", "percentage"])
-
-            total_pkts = df["packet_count"].sum()
-            df["percentage"] = (df["packet_count"] / total_pkts) * 100.0 if total_pkts > 0 else 0.0
-            return df
-        except Exception as e:
-            logger.error(f"Error computing protocol distribution: {e}", exc_info=True)
-            return pd.DataFrame(columns=["protocol", "packet_count", "byte_count", "percentage"])
-
-    def get_top_consumers(self, limit: int = 5, window_seconds: float = 60.0) -> pd.DataFrame:
-        """Identifies top source IP addresses by cumulative traffic size."""
-        try:
-            cutoff = time.time() - window_seconds
-            queryset = PacketRecord.objects.filter(timestamp__gte=cutoff).values("src_ip").annotate(
-                packet_count=Count("id"),
-                total_bytes=Sum("size")
-            ).order_by("-total_bytes")[:limit]
-
-            if not queryset.exists():
-                queryset = PacketRecord.objects.values("src_ip").annotate(
-                    packet_count=Count("id"),
-                    total_bytes=Sum("size")
-                ).order_by("-total_bytes")[:limit]
-
-            df = pd.DataFrame(list(queryset))
-            if df.empty:
-                return pd.DataFrame(columns=["src_ip", "packet_count", "total_bytes", "percentage"])
-
-            total_bytes_window = df["total_bytes"].sum()
-            df["percentage"] = (df["total_bytes"] / total_bytes_window) * 100.0 if total_bytes_window > 0 else 0.0
-            return df
-        except Exception as e:
-            logger.error(f"Error computing top consumers: {e}", exc_info=True)
-            return pd.DataFrame(columns=["src_ip", "packet_count", "total_bytes", "percentage"])
-
     def get_active_devices_count(self, window_seconds: float = 15.0) -> int:
         """Returns the number of unique active source devices in the recent window or total registered agents."""
         try:
@@ -131,43 +79,3 @@ class AnalyticsEngine:
             logger.error(f"Error getting active devices count: {e}", exc_info=True)
             return 0
 
-    def get_general_summary(self, window_seconds: float = 60.0) -> dict:
-        """Computes summary stats of traffic over window or overall database."""
-        try:
-            cutoff = time.time() - window_seconds
-            stats = PacketRecord.objects.filter(timestamp__gte=cutoff).aggregate(
-                total_packets=Count("id"),
-                total_bytes=Sum("size"),
-                avg_packet_size=Avg("size")
-            )
-            total_packets = stats.get("total_packets") or 0
-            if total_packets == 0:
-                stats = PacketRecord.objects.all().aggregate(
-                    total_packets=Count("id"),
-                    total_bytes=Sum("size"),
-                    avg_packet_size=Avg("size")
-                )
-                total_packets = stats.get("total_packets") or 0
-
-            if total_packets == 0:
-                return {
-                    "total_packets": 0,
-                    "total_bytes": 0,
-                    "avg_packet_size": 0.0,
-                    "active_devices": Agent.objects.count()
-                }
-
-            return {
-                "total_packets": total_packets,
-                "total_bytes": stats.get("total_bytes") or 0,
-                "avg_packet_size": stats.get("avg_packet_size") or 0.0,
-                "active_devices": self.get_active_devices_count(window_seconds=15)
-            }
-        except Exception as e:
-            logger.error(f"Error computing general summary: {e}", exc_info=True)
-            return {
-                "total_packets": 0,
-                "total_bytes": 0,
-                "avg_packet_size": 0.0,
-                "active_devices": 0
-            }

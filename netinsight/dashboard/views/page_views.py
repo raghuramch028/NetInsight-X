@@ -92,28 +92,6 @@ def index_view(request):
 
 
 @_require_dashboard_auth
-def analytics_view(request):
-    """Renders the Traffic Analytics page."""
-    summary = analytics_engine.get_general_summary(window_seconds=60)
-    protocol_dist = analytics_engine.get_protocol_distribution(window_seconds=60)
-    top_consumers = analytics_engine.get_top_consumers(limit=5, window_seconds=60)
-
-    consumers_list = top_consumers.to_dict(orient="records") if not top_consumers.empty else []
-    for client in consumers_list:
-        client["total_mb"] = client["total_bytes"] / 1048576.0
-
-    protocols_list = protocol_dist.to_dict(orient="records") if not protocol_dist.empty else []
-
-    context = {
-        "summary": summary,
-        "consumers": consumers_list,
-        "protocols": protocols_list,
-        "link_capacity_mbps": settings.LINK_CAPACITY / 1e6
-    }
-    return render(request, "dashboard/analytics.html", context)
-
-
-@_require_dashboard_auth
 def optimization_view(request):
     """Solves Linear Programming bandwidth optimization QoS and verifies KKT."""
     settings_obj = SystemSettings.objects.first()

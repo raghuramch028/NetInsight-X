@@ -42,7 +42,6 @@ class TestDashboardViews(TestCase):
         """Verifies that all subpages render HTTP 200 Success."""
         views_to_test = [
             ("dashboard:index", {}),
-            ("dashboard:analytics", {}),
             ("dashboard:optimization", {}),
             ("dashboard:classification", {}),
         ]
