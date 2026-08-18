@@ -12,6 +12,7 @@ requires-python = ">=3.10"
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+cache-dir = "~/.cache/ruff"
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
