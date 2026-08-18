@@ -3,7 +3,6 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 
 from django.db import close_old_connections
 from django.db.models import Count, Sum
@@ -12,10 +11,8 @@ from django.utils import timezone
 from netinsight.analytics.flow_builder import prepare_packet_record
 from netinsight.dashboard.models import (
     Agent,
-    FlowRecord,
     MetricRecord,
     PacketRecord,
-    ThreatHistory,
 )
 
 logger = logging.getLogger(__name__)
@@ -166,10 +163,7 @@ def _prune_stale_records() -> None:
         PacketRecord.objects.filter(timestamp__lt=prune_cutoff).delete()
 
         retention_cutoff = now_ts - 86400.0  # 24 hours
-        FlowRecord.objects.filter(end_time__lt=retention_cutoff).delete()
         MetricRecord.objects.filter(timestamp__lt=retention_cutoff).delete()
-        retention_cutoff_dt = timezone.now() - timedelta(hours=24)
-        ThreatHistory.objects.filter(timestamp__lt=retention_cutoff_dt).delete()
     except Exception as e:
         logger.error(f"Error during periodic DB pruning: {e}", exc_info=True)
     finally:

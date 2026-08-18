@@ -43,7 +43,7 @@ class TestDashboardViews(TestCase):
         views_to_test = [
             ("dashboard:index", {}),
             ("dashboard:optimization", {}),
-            ("dashboard:classification", {}),
+            ("dashboard:settings", {}),
         ]
 
         for view_name, kwargs in views_to_test:
@@ -112,13 +112,6 @@ class TestDashboardViews(TestCase):
         }
         response = self.client.post(url, malformed_payload)
         self.assertEqual(response.status_code, 200)
-
-    def test_shared_classifier_singleton(self):
-        """Verifies that get_shared_classifier returns a shared singleton instance."""
-        from netinsight.classification.classifier import get_shared_classifier
-        clf1 = get_shared_classifier()
-        clf2 = get_shared_classifier()
-        self.assertIs(clf1, clf2, "get_shared_classifier must return the exact same instance")
 
     def test_bulk_packet_preparation(self):
         """Verifies that prepare_packet_record builds unsaved PacketRecord instances for batch insert."""

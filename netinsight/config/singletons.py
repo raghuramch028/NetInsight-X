@@ -4,7 +4,6 @@ import threading
 
 _analytics_engine = None
 _dse_engine = None
-_traffic_classifier = None
 _lp_optimizer = None
 
 _lock = threading.Lock()
@@ -30,17 +29,6 @@ def get_dse_engine():
                 from netinsight.analytics.dse import DecisionSupportEngine
                 _dse_engine = DecisionSupportEngine()
     return _dse_engine
-
-
-def get_traffic_classifier():
-    """Returns the process-wide shared TrafficClassifier singleton."""
-    global _traffic_classifier
-    if _traffic_classifier is None:
-        with _lock:
-            if _traffic_classifier is None:
-                from netinsight.classification.classifier import TrafficClassifier
-                _traffic_classifier = TrafficClassifier()
-    return _traffic_classifier
 
 
 def get_lp_optimizer():

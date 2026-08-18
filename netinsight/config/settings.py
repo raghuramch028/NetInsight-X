@@ -192,10 +192,6 @@ HOTSPOT_SSID = os.environ.get("HOTSPOT_SSID", "SEM3_PROJECT")
 # Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
 NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
 
-# LLM Classification Configuration
-NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
-NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
-
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
 QOS_MIN_BANDWIDTH = [5_000_000.0, 15_000_000.0, 2_000_000.0, 10_000_000.0]

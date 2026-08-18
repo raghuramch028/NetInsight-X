@@ -24,7 +24,6 @@ from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
     get_lp_optimizer,
-    get_traffic_classifier,
 )
 from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.models import Agent, PacketRecord, SystemSettings
@@ -61,7 +60,6 @@ def _clean_ip_or_default(raw_ip: str, default: str = "0.0.0.0") -> str:
 analytics_engine = get_analytics_engine()
 optimizer = get_lp_optimizer()
 dse_engine = get_dse_engine()
-classifier = get_traffic_classifier()
 
 # =====================================================================
 # Health Check
@@ -249,12 +247,6 @@ def api_live_metrics(request):
 
         # Generate DSE advisory alerts
         latest["dse_alerts"] = dse_engine.evaluate_decisions()
-
-        latest["llm_active"] = bool(getattr(settings, "NVIDIA_API_KEY", None))
-        latest["engine_name"] = "NVIDIA DeepSeek AI"
-        latest["llm_latency_ms"] = getattr(classifier, "last_llm_latency_ms", 0.0)
-        latest["llm_reasoning"] = getattr(classifier, "last_llm_reasoning", "")
-        latest["llm_provider"] = "NVIDIA DeepSeek AI"
         latest["link_capacity_mbps"] = speed_monitor.get_current_capacity() / 1e6
 
         return JsonResponse(_to_native_types(latest))

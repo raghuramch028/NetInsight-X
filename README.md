@@ -1,13 +1,13 @@
 # NetInsight-X
 
-**NetInsight-X: An AI-Driven Distributed Network Monitoring, Traffic Analytics, and Decision Support System (DSS)**
+**NetInsight-X: Autonomous Dynamic Bandwidth Allocation and Convex QoS Optimization System**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: Django](https://img.shields.io/badge/Framework-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
-[![AI Engine: NVIDIA NIM](https://img.shields.io/badge/AI_Engine-NVIDIA_DeepSeek_AI-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
+[![Optimization: CVXOPT](https://img.shields.io/badge/Optimization-CVXOPT_LP_%2B_KKT-orange?style=for-the-badge)](https://cvxopt.org/)
 
-NetInsight-X is an intelligent, high-performance distributed network management, security analysis, and Decision Support System (DSS). Designed for real-time operational visibility, NetInsight-X combines multi-agent edge packet capture, **NVIDIA DeepSeek AI** cloud inference, enterprise IDS heuristic security rules, and convex bandwidth optimization (**CVXOPT LP + KKT Verification**).
+NetInsight-X is an autonomous, high-performance distributed network management and real-time Quality of Service (QoS) Bandwidth Optimization System. Designed for dynamic bandwidth allocation across multi-agent endpoints, NetInsight-X combines edge packet telemetry, real-time speed monitoring, and convex bandwidth optimization (**CVXOPT Linear Programming + Karush-Kuhn-Tucker (KKT) Optimality Verification**).
 
 ---
 
@@ -17,23 +17,21 @@ NetInsight-X is an intelligent, high-performance distributed network management,
   - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet header capture and host telemetry streaming.
   - **Go Agent (`agent_go/main.go`)**: High-throughput Go packet sniffer with support for environment-driven hotspot SSID configuration (`HOTSPOT_SSID`).
 
-* **🤖 Hybrid Heuristic / NVIDIA DeepSeek AI Threat Classifier:**
-  - Deterministic Intrusion Detection System (IDS) heuristic rules are checked first, covering volumetric threats (DDoS >1000 pps, DoS >500 pps, Mirai >300 pps + high connection frequency, Brute Force >50 pps on common admin ports, Reconnaissance via high connection frequency).
-  - Traffic the heuristics can't label falls back to the **NVIDIA NIM API** (`deepseek-ai/deepseek-r1`, configurable via `NVIDIA_MODEL_NAME`) for zero-shot classification with a reasoning summary, when `NVIDIA_API_KEY` is configured. Without an API key, the system runs on heuristics alone.
-
 * **📐 Convex QoS Bandwidth Optimizer (CVXOPT + KKT):**
   - Solves constrained Linear Programming (LP) bandwidth allocation under dynamic capacity limits (e.g. mobile hotspots at 8.5 Mbps or dynamic speed test capacity).
   - Verifies numerical optimality against Karush-Kuhn-Tucker (KKT) primal-dual stationarity conditions ($10^{-5}$ tolerance) with proportional fallback scaling under link saturation.
 
+* **⚡ Real-Time Closed-Loop Bandwidth Control:**
+  - Dynamic link capacity detection via Google M-Lab NDT7 multi-stream engine.
+  - Closed-loop rate limiting and QoS policy feedback dispatched to active edge endpoints.
+
 * **🔒 Security & Production Posture:**
   - Full HTML input escaping and MAC/IP address validation on agent registration against Stored XSS and malformed input.
-  - Constant-time shared-secret agent token authentication (`X-Agent-Token`, validated via `hmac.compare_digest`) — sent automatically by both the Python and Go agents whenever `NETINSIGHT_AGENT_TOKEN` is configured.
-  - Optional dashboard-user authentication gate (`NETINSIGHT_REQUIRE_AUTH`) enforced on all page and read-only API views; agent ingestion endpoints use the separate token mechanism above and are unaffected by this setting.
-  - Opt-in transport-security hardening (`NETINSIGHT_FORCE_HTTPS`) for HSTS/secure cookies when deployed behind TLS termination.
-  - Production guards enforcing secure `DJANGO_SECRET_KEY` and environment configuration.
+  - Constant-time shared-secret agent token authentication (`X-Agent-Token`, validated via `hmac.compare_digest`).
+  - Optional dashboard-user authentication gate (`NETINSIGHT_REQUIRE_AUTH`).
 
-* **📊 Interactive Dashboard & Audit Exporter:**
-  - Modern dark mode web dashboard featuring real-time Chart.js telemetry graphs, Lucide icons, instant page rendering (<10ms), and 1-click audit reports in **PDF**, **CSV**, and **JSON** formats.
+* **📊 Interactive Live Dashboard:**
+  - Modern web dashboard featuring real-time Chart.js throughput graphs, active device topology graph, Lucide icons, and live telemetry streaming.
 
 ---
 
@@ -45,8 +43,8 @@ NetInsight-X is an intelligent, high-performance distributed network management,
                                          ▼
   [ Python Edge Agent ] ──┐     ┌───[ Central Server ]───┐
   (agent/main.py)         │     │  (Django 5.2 Server)   │
-                          ├────►│                        ├──► [ NVIDIA NIM API ]
-  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │     (DeepSeek AI)
+                          ├────►│                        │
+  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │
   (agent_go/main.go)      │     │  - CVXOPT LP Allocator │
                                 │  - KKT Verification    │
                                 └────────────────────────┘
@@ -159,8 +157,6 @@ list) or editing `netinsight/config/settings.py`:
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `NVIDIA_API_KEY` | *(unset)* | NVIDIA NIM API Key for DeepSeek AI classification. Without it, only heuristic rules run. |
-| `NVIDIA_MODEL_NAME` | `deepseek-ai/deepseek-r1` | Primary cloud LLM model identifier. |
 | `DJANGO_SECRET_KEY` | *(fallback)* | Secret key for Django cryptographic signatures. |
 | `DATABASE_URL` | *(SQLite)* | Connection string for remote PostgreSQL (Neon). |
 | `DEBUG` | `True` | Set to `False` in production environments. |
@@ -179,16 +175,15 @@ list) or editing `netinsight/config/settings.py`:
 ```
 NetInsight-X/
 │
-├── agent/                   # Modular Python client agent (collector, sniffer, sender)
+├── agent/                   # Modular Python client agent (collector, sniffer, sender, QoS)
 ├── agent_go/                # High-speed Go client agent
 │
 ├── netinsight/
-│   ├── config/              # Central settings, labels & environment variables
-│   ├── analytics/           # Flow Builder, Telemetry handler & Topology generator
-│   ├── classification/      # NVIDIA DeepSeek AI engine & heuristic IDS rules
-│   ├── prediction/          # Network state analytics & alert triggers
-│   ├── optimization/        # CVXOPT LP bandwidth solver & KKT verifier
-│   └── dashboard/           # Django templates, styling, views package & REST routes
+│   ├── config/              # Central settings & singleton registries
+│   ├── analytics/           # Flow builder, Telemetry handler & Topology generator
+│   ├── optimization/        # CVXOPT Convex LP bandwidth solver & KKT verifier
+│   ├── dashboard/           # Django templates, styling, views package & REST routes
+│   └── tests/               # Regression and integration test suites
 │
 └── requirements.txt         # Package dependencies file
 ```

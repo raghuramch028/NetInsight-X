@@ -5,16 +5,16 @@ to generate actionable advisory alerts for autonomous bandwidth optimization and
 """
 import logging
 
-from netinsight.config.singletons import get_analytics_engine, get_traffic_classifier
+from netinsight.config.singletons import get_analytics_engine
 
 logger = logging.getLogger(__name__)
 
 
 class DecisionSupportEngine:
-    """Evaluates telemetry metrics and threat classifications to output advisory recommendations."""
+    """Evaluates telemetry metrics and link capacity to output QoS advisory recommendations."""
 
     def evaluate_decisions(self) -> list[dict]:
-        """Evaluates active metrics and threat classifications, returning actionable alert dicts."""
+        """Evaluates active metrics, returning actionable QoS alert dicts."""
         alerts = []
         try:
             analytics = get_analytics_engine()
@@ -23,9 +23,6 @@ class DecisionSupportEngine:
             latency = latest.get("latency", 0.0)
             packet_loss = latest.get("packet_loss", 0.0)
             bandwidth_util = latest.get("bandwidth_util", 0.0)
-
-            classifier = get_traffic_classifier()
-            last_reasoning = getattr(classifier, "last_llm_reasoning", "")
 
             # 1. Congestion & High Bandwidth Utilization Alert
             if bandwidth_util >= 85.0:
@@ -78,20 +75,6 @@ class DecisionSupportEngine:
                     "action": "Throttle non-critical streaming to prevent queue drop cascades",
                     "description": f"Packet loss rate is currently {packet_loss:.1f}%.",
                     "recommendation": "Throttle non-critical streaming to prevent queue drop cascades",
-                    "timestamp": latest.get("timestamp", 0)
-                })
-
-            # 4. DeepSeek AI Threat Alert (if reasoning is present)
-            if last_reasoning and "Normal" not in last_reasoning and "Heuristic" not in last_reasoning:
-                alerts.append({
-                    "id": "alert-ai-threat",
-                    "severity": "Critical",
-                    "module": "DeepSeek AI",
-                    "title": "DeepSeek AI Threat Incident",
-                    "message": last_reasoning,
-                    "action": "Enforce strict local QoS rate limits on suspicious ports",
-                    "description": last_reasoning,
-                    "recommendation": "Enforce strict local QoS rate limits on suspicious ports",
                     "timestamp": latest.get("timestamp", 0)
                 })
 

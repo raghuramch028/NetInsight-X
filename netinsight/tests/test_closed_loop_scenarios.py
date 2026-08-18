@@ -1,5 +1,4 @@
 import os
-import time
 import unittest
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "netinsight.config.settings")
@@ -11,7 +10,6 @@ django.setup()
 
 from django.test import Client
 
-from netinsight.classification.classifier import TrafficClassifier
 from netinsight.optimization.solver import BandwidthOptimizer
 
 
@@ -20,13 +18,12 @@ class TestClosedLoopScenarios(unittest.TestCase):
     def setUp(self):
         self.client = Client()
         self.optimizer = BandwidthOptimizer()
-        self.classifier = TrafficClassifier()
         self.mac = "00:1a:2b:3c:4d:5e"
         self.hostname = "Test-Host-01"
 
     def test_case_1_baseline_normal_traffic(self):
-        """Test Case 1: Baseline 100 Mbps link with normal web browsing traffic."""
-        print("\n[TEST CASE 1] Running Baseline Normal Traffic Test...")
+        """Test Case 1: Baseline 100 Mbps link with standard QoS classes."""
+        print("\n[TEST CASE 1] Running Baseline Normal Traffic Optimization Test...")
         reg = self.client.post("/api/v1/agents/register", {
             "mac_address": self.mac,
             "hostname": self.hostname,
@@ -35,18 +32,12 @@ class TestClosedLoopScenarios(unittest.TestCase):
         }, content_type="application/json")
         self.assertEqual(reg.status_code, 200)
 
-        pkt = {
-            "src_ip": "192.168.1.50", "dst_ip": "104.16.123.96",
-            "src_port": 54321, "dst_port": 443, "protocol": "TCP",
-            "size": 600, "timestamp": time.time(), "latency_est": 0.012
-        }
-        threat = self.classifier.classify_packet(pkt)
-        self.assertEqual(threat, "Normal")
-
         result = self.optimizer.solve_allocation(total_capacity=100e6)
         self.assertIn("optimal", result["status"])
         self.assertGreater(result["allocations"][0], 0)
-        print("  [OK] Test Case 1 PASSED: Baseline 100 Mbps LP solution optimal & threat classified Normal.")
+        total_allocated = sum(result["allocations"])
+        self.assertAlmostEqual(total_allocated, 100e6, places=-2)
+        print(f"  [OK] Test Case 1 PASSED: Baseline 100 Mbps LP solution optimal (Allocated: {total_allocated/1e6:.2f} Mbps).")
 
     def test_case_2_mobile_hotspot_capacity_scaling(self):
         """Test Case 2: Mobile Hotspot (8.5 Mbps link capacity) dynamic bound scaling."""
@@ -64,29 +55,39 @@ class TestClosedLoopScenarios(unittest.TestCase):
         self.assertLessEqual(total_allocated, capacity_bps + 1.0)
         print(f"  [OK] Test Case 2 PASSED: 8.5 Mbps LP solver optimal! Allocated {total_allocated/1e6:.2f} Mbps.")
 
-    def test_case_3_ddos_attack_incident_response(self):
-        """Test Case 3: High packet rate DDoS attack detection."""
-        print("\n[TEST CASE 3] Running DDoS Attack Incident Response Test...")
-        pkt = {
-            "src_ip": "192.168.1.100", "dst_ip": "10.0.0.1",
-            "src_port": 60000, "dst_port": 5004, "protocol": "UDP",
-            "size": 100, "timestamp": time.time(), "packet_rate": 1500.0, "conn_frequency": 5.0
-        }
-        threat = self.classifier.classify_packet(pkt)
-        self.assertIn(threat, ["DDoS", "DoS", "Mirai"])
-        print(f"  [OK] Test Case 3 PASSED: Threat='{threat}' detected under attack conditions.")
+    def test_case_3_multi_device_partitioning(self):
+        """Test Case 3: Dynamic multi-device equal capacity partitioning."""
+        print("\n[TEST CASE 3] Running Multi-Device Capacity Partitioning Test...")
+        total_link_capacity = 100e6
+        active_devices = 4
+        device_capacity = total_link_capacity / active_devices  # 25 Mbps each
 
-    def test_case_4_port_scan_reconnaissance_detection(self):
-        """Test Case 4: High connection frequency Reconnaissance / Port Scan detection."""
-        print("\n[TEST CASE 4] Running Reconnaissance / Port Scan Test...")
-        pkt = {
-            "src_ip": "192.168.1.200", "dst_ip": "10.0.0.5",
-            "src_port": 40000, "dst_port": 22, "protocol": "TCP",
-            "size": 64, "timestamp": time.time(), "packet_rate": 60.0, "conn_frequency": 60.0
-        }
-        threat = self.classifier.classify_packet(pkt)
-        self.assertIn(threat, ["Reconnaissance", "Brute Force"])
-        print(f"  [OK] Test Case 4 PASSED: Port scan classified as '{threat}'.")
+        ratio = device_capacity / 100e6
+        active_min = [5e6 * ratio, 15e6 * ratio, 2e6 * ratio, 10e6 * ratio]
+        active_max = [40e6 * ratio, 60e6 * ratio, 30e6 * ratio, 50e6 * ratio]
+
+        result = self.optimizer.solve_allocation(
+            min_bounds=active_min, max_bounds=active_max, total_capacity=device_capacity
+        )
+        self.assertIn("optimal", result["status"])
+        total_allocated = sum(result["allocations"])
+        self.assertAlmostEqual(total_allocated, device_capacity, places=-2)
+        print(f"  [OK] Test Case 3 PASSED: Device allocated {total_allocated/1e6:.2f} Mbps out of {device_capacity/1e6:.2f} Mbps target.")
+
+    def test_case_4_infeasible_fallback_allocation(self):
+        """Test Case 4: Structurally infeasible bounds graceful priority-weighted fallback."""
+        print("\n[TEST CASE 4] Running Infeasible Bounds Priority Fallback Test...")
+        # Min bounds sum to 32 Mbps, but total capacity is only 8.5 Mbps
+        result = self.optimizer.solve_allocation(
+            priorities=[1.0, 2.0, 0.5, 3.0],
+            min_bounds=[5e6, 15e6, 2e6, 10e6],
+            max_bounds=[40e6, 60e6, 30e6, 50e6],
+            total_capacity=8.5e6
+        )
+        self.assertIn("infeasible", result["status"])
+        total_allocated = sum(result["allocations"])
+        self.assertAlmostEqual(total_allocated, 8.5e6, places=-2)
+        print(f"  [OK] Test Case 4 PASSED: Graceful fallback allocated full {total_allocated/1e6:.2f} Mbps proportionally.")
 
     def test_case_5_closed_loop_telemetry_ingest_endpoint(self):
         """Test Case 5: End-to-end /api/v1/agents/telemetry API closed-loop response."""
@@ -108,12 +109,13 @@ class TestClosedLoopScenarios(unittest.TestCase):
             "packets": [{
                 "src_ip": "192.168.1.50", "dst_ip": "104.16.123.96",
                 "src_port": 54321, "dst_port": 443, "protocol": "TCP",
-                "size": 600, "ttl": 64, "timestamp": time.time()
+                "size": 600, "timestamp": 1700000000.0, "ttl": 64, "tcp_seq": 1000
             }]
         }
-        res = self.client.post("/api/v1/agents/telemetry", payload, content_type="application/json", follow=True)
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
+
+        resp = self.client.post("/api/v1/agents/telemetry", payload, content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
         self.assertEqual(data["status"], "success")
         self.assertIn("enforced_qos", data)
         self.assertIn("web_browsing_mbps", data["enforced_qos"])

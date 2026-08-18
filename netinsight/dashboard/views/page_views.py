@@ -12,11 +12,10 @@ from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
     get_lp_optimizer,
-    get_traffic_classifier,
 )
 from netinsight.dashboard import speed_monitor
 from netinsight.dashboard.demo_data import ensure_monitor_started
-from netinsight.dashboard.models import Agent, PacketRecord, SystemSettings
+from netinsight.dashboard.models import Agent, SystemSettings
 from netinsight.dashboard.views.utils import (
     require_dashboard_auth as _require_dashboard_auth,
 )
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 # Centralized thread-safe singleton references
 analytics_engine = get_analytics_engine()
 optimizer = get_lp_optimizer()
-classifier = get_traffic_classifier()
 dse_engine = get_dse_engine()
 
 
@@ -171,42 +169,6 @@ def optimization_view(request):
 
 
 @_require_dashboard_auth
-def classification_view(request):
-    """Renders heuristic/LLM threat classifier audit tables and live packet predictions."""
-    packets_qs = PacketRecord.objects.all().select_related("agent").order_by("-timestamp")[:50]
-
-    packets_list = []
-    for pkt in packets_qs:
-        rec = {
-            "src_ip": pkt.src_ip,
-            "dst_ip": pkt.dst_ip,
-            "src_port": pkt.src_port,
-            "dst_port": pkt.dst_port,
-            "protocol": pkt.protocol,
-            "size": pkt.size,
-            "timestamp": pkt.timestamp,
-            "ttl": pkt.ttl,
-            "agent_hostname": pkt.agent.hostname
-        }
-        rec["classification"] = getattr(pkt, "classification", None) or classifier._classify_rule_based(rec)
-        packets_list.append(rec)
-
-    llm_active = bool(getattr(settings, "NVIDIA_API_KEY", None))
-
-    context = {
-        "recent_packets": packets_list,
-        "llm_active": llm_active,
-        "engine_name": "NVIDIA DeepSeek AI",
-        "model_name": getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1"),
-        "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", 0.0),
-        "llm_reasoning": getattr(classifier, "last_llm_reasoning", ""),
-        "llm_confidence": getattr(classifier, "last_llm_confidence", None),
-        "llm_provider": "NVIDIA DeepSeek AI",
-    }
-    return render(request, "dashboard/classification.html", context)
-
-
-@_require_dashboard_auth
 def settings_view(request):
     """Configures dynamic system thresholds without code modifications."""
     settings_obj = SystemSettings.objects.first()
@@ -218,7 +180,6 @@ def settings_view(request):
             settings_obj.bandwidth_threshold = float(request.POST.get("bandwidth_threshold", 0.75))
             settings_obj.loss_threshold = float(request.POST.get("loss_threshold", 0.05))
             settings_obj.latency_threshold = float(request.POST.get("latency_threshold", 0.15))
-            settings_obj.llm_confidence_threshold = float(request.POST.get("llm_confidence_threshold", 0.80))
             settings_obj.save()
             logger.info("Successfully updated SystemSettings thresholds dynamically.")
             return redirect("dashboard:index")

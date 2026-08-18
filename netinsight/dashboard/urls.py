@@ -11,7 +11,6 @@ urlpatterns = [
     # Dashboard HTML Pages
     path("", views.index_view, name="index"),
     path("optimization/", views.optimization_view, name="optimization"),
-    path("classification/", views.classification_view, name="classification"),
     path("settings/", views.settings_view, name="settings"),
 
     # REST Telemetry APIs (Versioned)
