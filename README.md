@@ -13,9 +13,8 @@ NetInsight-X is an autonomous, high-performance distributed network management a
 
 ## 🚀 Key Features
 
-* **🛰️ Distributed Multi-Agent Sniffers:**
-  - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet header capture and host telemetry streaming.
-  - **Go Agent (`agent_go/main.go`)**: High-throughput Go packet sniffer with support for environment-driven hotspot SSID configuration (`HOTSPOT_SSID`).
+* **🛰️ Edge Endpoint Sniffer & QoS Enforcer:**
+  - **Python Agent (`agent/main.py`)**: Uses Scapy and `psutil` for non-blocking packet header capture, host telemetry streaming, and automated Windows QoS rate-limiting enforcement.
 
 * **📐 Convex QoS Bandwidth Optimizer (CVXOPT + KKT):**
   - Solves constrained Linear Programming (LP) bandwidth allocation under dynamic capacity limits (e.g. mobile hotspots at 8.5 Mbps or dynamic speed test capacity).
@@ -41,13 +40,12 @@ NetInsight-X is an autonomous, high-performance distributed network management a
                        [ Open Internet / Edge Host Endpoints ]
                                          │
                                          ▼
-  [ Python Edge Agent ] ──┐     ┌───[ Central Server ]───┐
-  (agent/main.py)         │     │  (Django 5.2 Server)   │
-                          ├────►│                        │
-  [ Go Edge Agent ] ─────┤     │  - REST Ingestion      │
-  (agent_go/main.go)      │     │  - CVXOPT LP Allocator │
-                                │  - KKT Verification    │
-                                └────────────────────────┘
+  [ Python Edge Agent ] ─────────► [ Central Server ]
+  (agent/main.py)                  (Django 5.2 Server)
+  - Raw Packet Capture             - REST Telemetry Ingestion
+  - Host Telemetry Streaming       - CVXOPT LP Bandwidth Solver
+  - Windows NDIS QoS Enforcement   - KKT Optimality Verification
+                                   - Google NDT7 Capacity Monitor
 ```
 
 ---
@@ -57,7 +55,6 @@ NetInsight-X is an autonomous, high-performance distributed network management a
 ### 1. Prerequisites
 * **Python 3.10+** (verified with Python 3.10 / 3.14).
 * **Npcap (Windows only):** Required by Scapy on Windows for raw packet captures. Download from **[Npcap.com](https://npcap.com/)** (*WinPcap API-compatible Mode* enabled).
-* **Go agent build only:** `agent_go/` uses `gopacket/pcap`, which requires libpcap development headers (Linux: `libpcap-dev`) or the Npcap SDK (Windows) at *compile* time — separate from the Npcap runtime above. `go build ./...` / `go vet ./...` have been verified clean against Go 1.26 (`agent_go/go.sum` is checked in and reproducible).
 
 ### 2. Start the NetInsight-X Server
 
@@ -80,22 +77,14 @@ Access the Web Dashboard at:
 
 ---
 
-## 🛰️ Running Edge Endpoint Agents
+## 🛰️ Running the Edge Endpoint Agent
 
-To connect and monitor edge devices:
+To connect and monitor edge client devices:
 
-### Option A: Python Agent
 On the monitored client device:
 ```powershell
 cd agent
 python main.py --server http://<SERVER-IP>:8000
-```
-
-### Option B: Go Agent
-On the monitored client device:
-```powershell
-cd agent_go
-go run main.go -server http://<SERVER-IP>:8000
 ```
 
 ---
@@ -175,7 +164,6 @@ list) or editing `netinsight/config/settings.py`:
 NetInsight-X/
 │
 ├── agent/                   # Modular Python client agent (collector, sniffer, sender, QoS)
-├── agent_go/                # High-speed Go client agent
 │
 ├── netinsight/
 │   ├── config/              # Central settings & singleton registries
