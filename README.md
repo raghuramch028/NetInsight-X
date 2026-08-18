@@ -174,12 +174,3 @@ NetInsight-X/
 │
 └── requirements.txt         # Package dependencies file
 ```
-
----
-
-## 📜 Academic Formulations & Reports
-For deep-dives into mathematics, specifications, and architecture:
-* **Academic Paper**: [`docs/IEEE_Report.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/docs/IEEE_Report.md)
-* **Architecture Overview**: [`docs/Architecture.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/docs/Architecture.md)
-* **Security & Production Posture**: [`SECURITY.md`](file:///C:/Users/raghu/.gemini/antigravity/scratch/NetInsight-X/SECURITY.md)
-* **Technical Audit Verification**: [`netinsight_technical_verification_report.md`](file:///C:/Users/raghu/.gemini/antigravity/brain/7c675f8d-bce6-45db-b56e-7545fa72b331/netinsight_technical_verification_report.md)
