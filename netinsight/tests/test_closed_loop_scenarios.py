@@ -2,7 +2,6 @@ import os
 import unittest
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "netinsight.config.settings")
-os.environ["DATABASE_URL"] = ""
 
 import django
 

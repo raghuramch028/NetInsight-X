@@ -3,7 +3,6 @@ import os
 import sys
 from pathlib import Path
 
-import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -100,62 +99,21 @@ TEMPLATES = [
 WSGI_APPLICATION = "netinsight.wsgi.application"
 
 # ==========================================
-# Database Configuration
+# Database Configuration (SQLite 3)
 # ==========================================
 
 DB_PATH = os.environ.get("NETINSIGHT_DB_PATH", str(BASE_DIR / "database" / "netinsight.db"))
-_DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-if _DATABASE_URL:
-    try:
-        import psycopg2
-        # Parse connection params to check reachability
-        db_config = dj_database_url.parse(_DATABASE_URL)
-        # Test connection with a short 3-second timeout
-        conn = psycopg2.connect(
-            database=db_config['NAME'],
-            user=db_config['USER'],
-            password=db_config['PASSWORD'],
-            host=db_config['HOST'],
-            port=db_config.get('PORT', 5432),
-            connect_timeout=3
-        )
-        conn.close()
-        DATABASES = {
-            "default": dj_database_url.config(
-                default=_DATABASE_URL,
-                conn_max_age=600,
-                ssl_require=True
-            )
-        }
-        logging.getLogger("netinsight").info("Successfully connected to Neon PostgreSQL database.")
-    except Exception as e:
-        logging.getLogger("netinsight").warning(
-            f"Could not connect to Neon PostgreSQL ({e}). "
-            "Falling back to local SQLite database for development."
-        )
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.sqlite3",
-                "NAME": DB_PATH,
-                "OPTIONS": {
-                    "timeout": 30.0,
-                    "init_command": "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
-                },
-            }
-        }
-else:
-    # Fallback to local SQLite if DATABASE_URL is not set
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": DB_PATH,
-            "OPTIONS": {
-                "timeout": 30.0,
-                "init_command": "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
-            },
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": DB_PATH,
+        "OPTIONS": {
+            "timeout": 30.0,
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
+        },
     }
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

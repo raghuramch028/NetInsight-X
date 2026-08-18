@@ -158,7 +158,6 @@ list) or editing `netinsight/config/settings.py`:
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `DJANGO_SECRET_KEY` | *(fallback)* | Secret key for Django cryptographic signatures. |
-| `DATABASE_URL` | *(SQLite)* | Connection string for remote PostgreSQL (Neon). |
 | `DEBUG` | `True` | Set to `False` in production environments. |
 | `NETINSIGHT_AGENT_TOKEN` | *(optional)* | Shared secret HTTP header token for agent authentication (server + both agents). |
 | `NETINSIGHT_ENFORCE_AGENT_TOKEN` | `False` | Reject agent requests missing/mismatching the token, even in DEBUG mode. |
