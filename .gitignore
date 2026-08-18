@@ -3,12 +3,13 @@ venv/
 .venv/
 ENV/
 
-# Python Cache
+# Python Cache & Linters
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .ipynb_checkpoints/
+.ruff_cache/
 
 # Database files
 *.db
