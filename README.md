@@ -89,16 +89,16 @@ python main.py --server http://<SERVER-IP>:8000
 
 ---
 
-## 🧪 Testing & Code Quality
+## 🧪 System Verification & Code Quality
 
-NetInsight-X features a comprehensive, 100% passing automated test suite covering all REST endpoints, mathematical solvers, threat classification engines, view routes, agent HTTP clients, and background-task singleton locking:
+NetInsight-X maintains strict code quality and verification:
 
 ```powershell
 # Run Linter (0 errors)
 ruff check .
 
-# Run Full Test Suite (68/68 tests passing)
-python manage.py test netinsight.tests --keepdb
+# Run Django System Check (0 issues)
+python manage.py check
 ```
 
 ---
@@ -117,7 +117,7 @@ python manage.py test netinsight.tests --keepdb
   ```
   If you instead run it under plain WSGI gunicorn (`gunicorn netinsight.wsgi:application`),
   Django transparently adapts the async view via `async_to_sync` — it still works correctly, but
-  each connection goes back to blocking a worker for its lifetime, same as before this fix.
+  each connection goes back to blocking a worker for its lifetime.
   Either way, concurrency is additionally bounded (`NETINSIGHT_MAX_SSE_CONNECTIONS`, default 4;
   `NETINSIGHT_SSE_MAX_DURATION`, default 300s) as defense-in-depth, returning `503` instead of
   hanging once the cap is hit.
@@ -125,7 +125,7 @@ python manage.py test netinsight.tests --keepdb
   generator background threads use a cross-process file lock (`netinsight/.locks/`) so only one
   worker process runs each task, regardless of `N`.
 * **Agent token enforcement**: if you set `NETINSIGHT_AGENT_TOKEN` on the server, set the same
-  value in each agent's own environment (`NETINSIGHT_AGENT_TOKEN`) — both agents now send it as
+  value in each agent's own environment (`NETINSIGHT_AGENT_TOKEN`) — the agent sends it as
   `X-Agent-Token` automatically. Without it, `NETINSIGHT_ENFORCE_AGENT_TOKEN=True` will reject
   every agent request.
 * **Health check**: `GET /healthz` returns `{"status": "ok", "database": true}` with no
@@ -135,26 +135,7 @@ python manage.py test netinsight.tests --keepdb
 
 ## 📄 License & Attribution
 
-Distributed under the **MIT License**. Built with Django, NVIDIA NIM API, CVXOPT, Scipy, NumPy, Pandas, Chart.js, and Lucide.
-
----
-
-## ⚙️ Configuration Reference
-
-Managed via local `.env` variables (see [`.env.example`](.env.example) for the full annotated
-list) or editing `netinsight/config/settings.py`:
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `DJANGO_SECRET_KEY` | *(fallback)* | Secret key for Django cryptographic signatures. |
-| `DEBUG` | `True` | Set to `False` in production environments. |
-| `NETINSIGHT_AGENT_TOKEN` | *(optional)* | Shared secret HTTP header token for agent authentication (server + both agents). |
-| `NETINSIGHT_ENFORCE_AGENT_TOKEN` | `False` | Reject agent requests missing/mismatching the token, even in DEBUG mode. |
-| `NETINSIGHT_REQUIRE_AUTH` | `False` | Require an authenticated Django user for the dashboard and read-only APIs. |
-| `NETINSIGHT_FORCE_HTTPS` | `False` | Enables HSTS + secure cookies; only set this behind TLS termination. |
-| `NETINSIGHT_MAX_SSE_CONNECTIONS` | `4` | Concurrent live-stream connections before returning `503`. |
-| `NETINSIGHT_MAX_INFLIGHT_TELEMETRY_TASKS` | `16` | Concurrent background telemetry-processing tasks before a tick is skipped. |
-| `NETINSIGHT_PRUNE_INTERVAL_SECONDS` | `60` | How often stale records are purged from the database. |
+Distributed under the **MIT License**. Built with Django, CVXOPT, NumPy, Pandas, Chart.js, and Lucide.
 
 ---
 
@@ -163,14 +144,15 @@ list) or editing `netinsight/config/settings.py`:
 ```
 NetInsight-X/
 │
+├── manage.py                # Django CLI entrypoint
+├── pyproject.toml           # Project metadata and configuration
+├── requirements.txt         # Package dependencies file
+│
 ├── agent/                   # Modular Python client agent (collector, sniffer, sender, QoS)
 │
-├── netinsight/
-│   ├── config/              # Central settings & singleton registries
-│   ├── analytics/           # Flow builder, Telemetry handler & Topology generator
-│   ├── optimization/        # CVXOPT Convex LP bandwidth solver & KKT verifier
-│   ├── dashboard/           # Django templates, styling, views package & REST routes
-│   └── tests/               # Regression and integration test suites
-│
-└── requirements.txt         # Package dependencies file
+└── netinsight/
+    ├── config/              # Central settings & singleton registries
+    ├── analytics/           # Flow builder, Telemetry handler & Topology generator
+    ├── optimization/        # CVXOPT Convex LP bandwidth solver & KKT verifier
+    └── dashboard/           # Django templates, styling, views package & REST routes
 ```

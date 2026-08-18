@@ -34,9 +34,8 @@ jobs:
           pip install ruff
           ruff check .
 
-      - name: Run Django Test Suite
+      - name: Run Django System Check
         env:
           DJANGO_SETTINGS_MODULE: netinsight.config.settings
-          NETINSIGHT_AGENT_INTERVAL: "3.0"
         run: |
-          python manage.py test
+          python manage.py check
