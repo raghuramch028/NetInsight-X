@@ -100,7 +100,25 @@ def api_register_agent(request):
         hostname = html.escape(str(data.get("hostname", "Unknown-Host")).strip())[:255]
         device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())[:100]
         vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())[:255]
-        ip_address = html.escape(_clean_ip_or_default(str(data.get("ip_address", "0.0.0.0"))))
+        # Prefer the real source IP from the HTTP request (REMOTE_ADDR).
+        # Fall back to X-Forwarded-For (proxy/NAT environments), and finally
+        # to whatever the client self-reports — which previously caused 0.0.0.0.
+        def _get_client_ip(req) -> str:
+            forwarded_for = req.META.get("HTTP_X_FORWARDED_FOR", "")
+            if forwarded_for:
+                # X-Forwarded-For may be a comma-separated list; take the first (originating) IP
+                candidate = forwarded_for.split(",")[0].strip()
+                cleaned = _clean_ip_or_default(candidate, default="")
+                if cleaned:
+                    return cleaned
+            remote_addr = req.META.get("REMOTE_ADDR", "")
+            cleaned = _clean_ip_or_default(remote_addr, default="")
+            if cleaned:
+                return cleaned
+            # Last resort: trust the client-reported value
+            return _clean_ip_or_default(str(data.get("ip_address", "0.0.0.0")))
+
+        ip_address = html.escape(_get_client_ip(request))
         client_ssid = str(data.get("ssid", "")).strip()
 
         hotspot_target = getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT")
