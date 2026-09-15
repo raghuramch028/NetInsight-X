@@ -15,7 +15,6 @@ from netinsight.config.singletons import (
     get_traffic_classifier,
 )
 from netinsight.dashboard import speed_monitor
-from netinsight.dashboard.demo_data import ensure_monitor_started
 from netinsight.dashboard.models import Agent, PacketRecord, SystemSettings
 from netinsight.dashboard.views.utils import (
     require_dashboard_auth as _require_dashboard_auth,
@@ -33,7 +32,6 @@ dse_engine = get_dse_engine()
 @_require_dashboard_auth
 def index_view(request):
     """Renders the main Live Monitor and System Dashboard page."""
-    ensure_monitor_started()
     settings_obj = SystemSettings.objects.first()
     if not settings_obj:
         settings_obj = SystemSettings.objects.create()

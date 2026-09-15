@@ -9,7 +9,6 @@ def global_settings(request):
     except Exception:
         dse_alerts = []
     return {
-        "demo_mode": settings.DEMO_MODE,
         "hotspot_ssid": getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT"),
         "dse_alerts": dse_alerts,
         "dse_alerts_count": len(dse_alerts),

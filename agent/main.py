@@ -5,13 +5,30 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-from agent import config
-from agent.collector import TelemetryCollector
-from agent.logger import logger
-from agent.sender import TelemetrySender
-from agent.sniffer import PacketSniffer
-from agent.utils import get_current_ssid, get_mac_address
+# Ensure both current directory and parent directory are on sys.path
+_current_dir = str(Path(__file__).resolve().parent)
+_parent_dir = str(Path(__file__).resolve().parent.parent)
+for _p in (_parent_dir, _current_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from agent import config
+    from agent.collector import TelemetryCollector
+    from agent.logger import logger
+    from agent.sender import TelemetrySender
+    from agent.sniffer import PacketSniffer
+    from agent.utils import get_current_ssid, get_mac_address
+except ImportError:
+    import config
+    from collector import TelemetryCollector
+    from logger import logger
+    from sender import TelemetrySender
+    from sniffer import PacketSniffer
+    from utils import get_current_ssid, get_mac_address
+
 
 
 class NetInsightAgent:
