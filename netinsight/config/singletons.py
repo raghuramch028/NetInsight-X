@@ -40,3 +40,20 @@ def get_lp_optimizer():
                 from netinsight.optimization.solver import BandwidthOptimizer
                 _lp_optimizer = BandwidthOptimizer()
     return _lp_optimizer
+
+
+_threat_classifier = None
+
+def get_threat_classifier():
+    """Returns the process-wide shared ThreatClassifier singleton."""
+    global _threat_classifier
+    if _threat_classifier is None:
+        with _lock:
+            if _threat_classifier is None:
+                from netinsight.classification.classifier import TrafficClassifier
+                _threat_classifier = TrafficClassifier()
+    return _threat_classifier
+
+get_traffic_classifier = get_threat_classifier
+
+

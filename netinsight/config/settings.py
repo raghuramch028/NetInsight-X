@@ -155,6 +155,12 @@ QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
 QOS_MIN_BANDWIDTH = [5_000_000.0, 15_000_000.0, 2_000_000.0, 10_000_000.0]
 QOS_MAX_BANDWIDTH = [40_000_000.0, 60_000_000.0, 30_000_000.0, 50_000_000.0]
 
+# NVIDIA NIM / DeepSeek-R1 AI Threat Classification
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
+NVIDIA_MODEL_NAME = os.environ.get("NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
+LLM_CONFIDENCE_THRESHOLD = float(os.environ.get("LLM_CONFIDENCE_THRESHOLD", "0.75"))
+
+
 # ==========================================
 # Logging
 # ==========================================

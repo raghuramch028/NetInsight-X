@@ -379,6 +379,12 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{% url 'dashboard:classification' %}" class="nav-item-link {% if request.resolver_match.url_name == 'classification' %}active{% endif %}">
+                            <i data-lucide="shield-alert"></i>
+                            <span>AI Threat Intelligence</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'dashboard:optimization' %}" class="nav-item-link {% if request.resolver_match.url_name == 'optimization' %}active{% endif %}">
                             <i data-lucide="sliders-horizontal"></i>
                             <span>Bandwidth Optimizer</span>

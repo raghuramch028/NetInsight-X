@@ -24,13 +24,17 @@ NetInsight-X is an autonomous, high-performance distributed network management a
   - Dynamic link capacity detection via Google M-Lab NDT7 multi-stream engine.
   - Closed-loop rate limiting and QoS policy feedback dispatched to active edge endpoints.
 
+* **🛡️ AI Threat Intelligence & DeepSeek-R1 LLM Reasoning:**
+  - Hybrid intrusion detection engine combining UNSW-NB15 rule-based signature detection with **DeepSeek-R1** reasoning model inference via NVIDIA NIM API.
+  - Detects DoS/DDoS, Mirai botnets, SSH brute-force, and port scans with structured reasoning output and dynamic alert thresholds.
+
 * **🔒 Security & Production Posture:**
   - Full HTML input escaping and MAC/IP address validation on agent registration against Stored XSS and malformed input.
   - Constant-time shared-secret agent token authentication (`X-Agent-Token`, validated via `hmac.compare_digest`).
   - Optional dashboard-user authentication gate (`NETINSIGHT_REQUIRE_AUTH`).
 
 * **📊 Interactive Live Dashboard:**
-  - Modern web dashboard featuring real-time Chart.js throughput graphs, active device topology graph, Lucide icons, and live telemetry streaming.
+  - Modern web dashboard featuring real-time Chart.js throughput graphs, active device topology graph, AI Threat Intelligence auditor, Lucide icons, and live telemetry streaming.
 
 ---
 
@@ -153,6 +157,7 @@ NetInsight-X/
 └── netinsight/
     ├── config/              # Central settings & singleton registries
     ├── analytics/           # Flow builder, Telemetry handler & Topology generator
+    ├── classification/      # Hybrid Heuristic & DeepSeek-R1 LLM Threat Classifier
     ├── optimization/        # CVXOPT Convex LP bandwidth solver & KKT verifier
     └── dashboard/           # Django templates, styling, views package & REST routes
 ```
