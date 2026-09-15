@@ -100,23 +100,27 @@ def api_register_agent(request):
         hostname = html.escape(str(data.get("hostname", "Unknown-Host")).strip())[:255]
         device_type = html.escape(str(data.get("device_type", "Generic Node")).strip())[:100]
         vendor = html.escape(str(data.get("vendor", "Generic Vendor")).strip())[:255]
-        # Prefer the real source IP from the HTTP request (REMOTE_ADDR).
-        # Fall back to X-Forwarded-For (proxy/NAT environments), and finally
-        # to whatever the client self-reports — which previously caused 0.0.0.0.
+        # Prefer the client-reported ip_address (the agent now always sends its real
+        # LAN IP). Fall back to the HTTP source address (REMOTE_ADDR / X-Forwarded-For)
+        # if the client omits it or sends an invalid value.
         def _get_client_ip(req) -> str:
+            # 1. Trust client-reported value — agent sends get_local_ip() which is always correct
+            reported = _clean_ip_or_default(str(data.get("ip_address", "")), default="")
+            if reported and reported != "0.0.0.0":
+                return reported
+            # 2. X-Forwarded-For (proxy / NAT environments)
             forwarded_for = req.META.get("HTTP_X_FORWARDED_FOR", "")
             if forwarded_for:
-                # X-Forwarded-For may be a comma-separated list; take the first (originating) IP
                 candidate = forwarded_for.split(",")[0].strip()
                 cleaned = _clean_ip_or_default(candidate, default="")
-                if cleaned:
+                if cleaned and cleaned != "127.0.0.1":
                     return cleaned
+            # 3. Direct TCP source address
             remote_addr = req.META.get("REMOTE_ADDR", "")
             cleaned = _clean_ip_or_default(remote_addr, default="")
-            if cleaned:
+            if cleaned and cleaned != "127.0.0.1":
                 return cleaned
-            # Last resort: trust the client-reported value
-            return _clean_ip_or_default(str(data.get("ip_address", "0.0.0.0")))
+            return "0.0.0.0"
 
         ip_address = html.escape(_get_client_ip(request))
         client_ssid = str(data.get("ssid", "")).strip()

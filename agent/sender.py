@@ -1,11 +1,12 @@
 import os
 import time
+import urllib.parse
 
 import requests
 
 from agent import config
 from agent.logger import logger
-from agent.utils import get_current_ssid
+from agent.utils import get_current_ssid, get_local_ip
 
 
 class TelemetrySender:
@@ -49,11 +50,19 @@ class TelemetrySender:
 
     def register(self, mac_address: str, hostname: str, device_type: str, vendor: str) -> bool:
         """Registers the agent on Laptop 1 server, retrying with backoff if unreachable."""
+        # Derive the correct outbound LAN IP by routing toward the server host
+        try:
+            server_host = urllib.parse.urlparse(config.SERVER_URL).hostname or "8.8.8.8"
+        except Exception:
+            server_host = "8.8.8.8"
+        local_ip = get_local_ip(server_host=server_host)
+
         payload = {
             "mac_address": mac_address,
             "hostname": hostname,
             "device_type": device_type,
             "vendor": vendor,
+            "ip_address": local_ip,
             "ssid": get_current_ssid()
         }
 

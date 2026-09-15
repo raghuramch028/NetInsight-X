@@ -1,3 +1,4 @@
+import socket
 import uuid
 
 try:
@@ -6,6 +7,27 @@ except ImportError:
     psutil = None
 
 from agent.logger import logger
+
+
+def get_local_ip(server_host: str = "8.8.8.8", server_port: int = 80) -> str:
+    """Discovers the machine's outbound LAN/hotspot IP address.
+
+    Uses a UDP trick: opens a socket toward the server (no data sent) to let
+    the OS pick the correct source interface, then reads the local address.
+    Falls back to hostname resolution if that fails.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(1)
+            s.connect((server_host, server_port))
+            return s.getsockname()[0]
+    except Exception:
+        pass
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except Exception:
+        return "0.0.0.0"
+
 
 
 def get_mac_address() -> str:
