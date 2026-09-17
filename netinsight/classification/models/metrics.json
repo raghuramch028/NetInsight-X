@@ -1,6 +1,6 @@
 {
-  "dataset": "CICIoT2023 / UNSW-NB15 Benchmark",
-  "accuracy": 0.998,
+  "dataset": "Real CICIoT2023 Dataset (train.csv)",
+  "accuracy": 0.9881333333333333,
   "classes": {
     "0": "Normal",
     "1": "DoS / DDoS",
@@ -8,13 +8,14 @@
     "3": "Reconnaissance",
     "4": "Brute Force"
   },
-  "n_samples": 5000,
+  "n_samples": 150000,
   "model_type": "XGBClassifier (Gradient Boosted Trees)",
   "features": [
-    "packet_size",
-    "packet_rate",
-    "dst_port",
-    "unique_ports",
-    "protocol"
-  ]
+    "AVG",
+    "Rate",
+    "Header_Length",
+    "Number",
+    "Protocol Type"
+  ],
+  "raw_path": "C:\\Users\\raghu\\Downloads\\archive\\CICIOT23\\train\\train.csv"
 }
