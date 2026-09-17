@@ -51,7 +51,13 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         protocol = normalize_protocol_name(packet_dict["protocol"])
         size = int(packet_dict["size"])
         ttl = int(packet_dict.get("ttl", 64))
-        pkt_ts = float(packet_dict.get("timestamp", time.time()))
+        raw_pkt_ts = float(packet_dict.get("timestamp", time.time()))
+        now_ts = time.time()
+        # Normalize packet timestamp if client clock is skewed or payload was buffered
+        if abs(now_ts - raw_pkt_ts) > 5.0:
+            pkt_ts = now_ts
+        else:
+            pkt_ts = raw_pkt_ts
         raw_tcp_seq = packet_dict.get("tcp_seq")
         tcp_seq = int(raw_tcp_seq) if raw_tcp_seq is not None else None
 

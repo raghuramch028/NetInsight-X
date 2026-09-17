@@ -102,15 +102,15 @@ def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_lis
     if packet_objects:
         PacketRecord.objects.bulk_create(packet_objects, ignore_conflicts=True)
 
-    # B. Calculate Server-Side Network-Wide Metrics (window: last 10 seconds)
-    window_start = now_ts - 10.0
+    # B. Calculate Server-Side Network-Wide Metrics (window: last 15 seconds)
+    window_start = now_ts - 15.0
     active_packets = PacketRecord.objects.filter(timestamp__gte=window_start)
 
     packet_count = active_packets.count()
     total_bytes = active_packets.aggregate(total_bytes=Sum("size"))["total_bytes"] or 0
 
-    throughput = (total_bytes * 8.0) / 10.0
-    packet_rate = float(packet_count) / 10.0
+    throughput = (total_bytes * 8.0) / 15.0
+    packet_rate = float(packet_count) / 15.0
 
     from netinsight.dashboard import speed_monitor
     link_capacity = speed_monitor.get_current_capacity()
