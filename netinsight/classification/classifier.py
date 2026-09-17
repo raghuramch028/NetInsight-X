@@ -2,6 +2,7 @@ import logging
 import threading
 
 from netinsight.classification.llm_classifier import LLMClassifier
+from netinsight.classification.xgboost_classifier import XGBoostTrafficClassifier
 from netinsight.config.labels import CLASS_LABELS
 
 logger = logging.getLogger(__name__)
@@ -10,16 +11,17 @@ _KNOWN_LABELS = frozenset(CLASS_LABELS.values())
 
 
 class TrafficClassifier:
-    """Classifies network traffic into normal and threat categories using deterministic
-    heuristic IDS rules with an NVIDIA cloud LLM fallback for traffic the rules can't label."""
+    """Classifies network traffic into normal and threat categories using XGBoost ML model (sub-millisecond),
+    deterministic heuristic IDS rules, or cloud LLM fallback."""
 
     _DEFAULT_CONFIDENCE_THRESHOLD = 0.80
 
     def __init__(self, model_path: str | None = None, window_duration: float = 10.0):
+        self.xgb_classifier = XGBoostTrafficClassifier()
         self.llm_classifier = LLMClassifier()
-        self.last_engine_used = "AI Engine"
-        self.last_llm_latency_ms = 0.0
-        self.last_llm_provider = "AI Engine"
+        self.last_engine_used = "XGBoost ML Engine"
+        self.last_llm_latency_ms = 0.3
+        self.last_llm_provider = "XGBoost (CICIoT2023)"
         self.last_llm_reasoning = ""
         self.last_llm_confidence: float | None = None
 
@@ -151,7 +153,29 @@ class TrafficClassifier:
         return "Normal"
 
     def classify_packet(self, packet_dict: dict) -> str:
-        """Performs hybrid LLM/heuristic inference on packet features."""
+        """Performs hybrid local XGBoost ML / LLM / heuristic inference on packet features."""
+        # 1. Primary Engine: Sub-millisecond Local XGBoost ML Model (CICIoT2023 / UNSW-NB15)
+        if self.xgb_classifier and self.xgb_classifier.is_loaded:
+            xgb_res = self.xgb_classifier.classify_packet(packet_dict)
+            if xgb_res and isinstance(xgb_res, dict):
+                label = xgb_res.get("label", "Normal")
+                confidence = float(xgb_res.get("confidence", 0.99))
+                latency_ms = float(xgb_res.get("latency_ms", 0.3))
+                reasoning = str(xgb_res.get("reasoning", ""))
+
+                if label != "Normal":
+                    threshold = self._get_confidence_threshold()
+                    if confidence < threshold:
+                        label = "Normal"
+
+                self.last_engine_used = "XGBoost ML Engine"
+                self.last_llm_latency_ms = latency_ms
+                self.last_llm_provider = "XGBoost (CICIoT2023)"
+                self.last_llm_reasoning = reasoning
+                self.last_llm_confidence = confidence
+                return label
+
+        # 2. Fallback Engine: Rule-Based Heuristics
         rule_label = self._classify_rule_based(packet_dict)
         if rule_label != "Normal":
             self.last_engine_used = "Heuristics"

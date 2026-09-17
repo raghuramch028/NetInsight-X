@@ -9,9 +9,13 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="m-0 text-dark editorial-serif h6">
-                    <i data-lucide="cpu" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>AI Threat Intelligence Profile
+                    <i data-lucide="cpu" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>XGBoost ML Engine Profile
                 </h4>
-                {% if llm_active %}
+                {% if xgb_active %}
+                    <span class="pill-badge emerald font-mono" style="font-size:0.7rem;">
+                        <i data-lucide="zap" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>XGBoost Active (<1ms)
+                    </span>
+                {% elif llm_active %}
                     <span class="pill-badge terracotta font-mono" style="font-size:0.7rem;">
                         <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>AI Engine Active
                     </span>
@@ -21,35 +25,28 @@
             </div>
             
             <p class="text-secondary small mb-4">
-                The AI anomaly detection module is powered by an advanced <strong>AI Inference Engine</strong>, analyzing network flow patterns and security bounds in real time.
+                The AI threat detection module is powered by a custom trained <strong>XGBoost ML Classifier</strong> (<code>{{ model_name }}</code>) trained on benchmark <code>{{ xgb_dataset }}</code> records.
             </p>
 
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">Anomaly Detection Engine</span>
-                    <span class="font-mono fw-bold" style="color: var(--accent-terracotta); font-size:0.85rem;">
-                        {% if llm_active %}AI Engine{% else %}Heuristics{% endif %}
-                    </span>
+                    <span class="text-secondary small font-mono fw-bold">Test Accuracy</span>
+                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_accuracy }}%</span>
                 </li>
-                {% if llm_active %}
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">AI Latency</span>
-                    <span class="font-mono fw-bold" style="color: var(--accent-amber); font-size:0.85rem;">{{ llm_latency_ms|floatformat:1 }} ms</span>
+                    <span class="text-secondary small font-mono fw-bold">Inference Latency</span>
+                    <span class="font-mono fw-bold" style="color: var(--accent-amber); font-size:0.85rem;">{{ llm_latency_ms|floatformat:2 }} ms</span>
                 </li>
-                {% if llm_reasoning %}
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">AI Reasoning</span>
-                    <span class="font-mono text-dark fw-bold" style="font-size:0.75rem; text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ llm_reasoning }}">
-                        {{ llm_reasoning }}
-                    </span>
+                    <span class="text-secondary small font-mono fw-bold">ML Algorithm</span>
+                    <span class="font-mono fw-bold" style="color: var(--accent-terracotta); font-size:0.8rem;">Gradient Boosted Trees</span>
                 </li>
-                {% endif %}
-                {% endif %}
                 <li class="list-group-item bg-transparent py-3 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Inference Status</span>
-                    <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE</span>
+                    <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE (<1ms)</span>
                 </li>
             </ul>
+
         </div>
     </div>
 

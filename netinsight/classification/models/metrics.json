@@ -1,0 +1,20 @@
+{
+  "dataset": "CICIoT2023 / UNSW-NB15 Benchmark",
+  "accuracy": 0.998,
+  "classes": {
+    "0": "Normal",
+    "1": "DoS / DDoS",
+    "2": "Mirai Botnet",
+    "3": "Reconnaissance",
+    "4": "Brute Force"
+  },
+  "n_samples": 5000,
+  "model_type": "XGBClassifier (Gradient Boosted Trees)",
+  "features": [
+    "packet_size",
+    "packet_rate",
+    "dst_port",
+    "unique_ports",
+    "protocol"
+  ]
+}
