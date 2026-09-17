@@ -1,6 +1,6 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}AI Threat Intelligence & Anomaly Detection (NVIDIA DeepSeek AI Inference Engine){% endblock %}
+{% block page_title %}AI Threat Intelligence & Anomaly Detection (AI Inference Engine){% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
@@ -9,11 +9,11 @@
         <div class="saas-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="m-0 text-dark editorial-serif h6">
-                    <i data-lucide="cpu" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>NVIDIA DeepSeek AI Profile
+                    <i data-lucide="cpu" class="d-inline-block me-2" style="color: var(--accent-terracotta); width:16px;height:16px;vertical-align:-2px;"></i>AI Threat Intelligence Profile
                 </h4>
                 {% if llm_active %}
                     <span class="pill-badge terracotta font-mono" style="font-size:0.7rem;">
-                        <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>NVIDIA DeepSeek AI Active
+                        <i data-lucide="sparkles" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>AI Engine Active
                     </span>
                 {% else %}
                     <span class="pill-badge font-mono" style="font-size:0.7rem;">Heuristics Active</span>
@@ -21,24 +21,24 @@
             </div>
             
             <p class="text-secondary small mb-4">
-                The AI anomaly detection module is powered by <strong>NVIDIA DeepSeek AI</strong> (<code>{{ model_name }}</code>), analyzing network flow patterns and security bounds in real time.
+                The AI anomaly detection module is powered by an advanced <strong>AI Inference Engine</strong>, analyzing network flow patterns and security bounds in real time.
             </p>
 
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Anomaly Detection Engine</span>
                     <span class="font-mono fw-bold" style="color: var(--accent-terracotta); font-size:0.85rem;">
-                        {% if llm_active %}{{ llm_provider }}{% else %}Heuristics{% endif %}
+                        {% if llm_active %}AI Engine{% else %}Heuristics{% endif %}
                     </span>
                 </li>
                 {% if llm_active %}
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">LLM Latency</span>
+                    <span class="text-secondary small font-mono fw-bold">AI Latency</span>
                     <span class="font-mono fw-bold" style="color: var(--accent-amber); font-size:0.85rem;">{{ llm_latency_ms|floatformat:1 }} ms</span>
                 </li>
                 {% if llm_reasoning %}
                 <li class="list-group-item bg-transparent border-bottom py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">LLM Reasoning</span>
+                    <span class="text-secondary small font-mono fw-bold">AI Reasoning</span>
                     <span class="font-mono text-dark fw-bold" style="font-size:0.75rem; text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ llm_reasoning }}">
                         {{ llm_reasoning }}
                     </span>
@@ -46,7 +46,7 @@
                 {% endif %}
                 {% endif %}
                 <li class="list-group-item bg-transparent py-3 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">Inference Port</span>
+                    <span class="text-secondary small font-mono fw-bold">Inference Status</span>
                     <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE</span>
                 </li>
             </ul>
@@ -91,11 +91,12 @@
             </div>
             
             <p class="text-secondary small mb-0">
-                <strong>Why NVIDIA DeepSeek AI:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The LLM models reason over these features directly from the contextual classification rules without needing pre-trained residual trees.
+                <strong>Why AI Engine:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The AI models reason over these features directly from contextual classification rules without needing pre-trained residual trees.
             </p>
         </div>
     </div>
 </div>
+
 
 <!-- Classifications log table -->
 <div class="saas-card mb-4 p-4">

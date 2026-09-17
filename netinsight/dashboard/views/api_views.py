@@ -273,10 +273,10 @@ def api_live_metrics(request):
         latest["dse_alerts"] = dse_engine.evaluate_decisions()
 
         latest["llm_active"] = bool(getattr(settings, "NVIDIA_API_KEY", None))
-        latest["engine_name"] = "NVIDIA DeepSeek AI"
+        latest["engine_name"] = "AI Engine"
         latest["llm_latency_ms"] = getattr(classifier, "last_llm_latency_ms", 0.0)
         latest["llm_reasoning"] = getattr(classifier, "last_llm_reasoning", "")
-        latest["llm_provider"] = "NVIDIA DeepSeek AI"
+        latest["llm_provider"] = "AI Engine"
         latest["link_capacity_mbps"] = speed_monitor.get_current_capacity() / 1e6
 
         return JsonResponse(_to_native_types(latest))

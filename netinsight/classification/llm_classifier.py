@@ -12,7 +12,7 @@ class LLMClassifier:
         self.nvidia_api_key = getattr(settings, "NVIDIA_API_KEY", "")
         self.nvidia_model_name = getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1")
         self.last_llm_latency_ms = 0
-        self.last_llm_provider = "NVIDIA DeepSeek AI"
+        self.last_llm_provider = "AI Engine"
         self.last_llm_reasoning = ""
 
     def _get_system_prompt(self):

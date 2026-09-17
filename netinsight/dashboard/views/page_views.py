@@ -194,12 +194,12 @@ def classification_view(request):
     context = {
         "recent_packets": packets_list,
         "llm_active": llm_active,
-        "engine_name": "NVIDIA DeepSeek AI",
+        "engine_name": "AI Engine",
         "model_name": getattr(settings, "NVIDIA_MODEL_NAME", "deepseek-ai/deepseek-r1"),
         "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", 0.0),
         "llm_reasoning": getattr(classifier, "last_llm_reasoning", ""),
         "llm_confidence": getattr(classifier, "last_llm_confidence", None),
-        "llm_provider": "NVIDIA DeepSeek AI",
+        "llm_provider": "AI Engine",
     }
     return render(request, "dashboard/classification.html", context)
 

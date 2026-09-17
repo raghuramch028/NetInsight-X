@@ -17,9 +17,9 @@ class TrafficClassifier:
 
     def __init__(self, model_path: str | None = None, window_duration: float = 10.0):
         self.llm_classifier = LLMClassifier()
-        self.last_engine_used = "NVIDIA DeepSeek AI"
+        self.last_engine_used = "AI Engine"
         self.last_llm_latency_ms = 0.0
-        self.last_llm_provider = "NVIDIA DeepSeek AI"
+        self.last_llm_provider = "AI Engine"
         self.last_llm_reasoning = ""
         self.last_llm_confidence: float | None = None
 
