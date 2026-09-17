@@ -1,14 +1,12 @@
 {
-  "dataset": "Real CICIoT2023 Dataset (train.csv)",
-  "accuracy": 0.9881333333333333,
-  "classes": {
-    "0": "Normal",
-    "1": "DoS / DDoS",
-    "2": "Mirai Botnet",
-    "3": "Reconnaissance",
-    "4": "Brute Force"
-  },
-  "n_samples": 150000,
+  "dataset": "CICIoT2023 Preprocessed Splits",
+  "train_accuracy": 0.99432,
+  "validation_accuracy": 0.98868,
+  "test_accuracy": 0.98702,
+  "train_samples": 50000,
+  "val_samples": 50000,
+  "test_samples": 50000,
+  "trained_timestamp": "2026-09-17 18:34:57",
   "model_type": "XGBClassifier (Gradient Boosted Trees)",
   "features": [
     "AVG",
@@ -16,6 +14,5 @@
     "Header_Length",
     "Number",
     "Protocol Type"
-  ],
-  "raw_path": "C:\\Users\\raghu\\Downloads\\archive\\CICIOT23\\train\\train.csv"
+  ]
 }

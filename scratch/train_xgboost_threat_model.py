@@ -11,12 +11,10 @@ Maps all 34 raw CICIoT2023 attack types into 5 target classes:
 Outputs trained model, scaler, and metrics to netinsight/classification/models/
 """
 import json
-import time
 from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 
@@ -82,37 +80,22 @@ RAW_LABEL_MAP = {
     "DNS_Spoofing": 4,
 }
 
-def train_on_real_ciciot2023(sample_size: int = 150000):
-    print(f"[XGBoost Trainer] Loading real CICIoT2023 dataset from: {REAL_DATASET_PATH}...")
-    start_load = time.time()
-
-    # Load stratified sample from real dataset for fast, high-accuracy training
-    df = pd.read_csv(REAL_DATASET_PATH, nrows=sample_size)
-    print(f"[XGBoost Trainer] Loaded {len(df)} rows in {time.time() - start_load:.2f}s.")
-
-    # Map raw attack labels to 5 target classes
-    df["target_class"] = df["label"].map(lambda label_val: RAW_LABEL_MAP.get(str(label_val).strip(), 1))
-
-    # Extract features corresponding to flow parameters
-    # Feature 1: packet_size -> 'AVG' or 'Tot size'
-    # Feature 2: packet_rate -> 'Rate'
-    # Feature 3: dst_port/header -> 'Header_Length'
-    # Feature 4: unique_ports -> 'Number' or 'syn_count'
-    # Feature 5: protocol -> 'Protocol Type'
+def train_on_preprocessed_ciciot2023():
+    train_csv = MODELS_DIR / "ciciot2023_preprocessed_train.csv"
+    val_csv = MODELS_DIR / "ciciot2023_preprocessed_val.csv"
+    test_csv = MODELS_DIR / "ciciot2023_preprocessed_test.csv"
 
     feature_cols = ["AVG", "Rate", "Header_Length", "Number", "Protocol Type"]
 
-    # Fill missing values
-    X = df[feature_cols].fillna(0).values
-    y = df["target_class"].values
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    print(f"[XGBoost Trainer] Loading preprocessed dataset from: {train_csv}...")
+    train_df = pd.read_csv(train_csv)
+    X_train = train_df[feature_cols].fillna(0).values
+    y_train = train_df["target_class"].values
 
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
 
-    print("[XGBoost Trainer] Training XGBClassifier on real CICIoT2023 features...")
+    print(f"[XGBoost Trainer] Training XGBClassifier on {len(train_df)} rows...")
     model = xgb.XGBClassifier(
         n_estimators=120,
         max_depth=6,
@@ -124,27 +107,37 @@ def train_on_real_ciciot2023(sample_size: int = 150000):
     )
     model.fit(X_train_scaled, y_train)
 
-    accuracy = float(model.score(X_test_scaled, y_test))
-    print(f"[XGBoost Trainer] Training Complete! Test Accuracy on REAL CICIoT2023: {accuracy * 100:.2f}%")
+    train_acc = float(model.score(X_train_scaled, y_train))
 
-    # Save model artifacts
+    # Evaluate Validation Split
+    val_df = pd.read_csv(val_csv)
+    X_val_scaled = scaler.transform(val_df[feature_cols].fillna(0).values)
+    val_acc = float(model.score(X_val_scaled, val_df["target_class"].values))
+
+    # Evaluate Test Split
+    test_df = pd.read_csv(test_csv)
+    X_test_scaled = scaler.transform(test_df[feature_cols].fillna(0).values)
+    test_acc = float(model.score(X_test_scaled, test_df["target_class"].values))
+
+    print(f"[XGBoost Trainer] Train Accuracy: {train_acc * 100:.2f}% | Val Accuracy: {val_acc * 100:.2f}% | Test Accuracy: {test_acc * 100:.2f}%")
+
     joblib.dump(model, MODEL_PATH)
     joblib.dump(scaler, SCALER_PATH)
 
     metrics = {
-        "dataset": "Real CICIoT2023 Dataset (train.csv)",
-        "accuracy": accuracy,
-        "classes": CLASS_MAP,
-        "n_samples": len(df),
+        "dataset": "CICIoT2023 Preprocessed Splits",
+        "train_accuracy": train_acc,
+        "validation_accuracy": val_acc,
+        "test_accuracy": test_acc,
+        "train_samples": len(train_df),
+        "val_samples": len(val_df),
+        "test_samples": len(test_df),
         "model_type": "XGBClassifier (Gradient Boosted Trees)",
-        "features": feature_cols,
-        "raw_path": str(REAL_DATASET_PATH)
+        "features": feature_cols
     }
 
     with open(METRICS_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
-    print(f"[XGBoost Trainer] Saved real CICIoT2023 model artifacts to {MODELS_DIR}")
-
 if __name__ == "__main__":
-    train_on_real_ciciot2023()
+    train_on_preprocessed_ciciot2023()
