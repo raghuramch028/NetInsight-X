@@ -125,7 +125,7 @@ def api_register_agent(request):
         ip_address = html.escape(_get_client_ip(request))
         client_ssid = str(data.get("ssid", "")).strip()
 
-        hotspot_target = getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT")
+        hotspot_target = getattr(settings, "HOTSPOT_SSID", None)
         if hotspot_target and client_ssid and client_ssid != hotspot_target:
             logger.warning(f"Registration rejected for MAC {mac_address}: Device connected to SSID '{client_ssid}', target hotspot is '{hotspot_target}'")
             return Response(
@@ -181,7 +181,7 @@ def api_agent_telemetry(request):
         packets = data.get("packets", [])
         client_ssid = str(data.get("ssid", "")).strip()
 
-        hotspot_target = getattr(settings, "HOTSPOT_SSID", "SEM3_PROJECT")
+        hotspot_target = getattr(settings, "HOTSPOT_SSID", None)
         if hotspot_target and client_ssid and client_ssid != hotspot_target:
             logger.warning(f"Telemetry upload rejected for Agent ID {agent_id}: Device connected to SSID '{client_ssid}', target hotspot is '{hotspot_target}'")
             return Response(
