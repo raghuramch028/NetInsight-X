@@ -141,8 +141,9 @@ LINK_CAPACITY = float(os.environ.get("NETINSIGHT_LINK_CAPACITY", 100_000_000.0))
 # Dashboard UI Configurations
 DASHBOARD_REFRESH_INTERVAL = int(os.environ.get("NETINSIGHT_REFRESH_INTERVAL", 1000)) # 1.0s sub-second refresh (in ms)
 
-# Hotspot AP SSID for edge agent connection tracking (set via env var if specific SSID restriction is needed)
-HOTSPOT_SSID = os.environ.get("HOTSPOT_SSID", None)
+# Hotspot AP SSID for edge agent connection tracking (UI badge display)
+HOTSPOT_SSID = os.environ.get("HOTSPOT_SSID", "SEM3_PROJECT")
+HOTSPOT_ENFORCE_SSID = os.environ.get("HOTSPOT_ENFORCE_SSID", "False").lower() in ("true", "1", "yes")
 
 # Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
 NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
