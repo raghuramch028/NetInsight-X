@@ -19,6 +19,7 @@ class Agent(models.Model):
     bytes_recv = models.BigIntegerField(default=0)
     current_throughput = models.FloatField(default=0.0)
     throughput_sampled_at = models.DateTimeField(null=True, blank=True)
+    active_flow_blocks = models.JSONField(default=list)
     active_connections = models.IntegerField(default=0)
 
     def __str__(self):
@@ -63,6 +64,8 @@ class FlowRecord(models.Model):
     avg_packet_size = models.FloatField(default=0.0)
     protocol = models.CharField(max_length=20)
     threat_label = models.CharField(max_length=100, default="Normal")
+    policy_action = models.CharField(max_length=32, default="MONITOR")
+    policy_estimated_reclaimed_bps = models.FloatField(default=0.0)
 
     def __str__(self):
         return f"Flow {self.flow_key} ({self.threat_label})"

@@ -137,6 +137,12 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         # Classify threat label using trained model
         threat_label = classifier.classify_packet(classify_payload)
         flow.threat_label = threat_label
+        if threat_label != "Normal":
+            flow.policy_action = "RESTRICT_FLOW"
+            flow.policy_estimated_reclaimed_bps = (flow.byte_count * 8.0) / max(flow.duration, 1.0)
+        else:
+            flow.policy_action = "MONITOR"
+            flow.policy_estimated_reclaimed_bps = 0.0
 
         from django.db import close_old_connections
         for attempt in range(5):

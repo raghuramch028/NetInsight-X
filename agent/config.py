@@ -36,3 +36,9 @@ HOTSPOT_SSID = os.environ.get("NETINSIGHT_HOTSPOT_SSID", None)
 # Must match NETINSIGHT_AGENT_TOKEN configured on the server for registration/telemetry to succeed
 # once the server enables token enforcement.
 AGENT_TOKEN = os.environ.get("NETINSIGHT_AGENT_TOKEN", None)
+
+# Host firewall enforcement requires explicit opt-in and an elevated Windows agent.
+FLOW_ENFORCEMENT_ENABLED = os.environ.get(
+    "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", "False"
+).lower() in ("true", "1", "yes")
+FLOW_BLOCK_TTL_SECONDS = max(30, min(300, int(os.environ.get("NETINSIGHT_FLOW_BLOCK_TTL_SECONDS", "120"))))

@@ -96,6 +96,39 @@ On the monitored client device:
 python -m agent.main --server http://<SERVER-IP>:8000
 ```
 
+### Optional Windows Outbound Threat-Flow Blocking
+
+Flow blocking is disabled by default. For a trusted prototype demo, set
+`NETINSIGHT_ENABLE_FLOW_ENFORCEMENT=True` on the server and on each Windows agent
+that should enforce its own outbound traffic. Run the agent from an
+**Administrator PowerShell**. The server waits for at least five suspicious
+captured packets from an agent in the last 60 seconds, then sends exact TCP/UDP
+local/remote IP-and-port tuples to that same agent. The Windows Firewall blocks
+only those outbound tuples; it does not block the whole device or inbound flows.
+
+Rules are refreshed while the server continues to identify the suspicious flow,
+expire after 120 seconds without refresh, are reconciled on each successful
+telemetry response, and are removed on normal agent shutdown or the next agent
+start. If the agent is force-killed, restart it or remove rules named
+`NetInsightFlowBlock-*` in Windows Defender Firewall with Advanced Security.
+Use a test laptop and reversible demo traffic: firewall rules can interrupt the
+matching application connection. The change makes bandwidth available on the
+shared hotspot link, but it does not guarantee equal per-device shares; configure
+router QoS for centrally guaranteed allocation. Enforcement currently supports
+Windows agents only.
+
+To enable for the current PowerShell session before starting the server:
+```powershell
+$env:NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = "True"
+python manage.py runserver 0.0.0.0:8000
+```
+
+On each Windows agent, use Administrator PowerShell:
+```powershell
+$env:NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = "True"
+python -m agent.main --server http://<SERVER-IP>:8000
+```
+
 ---
 
 ## 🧪 System Verification & Code Quality

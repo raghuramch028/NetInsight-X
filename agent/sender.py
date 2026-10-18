@@ -55,6 +55,8 @@ class TelemetrySender:
             server_host = urllib.parse.urlparse(config.SERVER_URL).hostname or "8.8.8.8"
         except Exception:
             server_host = "8.8.8.8"
+        if server_host.lower() in {"localhost", "127.0.0.1", "::1"}:
+            server_host = "8.8.8.8"
         local_ip = get_local_ip(server_host=server_host)
 
         payload = {
@@ -99,7 +101,7 @@ class TelemetrySender:
             time.sleep(1.0)
 
     def send_telemetry(self, stats: dict, packets: list[dict]) -> tuple[bool, dict | None]:
-        """Uploads telemetry payload to server. Returns (success, enforced_qos)."""
+        """Uploads telemetry and returns the full server response on success."""
         if not self.agent_id:
             logger.error("Cannot send telemetry: Agent is not registered.")
             return False, None
@@ -120,7 +122,7 @@ class TelemetrySender:
             if response.status_code == 200:
                 logger.info(f"Successfully uploaded telemetry (packets: {len(packets)}).")
                 data = response.json()
-                return True, data.get("enforced_qos")
+                return True, data
             elif response.status_code == 404:
                 logger.error("Server reported agent is not registered (Status 404). Clearing invalid local agent ID.")
                 if os.path.exists(config.AGENT_ID_FILE):

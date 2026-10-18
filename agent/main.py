@@ -5,6 +5,7 @@ import signal
 import subprocess
 import sys
 import time
+from urllib.parse import urlparse
 from pathlib import Path
 
 # Ensure both current directory and parent directory are on sys.path
@@ -17,17 +18,19 @@ for _p in (_parent_dir, _current_dir):
 try:
     from agent import config
     from agent.collector import TelemetryCollector
+    from agent.flow_firewall import WindowsFlowFirewall
     from agent.logger import logger
     from agent.sender import TelemetrySender
     from agent.sniffer import PacketSniffer
-    from agent.utils import get_current_ssid, get_mac_address
+    from agent.utils import get_current_ssid, get_local_ip, get_mac_address
 except ImportError:
     import config
     from collector import TelemetryCollector
+    from flow_firewall import WindowsFlowFirewall
     from logger import logger
     from sender import TelemetrySender
     from sniffer import PacketSniffer
-    from utils import get_current_ssid, get_mac_address
+    from utils import get_current_ssid, get_local_ip, get_mac_address
 
 
 
@@ -38,6 +41,14 @@ class NetInsightAgent:
         self.collector = TelemetryCollector()
         self.sniffer = PacketSniffer()
         self.sender = TelemetrySender()
+        server_host = urlparse(config.SERVER_URL).hostname or "8.8.8.8"
+        if server_host.lower() in {"localhost", "127.0.0.1", "::1"}:
+            server_host = "8.8.8.8"
+        self.flow_firewall = WindowsFlowFirewall(
+            enabled=config.FLOW_ENFORCEMENT_ENABLED,
+            local_ip=get_local_ip(server_host=server_host),
+            ttl_seconds=config.FLOW_BLOCK_TTL_SECONDS,
+        )
         self.offline_file = "offline_buffer.json"
         self.is_running = False
 
@@ -93,6 +104,7 @@ class NetInsightAgent:
         """Stops background threads and capture sessions."""
         self.is_running = False
         self.sniffer.stop()
+        self.flow_firewall.stop()
         logger.info("Agent stopped.")
 
     def run(self):
@@ -144,6 +156,7 @@ class NetInsightAgent:
                     continue
 
             stats = self.collector.collect()
+            stats["active_flow_blocks"] = self.flow_firewall.active_rules()
 
             if self.sender.last_rtt_seconds is not None:
                 stats["rtt_seconds"] = self.sender.last_rtt_seconds
@@ -161,7 +174,7 @@ class NetInsightAgent:
             batch_to_send = all_packets[:100]
             remaining_packets = all_packets[100:]
 
-            success, qos_limits = self.sender.send_telemetry(stats, batch_to_send)
+            success, server_response = self.sender.send_telemetry(stats, batch_to_send)
 
             if success:
                 if remaining_packets:
@@ -179,8 +192,15 @@ class NetInsightAgent:
                             logger.error(f"Failed to remove offline buffer: {e}")
                 backoff = config.TELEMETRY_INTERVAL
 
-                if qos_limits:
-                    self.apply_local_shaping(qos_limits)
+                if server_response:
+                    qos_limits = server_response.get("enforced_qos")
+                    if qos_limits:
+                        self.apply_local_shaping(qos_limits)
+                    self.flow_firewall.sync(
+                        server_response.get("flow_restrictions", [])
+                        if server_response.get("flow_enforcement_enabled")
+                        else []
+                    )
             else:
                 to_buffer = all_packets[-200:]
                 try:

@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_ipv46_address
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -20,6 +21,7 @@ from rest_framework.response import Response
 from netinsight.analytics.telemetry_handler import handle_telemetry_ingestion
 from netinsight.analytics.topology import generate_topology_pyvis
 from netinsight.config import settings
+from netinsight.config.labels import CLASS_LABELS
 from netinsight.config.singletons import (
     get_analytics_engine,
     get_dse_engine,
@@ -55,6 +57,41 @@ def _clean_ip_or_default(raw_ip: str, default: str = "0.0.0.0") -> str:
         return candidate
     except ValidationError:
         return default
+
+
+def _get_flow_restrictions(agent: Agent) -> list[dict]:
+    """Return repeated, classified outbound tuples for an opted-in host firewall."""
+    if not getattr(settings, "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", False):
+        return []
+
+    threat_labels = [label for label in CLASS_LABELS.values() if label != "Normal"]
+    threat_labels.extend(["DoS / DDoS", "Mirai Botnet"])
+    recent = PacketRecord.objects.filter(
+        agent=agent,
+        timestamp__gte=_time.time() - 60.0,
+        src_ip=agent.ip_address,
+        threat_label__in=threat_labels,
+        protocol__in=["TCP", "UDP"],
+        src_port__gt=0,
+        dst_port__gt=0,
+    )
+    if recent.count() < 5:
+        return []
+
+    return [
+        {
+            "src_ip": row["src_ip"],
+            "src_port": row["src_port"],
+            "dst_ip": row["dst_ip"],
+            "dst_port": row["dst_port"],
+            "protocol": row["protocol"],
+            "threat_label": row["threat_label"],
+            "packet_count": row["packet_count"],
+        }
+        for row in recent.values(
+            "src_ip", "src_port", "dst_ip", "dst_port", "protocol", "threat_label"
+        ).annotate(packet_count=Count("id")).order_by("-packet_count")[:30]
+    ]
 
 
 # Centralized thread-safe singleton references
@@ -233,7 +270,11 @@ def api_agent_telemetry(request):
 
         return Response({
             "status": "success",
-            "enforced_qos": enforced_qos
+            "enforced_qos": enforced_qos,
+            "flow_enforcement_enabled": bool(
+                getattr(settings, "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", False)
+            ),
+            "flow_restrictions": _get_flow_restrictions(agent),
         }, status=200)
 
     except Exception as e:

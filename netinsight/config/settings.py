@@ -148,6 +148,11 @@ HOTSPOT_ENFORCE_SSID = os.environ.get("HOTSPOT_ENFORCE_SSID", "False").lower() i
 # Dashboard access control setting (default: False for lab demos, set True to enforce authentication)
 NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").lower() in ("true", "1", "yes")
 
+# Outbound flow blocking is disabled unless explicitly enabled on the server and agent.
+NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = os.environ.get(
+    "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", "False"
+).lower() in ("true", "1", "yes")
+
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]
 QOS_MIN_BANDWIDTH = [5_000_000.0, 15_000_000.0, 2_000_000.0, 10_000_000.0]

@@ -31,6 +31,14 @@
 </div>
 {% endif %}
 
+<div class="alert alert-info border-0 small mb-4" role="status">
+    {% if flow_enforcement_enabled %}
+    <strong>Outbound flow enforcement enabled:</strong> only repeated classified TCP/UDP flows sourced by an opted-in Windows agent are blocked at that host. Other hotspot devices may use released shared-link capacity; exact per-device shares require router QoS.
+    {% else %}
+    <strong>Outbound flow enforcement is disabled:</strong> suspicious-flow alerts are advisory. Enable <code>NETINSIGHT_ENABLE_FLOW_ENFORCEMENT</code> on both the server and each Windows agent to install temporary host firewall rules.
+    {% endif %}
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Main Network Health Card (Primary Metrics) -->
     <div class="col-lg-8">
