@@ -21,6 +21,11 @@ netinsight/database/netinsight.db*
 netinsight/staticfiles/
 staticfiles/
 
+# Presentation and document exports (keep local, do not commit)
+*.pdf
+*.ppt
+*.pptx
+
 # OS files
 .DS_Store
 Thumbs.db
