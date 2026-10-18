@@ -152,6 +152,12 @@ NETINSIGHT_REQUIRE_AUTH = os.environ.get("NETINSIGHT_REQUIRE_AUTH", "False").low
 NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = os.environ.get(
     "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", "False"
 ).lower() in ("true", "1", "yes")
+NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT = os.environ.get(
+    "NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT", "False"
+).lower() in ("true", "1", "yes")
+NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT = os.environ.get(
+    "NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT", "False"
+).lower() in ("true", "1", "yes")
 
 # Bandwidth Optimization QoS Thresholds (for 4 classes)
 QOS_PRIORITIES = [1.0, 2.0, 0.5, 3.0]

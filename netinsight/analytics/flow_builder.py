@@ -49,6 +49,7 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         src_port = int(packet_dict.get("src_port", 0))
         dst_port = int(packet_dict.get("dst_port", 0))
         protocol = normalize_protocol_name(packet_dict["protocol"])
+        demo_event_id = packet_dict.get("demo_event_id")
         size = int(packet_dict["size"])
         ttl = int(packet_dict.get("ttl", 64))
         raw_pkt_ts = float(packet_dict.get("timestamp", time.time()))
@@ -105,8 +106,21 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
                 packet_count=1,
                 byte_count=size,
                 avg_packet_size=float(size),
-                protocol=protocol
+                protocol=protocol,
+                demo_event_id=demo_event_id,
+                first_src_ip=src_ip,
+                first_src_port=src_port,
+                first_dst_ip=dst_ip,
+                first_dst_port=dst_port,
             )
+
+        if flow.first_src_ip is None:
+            flow.first_src_ip = src_ip
+            flow.first_src_port = src_port
+            flow.first_dst_ip = dst_ip
+            flow.first_dst_port = dst_port
+        if demo_event_id and flow.demo_event_id is None:
+            flow.demo_event_id = str(demo_event_id)[:64]
 
         # Feature Extraction & Threat Classification
 
@@ -135,8 +149,24 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         }
 
         # Classify threat label using trained model
-        threat_label = classifier.classify_packet(classify_payload)
+        threat_label, classification_engine, classification_confidence = (
+            classifier.classify_packet_with_metadata(
+                classify_payload,
+                allow_llm=flow.packet_count >= 5,
+            )
+        )
+        if (
+            flow.threat_label != "Normal"
+            and flow.classification_engine == "XGBoost ML Engine"
+            and threat_label == "Normal"
+            and classification_engine == "XGBoost ML Engine"
+        ):
+            threat_label = flow.threat_label
+            classification_engine = flow.classification_engine
+            classification_confidence = flow.classification_confidence
         flow.threat_label = threat_label
+        flow.classification_engine = classification_engine
+        flow.classification_confidence = classification_confidence
         if threat_label != "Normal":
             flow.policy_action = "RESTRICT_FLOW"
             flow.policy_estimated_reclaimed_bps = (flow.byte_count * 8.0) / max(flow.duration, 1.0)

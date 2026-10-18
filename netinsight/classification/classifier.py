@@ -26,6 +26,7 @@ class TrafficClassifier:
         self.last_llm_reasoning = ""
         self.last_llm_reasoning_ts = 0.0
         self.last_llm_confidence: float | None = None
+        self._inference_lock = threading.RLock()
 
         self.ip_history = {}
         self.cache_lock = threading.Lock()
@@ -155,7 +156,22 @@ class TrafficClassifier:
         return "Normal"
 
     def classify_packet(self, packet_dict: dict) -> str:
+        with self._inference_lock:
+            return self._classify_packet_unlocked(packet_dict)
+
+    def classify_packet_with_metadata(self, packet_dict: dict, allow_llm: bool = True) -> tuple[str, str, float | None]:
+        """Return a label and its engine/confidence atomically for persistence and audits."""
+        with self._inference_lock:
+            label = self._classify_packet_unlocked(packet_dict, allow_llm=allow_llm)
+            return label, self.last_engine_used, self.last_llm_confidence
+
+    def _classify_packet_unlocked(self, packet_dict: dict, allow_llm: bool = True) -> str:
         """Performs hybrid local XGBoost ML / LLM / heuristic inference on packet features."""
+        self.last_engine_used = "Heuristics"
+        self.last_llm_provider = "Heuristics"
+        self.last_llm_confidence = None
+        self.last_llm_latency_ms = None
+        self.last_llm_reasoning = ""
         # 1. Primary Engine: Sub-millisecond Local XGBoost ML Model (CICIoT2023)
         # Only use XGBoost for flow-level classification where we have enough context.
         # Single/early packets lack flow statistics and produce false positives (the model
@@ -186,9 +202,12 @@ class TrafficClassifier:
         rule_label = self._classify_rule_based(packet_dict)
         if rule_label != "Normal":
             self.last_engine_used = "Heuristics"
+            self.last_llm_provider = "Heuristics"
             self.last_llm_reasoning = f"Heuristic IDS Rule Triggered: Detected {rule_label} traffic pattern."
             self.last_llm_reasoning_ts = time.time()
             return rule_label
+        if not allow_llm:
+            return "Normal"
         try:
             if hasattr(self.llm_classifier, 'classify_packet'):
                 # classify_packet() returns a dict ({"label", "confidence", "reasoning"}) or None,

@@ -1,3 +1,4 @@
+import collections
 import threading
 import time
 
@@ -5,13 +6,14 @@ from scapy.all import IP, IPv6, TCP, UDP, AsyncSniffer
 
 from agent import config
 from agent.logger import logger
+from agent.utils import get_local_ip
 
 
 class PacketSniffer:
     """Uses Scapy to perform local packet capture and extract metadata from packet headers."""
 
     def __init__(self):
-        self.packet_buffer = []
+        self.packet_buffer = collections.deque(maxlen=10000)
         self.buffer_lock = threading.Lock()
         self.sniffer = None
         self.is_running = False
@@ -86,8 +88,7 @@ class PacketSniffer:
 
             with self.buffer_lock:
                 self.packet_buffer.append(pkt_dict)
-                if len(self.packet_buffer) > 10000:
-                    self.packet_buffer.pop(0)
+
 
         except Exception as e:
             logger.error(f"Error parsing packet in callback: {e}")
@@ -137,11 +138,12 @@ class PacketSniffer:
         logger.info("Packet capture thread stopped.")
 
     def get_and_clear_packets(self) -> list[dict]:
-        """Retrieves all buffered packet records and empties the list thread-safely."""
+        """Retrieves all buffered packet records and empties the buffer thread-safely."""
         with self.buffer_lock:
             packets = list(self.packet_buffer)
             self.packet_buffer.clear()
 
+            # If Scapy captured nothing, derive metrics from OS network counters
             if not packets:
                 try:
                     import psutil
@@ -157,36 +159,24 @@ class PacketSniffer:
                         self._last_io_time = time.time()
 
                         if pkts_diff > 0 or bytes_diff > 0:
+                            # Create a single summary record representing aggregate OS-level traffic
+                            # This is NOT a fake packet — it's an accurate aggregate of real OS counters
                             effective_pkts = max(pkts_diff, 1)
                             avg_size = max(int(bytes_diff / effective_pkts) if effective_pkts > 0 else 64, 64)
                             now_ts = time.time()
-                            synthetic_count = min(effective_pkts, 50)
-                            for i in range(synthetic_count):
-                                packets.append({
-                                    "src_ip": "10.91.150.128",
-                                    "dst_ip": "8.8.8.8",
-                                    "src_port": 50000 + (i % 1000),
-                                    "dst_port": 443,
-                                    "protocol": "TCP",
-                                    "size": avg_size,
-                                    "ttl": 64,
-                                    "timestamp": now_ts,
-                                    "tcp_seq": None
-                                })
+                            local_ip = get_local_ip()
+                            packets.append({
+                                "src_ip": local_ip,
+                                "dst_ip": "0.0.0.0",  # Aggregate — no specific destination
+                                "src_port": 0,
+                                "dst_port": 0,
+                                "protocol": "IP",  # Generic IP aggregate
+                                "size": avg_size,
+                                "ttl": 64,
+                                "timestamp": now_ts,
+                                "tcp_seq": None
+                            })
                 except Exception as ex:
                     logger.debug(f"System socket fallback error: {ex}")
-
-            if not packets:
-                packets.append({
-                    "src_ip": "127.0.0.1",
-                    "dst_ip": "10.91.150.128",
-                    "src_port": 54321,
-                    "dst_port": 8000,
-                    "protocol": "HTTP",
-                    "size": 64,
-                    "ttl": 64,
-                    "timestamp": time.time(),
-                    "tcp_seq": None
-                })
 
             return packets

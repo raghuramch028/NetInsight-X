@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 # Server address configuration — environment variable overrides default for portability
 SERVER_URL = os.environ.get(
@@ -42,3 +43,5 @@ FLOW_ENFORCEMENT_ENABLED = os.environ.get(
     "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", "False"
 ).lower() in ("true", "1", "yes")
 FLOW_BLOCK_TTL_SECONDS = max(30, min(300, int(os.environ.get("NETINSIGHT_FLOW_BLOCK_TTL_SECONDS", "120"))))
+DEMO_EVENT_ID = os.environ.get("NETINSIGHT_DEMO_EVENT_ID", None)
+DEMO_EVENT_FILE = Path(__file__).resolve().parent.parent / "demo_event.json"

@@ -86,7 +86,13 @@ def index_view(request):
         "settings": settings_obj,
         "link_capacity_mbps": speed_monitor.get_current_capacity() / 1e6,
         "link_capacity_source": speed_monitor.get_current_capacity_source(),
-        "flow_enforcement_enabled": settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT,
+        "flow_enforcement_enabled": (
+            settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT
+            and (
+                settings.NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT
+                or settings.NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT
+            )
+        ),
     }
     return render(request, "dashboard/index.html", context)
 

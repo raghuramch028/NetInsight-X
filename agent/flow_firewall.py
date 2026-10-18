@@ -134,6 +134,7 @@ class WindowsFlowFirewall:
                     "dst_port": int(rule["dst_port"]),
                     "protocol": str(rule["protocol"]).upper(),
                     "threat_label": str(rule.get("threat_label", "Threat"))[:100],
+                    "demo_event_id": str(rule["demo_event_id"])[:64] if rule.get("demo_event_id") else None,
                 }
             except (KeyError, TypeError, ValueError):
                 continue

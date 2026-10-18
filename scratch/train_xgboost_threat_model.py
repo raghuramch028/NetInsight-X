@@ -15,7 +15,15 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+
+try:
+    from sklearn.preprocessing import StandardScaler  # type: ignore[import-not-found]
+except ImportError as exc:
+    raise ImportError(
+        "scikit-learn is required for this training script. "
+        "Install it with: pip install scikit-learn"
+    ) from exc
+
 import xgboost as xgb
 
 REAL_DATASET_PATH = Path(r"C:\Users\raghu\Downloads\archive\CICIOT23\train\train.csv")

@@ -49,6 +49,7 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         agent.active_connections = max(0, int(stats_data.get("active_connections", 0)))
         active_flow_blocks = stats_data.get("active_flow_blocks", [])
         agent.active_flow_blocks = active_flow_blocks[:100] if isinstance(active_flow_blocks, list) else []
+        agent.flow_enforcement_capable = bool(stats_data.get("flow_enforcement_capable", False))
         agent.last_seen = sample_time
 
         for attempt in range(5):

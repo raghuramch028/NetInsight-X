@@ -47,6 +47,8 @@ class DecisionSupportEngine:
             threat_flows = FlowRecord.objects.filter(
                 end_time__gte=response_cutoff,
                 policy_action="RESTRICT_FLOW",
+                classification_engine="XGBoost ML Engine",
+                classification_confidence__gte=0.80,
             )
             qualified_agent_ids = list(
                 threat_flows.values("agent_id")
@@ -82,13 +84,40 @@ class DecisionSupportEngine:
                 reclaimed_mbps = reclaimed_bps / 1e6
                 per_device_mbps = reclaimed_mbps / recipient_count if recipient_count else 0.0
                 flagged_agents = {flow.agent_id: flow.agent for flow in flagged_flows}
-                confirmed_block_count = sum(
-                    len(agent.active_flow_blocks or []) for agent in flagged_agents.values()
-                )
+                confirmed_blocks = []
+                seen_rule_keys = set()
+                for flow in flagged_flows:
+                    for rule in flagged_agents[flow.agent_id].active_flow_blocks or []:
+                        rule_key = (
+                            rule.get("src_ip"),
+                            int(rule.get("src_port", 0)),
+                            rule.get("dst_ip"),
+                            int(rule.get("dst_port", 0)),
+                            rule.get("protocol"),
+                            rule.get("demo_event_id"),
+                        )
+                        if (
+                            rule.get("src_ip") == flow.first_src_ip
+                            and int(rule.get("src_port", 0)) == flow.first_src_port
+                            and rule.get("dst_ip") == flow.first_dst_ip
+                            and int(rule.get("dst_port", 0)) == flow.first_dst_port
+                            and rule.get("protocol") == flow.protocol
+                            and rule.get("demo_event_id") == flow.demo_event_id
+                            and rule_key not in seen_rule_keys
+                        ):
+                            confirmed_blocks.append(rule)
+                            seen_rule_keys.add(rule_key)
+                            break
+                confirmed_block_count = len(confirmed_blocks)
                 flow_names = ", ".join(
                     f"{flow.threat_label} on {flow.agent.hostname}" for flow in flagged_flows[:3]
                 )
-                if app_settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT and confirmed_block_count:
+                enforcement_mode_enabled = (
+                    app_settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT
+                    or app_settings.NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT
+                    or app_settings.NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT
+                )
+                if app_settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT and enforcement_mode_enabled and confirmed_block_count:
                     action = (
                         f"Host firewall confirms {confirmed_block_count} outbound flow block(s). "
                         "Rules are temporary; review for false positives."
@@ -99,7 +128,7 @@ class DecisionSupportEngine:
                         "is available to other devices, but per-device shares are not guaranteed."
                     )
                     title = "Suspicious Outbound Flows Blocked"
-                elif app_settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT:
+                elif app_settings.NETINSIGHT_ENABLE_FLOW_ENFORCEMENT and enforcement_mode_enabled:
                     action = (
                         "Waiting for an opted-in Windows agent running as Administrator to confirm firewall rules. "
                         "No block is confirmed yet."

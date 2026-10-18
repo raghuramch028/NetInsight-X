@@ -1,10 +1,13 @@
 import json
+import ipaddress
 import os
 import platform
 import signal
 import subprocess
 import sys
+import threading
 import time
+import uuid
 from urllib.parse import urlparse
 from pathlib import Path
 
@@ -49,8 +52,52 @@ class NetInsightAgent:
             local_ip=get_local_ip(server_host=server_host),
             ttl_seconds=config.FLOW_BLOCK_TTL_SECONDS,
         )
+        self._demo_event = None
+        self._demo_event_lock = threading.Lock()
         self.offline_file = "offline_buffer.json"
         self.is_running = False
+
+    def set_demo_event(self, event: dict | None) -> None:
+        """Set or clear the active, short-lived flow replay marker."""
+        with self._demo_event_lock:
+            self._demo_event = dict(event) if event else None
+
+    def _current_demo_event(self) -> dict | None:
+        candidate = None
+        if config.DEMO_EVENT_FILE.exists():
+            try:
+                candidate = json.loads(config.DEMO_EVENT_FILE.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                candidate = None
+        if candidate is None:
+            with self._demo_event_lock:
+                candidate = dict(self._demo_event) if self._demo_event else None
+        if not isinstance(candidate, dict):
+            return None
+        try:
+            source_ip = str(ipaddress.ip_address(candidate["source_ip"]))
+            receiver_ip = ipaddress.ip_address(candidate["receiver_ip"])
+            receiver_port = int(candidate["receiver_port"])
+            event_id = str(uuid.UUID(str(candidate["event_id"])))
+            expires_at = float(candidate["expires_at"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if (
+            source_ip != self.flow_firewall.local_ip
+            or not receiver_ip.is_private
+            or receiver_ip.is_loopback
+            or receiver_ip.is_multicast
+            or not 1024 <= receiver_port <= 65535
+            or not time.time() < expires_at <= time.time() + 180
+        ):
+            return None
+        return {
+            "event_id": event_id,
+            "source_ip": source_ip,
+            "receiver_ip": str(receiver_ip),
+            "receiver_port": receiver_port,
+            "expires_at": expires_at,
+        }
 
     def apply_local_shaping(self, qos_limits: dict):
         """Applies dynamic QoS shaper policies locally based on optimal limits from server."""
@@ -157,6 +204,12 @@ class NetInsightAgent:
 
             stats = self.collector.collect()
             stats["active_flow_blocks"] = self.flow_firewall.active_rules()
+            stats["flow_enforcement_capable"] = self.flow_firewall.enabled
+            demo_event = self._current_demo_event()
+            if demo_event:
+                stats["demo_event"] = demo_event
+            if config.DEMO_EVENT_ID:
+                stats["demo_event_id"] = config.DEMO_EVENT_ID
 
             if self.sender.last_rtt_seconds is not None:
                 stats["rtt_seconds"] = self.sender.last_rtt_seconds

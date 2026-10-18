@@ -1,10 +1,12 @@
 import html
+import ipaddress
 import json
 import logging
 import os
 import re
 import threading
 import time as _time
+import uuid
 from datetime import timedelta
 
 import matplotlib
@@ -12,7 +14,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for headless web servers
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_ipv46_address
-from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -29,7 +30,7 @@ from netinsight.config.singletons import (
     get_traffic_classifier,
 )
 from netinsight.dashboard import speed_monitor
-from netinsight.dashboard.models import Agent, PacketRecord, SystemSettings
+from netinsight.dashboard.models import Agent, FlowRecord, PacketRecord, SystemSettings
 from netinsight.dashboard.views.utils import (
     require_dashboard_auth as _require_dashboard_auth,
 )
@@ -59,39 +60,129 @@ def _clean_ip_or_default(raw_ip: str, default: str = "0.0.0.0") -> str:
         return default
 
 
-def _get_flow_restrictions(agent: Agent) -> list[dict]:
-    """Return repeated, classified outbound tuples for an opted-in host firewall."""
+def _get_flow_restrictions(agent: Agent, demo_event: dict | None = None) -> list[dict]:
+    """Return repeated XGBoost-confirmed outbound flow tuples for an opted-in host."""
     if not getattr(settings, "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", False):
+        return []
+    if demo_event and not getattr(settings, "NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT", False):
+        return []
+    if not demo_event and not getattr(settings, "NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT", False):
         return []
 
     threat_labels = [label for label in CLASS_LABELS.values() if label != "Normal"]
     threat_labels.extend(["DoS / DDoS", "Mirai Botnet"])
-    recent = PacketRecord.objects.filter(
+    recent = FlowRecord.objects.filter(
         agent=agent,
-        timestamp__gte=_time.time() - 60.0,
-        src_ip=agent.ip_address,
+        end_time__gte=_time.time() - 60.0,
+        first_src_ip=agent.ip_address,
         threat_label__in=threat_labels,
+        classification_engine="XGBoost ML Engine",
+        classification_confidence__gte=0.80,
+        packet_count__gte=5,
         protocol__in=["TCP", "UDP"],
-        src_port__gt=0,
-        dst_port__gt=0,
+        first_src_port__gt=0,
+        first_dst_port__gt=0,
     )
-    if recent.count() < 5:
-        return []
+    if demo_event:
+        recent = recent.filter(
+            demo_event_id=demo_event["event_id"],
+            first_dst_ip=demo_event["receiver_ip"],
+            first_dst_port=demo_event["receiver_port"],
+        )
 
-    return [
-        {
-            "src_ip": row["src_ip"],
-            "src_port": row["src_port"],
-            "dst_ip": row["dst_ip"],
-            "dst_port": row["dst_port"],
-            "protocol": row["protocol"],
-            "threat_label": row["threat_label"],
-            "packet_count": row["packet_count"],
-        }
-        for row in recent.values(
-            "src_ip", "src_port", "dst_ip", "dst_port", "protocol", "threat_label"
-        ).annotate(packet_count=Count("id")).order_by("-packet_count")[:30]
-    ]
+    rules = []
+    for flow in recent.order_by("-end_time")[:30]:
+        try:
+            destination = ipaddress.ip_address(flow.first_dst_ip)
+            if not destination.is_private or destination.is_loopback or destination.is_multicast:
+                continue
+        except ValueError:
+            continue
+        if flow.protocol not in {"TCP", "UDP"}:
+            continue
+        if not (1 <= flow.first_src_port <= 65535 and 1 <= flow.first_dst_port <= 65535):
+            continue
+        rules.append({
+            "src_ip": flow.first_src_ip,
+            "src_port": flow.first_src_port,
+            "dst_ip": flow.first_dst_ip,
+            "dst_port": flow.first_dst_port,
+            "protocol": flow.protocol,
+            "threat_label": flow.threat_label,
+            "packet_count": flow.packet_count,
+            "classification_engine": flow.classification_engine,
+            "confidence": flow.classification_confidence,
+            "demo_event_id": flow.demo_event_id,
+        })
+    return rules
+
+
+def _validated_demo_event(stats: dict, agent: Agent) -> dict | None:
+    if not getattr(settings, "NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT", False):
+        return None
+    event = stats.get("demo_event")
+    if not isinstance(event, dict):
+        return None
+    try:
+        event_id = str(uuid.UUID(str(event["event_id"])))
+        destination = ipaddress.ip_address(str(event["receiver_ip"]))
+        port = int(event["receiver_port"])
+        expires_at = float(event["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    now = _time.time()
+    if (
+        not destination.is_private
+        or destination.is_loopback
+        or destination.is_multicast
+        or not 1024 <= port <= 65535
+        or not now < expires_at <= now + 180
+        or event.get("source_ip") != str(agent.ip_address)
+    ):
+        return None
+    return {
+        "event_id": event_id,
+        "source_ip": str(agent.ip_address),
+        "receiver_ip": str(destination),
+        "receiver_port": port,
+        "expires_at": expires_at,
+    }
+
+
+@api_view(["GET"])
+def api_agent_demo_status(request):
+    """Read-only status for a demo event owned by the authenticated agent token."""
+    if not _validate_agent_token(request):
+        return Response({"error": "Unauthorized agent token"}, status=401)
+    try:
+        agent = Agent.objects.get(id=request.query_params.get("agent_id"))
+        event_id = str(uuid.UUID(request.query_params.get("event_id", "")))
+    except (Agent.DoesNotExist, ValueError, TypeError, AttributeError):
+        return Response({"error": "Invalid agent_id or event_id"}, status=400)
+
+    flows = FlowRecord.objects.filter(agent=agent, demo_event_id=event_id).order_by("-end_time")[:20]
+    return Response({
+        "agent_id": str(agent.id),
+        "event_id": event_id,
+        "xgboost_flows": [
+            {
+                "threat_label": flow.threat_label,
+                "engine": flow.classification_engine,
+                "confidence": flow.classification_confidence,
+                "packet_count": flow.packet_count,
+                "destination_ip": flow.first_dst_ip,
+                "destination_port": flow.first_dst_port,
+            }
+            for flow in flows if flow.classification_engine == "XGBoost ML Engine"
+        ],
+        "active_flow_blocks": [
+            rule for rule in (agent.active_flow_blocks or [])
+            if rule.get("demo_event_id") == event_id
+        ],
+        "agent_enforcement_capable": agent.flow_enforcement_capable,
+        "server_enforcement_enabled": bool(getattr(settings, "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", False)),
+        "demo_enforcement_enabled": bool(getattr(settings, "NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT", False)),
+    })
 
 
 # Centralized thread-safe singleton references
@@ -236,7 +327,26 @@ def api_agent_telemetry(request):
         except (Agent.DoesNotExist, ValueError):
             return Response({"error": "Invalid agent_id (Device not registered)"}, status=404)
 
-        # Ingest packets and update system health stats asynchronously
+        demo_event = _validated_demo_event(stats, agent)
+        if demo_event:
+            tagged_packets = []
+            for packet in packets if isinstance(packets, list) else []:
+                if not isinstance(packet, dict):
+                    continue
+                try:
+                    matches_event = (
+                        str(ipaddress.ip_address(packet.get("src_ip", ""))) == demo_event["source_ip"]
+                        and str(ipaddress.ip_address(packet.get("dst_ip", ""))) == demo_event["receiver_ip"]
+                        and int(packet.get("dst_port", 0)) == demo_event["receiver_port"]
+                        and str(packet.get("protocol", "")).upper() == "UDP"
+                    )
+                except (TypeError, ValueError):
+                    matches_event = False
+                if matches_event:
+                    tagged_packets.append({**packet, "demo_event_id": demo_event["event_id"]})
+            packets = tagged_packets
+
+        # Ingest captured packet headers and update system health stats asynchronously.
         handle_telemetry_ingestion(agent, stats, packets)
 
         settings_obj = SystemSettings.objects.first()
@@ -274,7 +384,16 @@ def api_agent_telemetry(request):
             "flow_enforcement_enabled": bool(
                 getattr(settings, "NETINSIGHT_ENABLE_FLOW_ENFORCEMENT", False)
             ),
-            "flow_restrictions": _get_flow_restrictions(agent),
+            "demo_enforcement_enabled": bool(
+                getattr(settings, "NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT", False)
+            ),
+            "live_enforcement_enabled": bool(
+                getattr(settings, "NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT", False)
+            ),
+            "flow_restrictions": _get_flow_restrictions(
+                agent,
+                demo_event,
+            ),
         }, status=200)
 
     except Exception as e:

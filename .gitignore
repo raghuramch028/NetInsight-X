@@ -46,6 +46,8 @@ netinsight/database/*.sqlite3
 agent.log
 agent_id.txt
 offline_buffer.json
+demo_event.json
+demo_event.json.tmp
 
 # Cross-process singleton locks (process_lock.py) — runtime state, not source
 netinsight/.locks/

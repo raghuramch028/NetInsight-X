@@ -98,18 +98,30 @@ python -m agent.main --server http://<SERVER-IP>:8000
 
 ### Optional Windows Outbound Threat-Flow Blocking
 
-Flow blocking is disabled by default. For a trusted prototype demo, set
-`NETINSIGHT_ENABLE_FLOW_ENFORCEMENT=True` on the server and on each Windows agent
-that should enforce its own outbound traffic. Run the agent from an
-**Administrator PowerShell**. The server waits for at least five suspicious
-captured packets from an agent in the last 60 seconds, then sends exact TCP/UDP
-local/remote IP-and-port tuples to that same agent. The Windows Firewall blocks
-only those outbound tuples; it does not block the whole device or inbound flows.
+Flow blocking is disabled by default. Normal live enforcement requires
+`NETINSIGHT_ENABLE_FLOW_ENFORCEMENT=True` and the separate
+`NETINSIGHT_ENABLE_LIVE_FLOW_ENFORCEMENT=True` on the server, plus
+`NETINSIGHT_ENABLE_FLOW_ENFORCEMENT=True` on each Windows agent. Run each agent
+from an **Administrator PowerShell**. Eligible rules require an XGBoost threat
+label with confidence of at least 0.80 and repeated packet evidence. The Windows
+Firewall blocks only the matching outbound TCP/UDP tuple; it does not block the
+whole device or inbound flows.
+
+For a controlled presentation replay, leave live enforcement disabled and set
+`NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT=True` on the server as well as the two
+standard enforcement opt-ins above. Replay mode uses an already registered
+agent, marks a short-lived event, and sends exactly 40 paced tiny UDP
+datagrams to a private receiver laptop you control. It never creates a demo
+agent, injects packet records into the server, or sends a high-rate flood. The
+existing Scapy agent must capture the packets, and the status command only
+reports success when the stored engine is XGBoost and that agent acknowledges
+the matching firewall rule.
 
 Rules are refreshed while the server continues to identify the suspicious flow,
 expire after 120 seconds without refresh, are reconciled on each successful
 telemetry response, and are removed on normal agent shutdown or the next agent
-start. If the agent is force-killed, restart it or remove rules named
+start. In demo mode they are scoped to that event's private receiver IP/port. If
+the agent is force-killed, restart it or remove rules named
 `NetInsightFlowBlock-*` in Windows Defender Firewall with Advanced Security.
 Use a test laptop and reversible demo traffic: firewall rules can interrupt the
 matching application connection. The change makes bandwidth available on the
@@ -117,16 +129,34 @@ shared hotspot link, but it does not guarantee equal per-device shares; configur
 router QoS for centrally guaranteed allocation. Enforcement currently supports
 Windows agents only.
 
-To enable for the current PowerShell session before starting the server:
+For the demo, first start a private UDP receiver on the receiver laptop:
+```powershell
+python scratch\demo_attack_simulator.py --listen --receiver-ip <RECEIVER-LAN-IP> --receiver-port 45678
+```
+
+Allow the receiver port only on the trusted private network, using Administrator
+PowerShell on the receiver laptop:
+```powershell
+New-NetFirewallRule -DisplayName "NetInsight demo UDP receiver" -Direction Inbound -Protocol UDP -LocalPort 45678 -Action Allow -Profile Private
+```
+
+Set these values before starting the NetInsight server:
 ```powershell
 $env:NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = "True"
+$env:NETINSIGHT_ENABLE_DEMO_FLOW_ENFORCEMENT = "True"
 python manage.py runserver 0.0.0.0:8000
 ```
 
-On each Windows agent, use Administrator PowerShell:
+Restart the already registered agent in Administrator PowerShell with enforcement enabled:
 ```powershell
 $env:NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = "True"
 python -m agent.main --server http://<SERVER-IP>:8000
+```
+
+In a second terminal on that same agent laptop, run the confirmed replay:
+```powershell
+$env:NETINSIGHT_ENABLE_FLOW_ENFORCEMENT = "True"
+python scratch\demo_attack_simulator.py --agent-replay --server http://<SERVER-IP>:8000 --receiver-ip <RECEIVER-LAN-IP> --receiver-port 45678 --confirm
 ```
 
 ---

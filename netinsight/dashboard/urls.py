@@ -17,6 +17,7 @@ urlpatterns = [
     # REST Telemetry APIs (Versioned)
     path("api/v1/agents/register", views.api_register_agent, name="api_register_agent"),
     path("api/v1/agents/telemetry", views.api_agent_telemetry, name="api_agent_telemetry"),
+    path("api/v1/agents/demo-status", views.api_agent_demo_status, name="api_agent_demo_status"),
 
     # Interactive Topology pyvis API
     path("api/v1/topology/graph", views.api_topology_graph, name="api_topology_graph"),
@@ -25,4 +26,5 @@ urlpatterns = [
     path("api/live-metrics/", views.api_live_metrics, name="api_live_metrics"),
     path("api/live-packets/", views.api_live_packets, name="api_live_packets"),
     path("api/v1/stream/metrics/", views.api_stream_metrics, name="api_stream_metrics"),
+
 ]
