@@ -16,6 +16,9 @@
 </div>
 
 <div class="saas-card">
+    {% if error_message %}
+    <div class="alert alert-danger small" role="alert">{{ error_message }}</div>
+    {% endif %}
     <form method="POST" action="{% url 'dashboard:settings' %}">
         {% csrf_token %}
         <div class="row g-4 mb-4">
@@ -24,29 +27,29 @@
                 <label class="form-label text-dark small font-bold d-block mb-2">Bandwidth Utilization Warning Bound</label>
                 <div class="input-group">
                     <input type="number" step="0.01" class="form-control bg-light border text-dark font-mono fw-bold" name="bandwidth_threshold" value="{{ settings.bandwidth_threshold }}" min="0" max="1">
-                    <span class="input-group-text bg-light border text-dark small font-mono">% (0.0 to 1.0)</span>
+                    <span class="input-group-text bg-light border text-dark small font-mono">ratio (0.0 to 1.0)</span>
                 </div>
                 <div class="form-text text-secondary small mt-1">Warning alert triggers when active link throughput exceeds this ratio of capacity.</div>
             </div>
 
             <!-- Packet Loss Threshold -->
             <div class="col-md-6">
-                <label class="form-label text-dark small font-bold d-block mb-2">Packet Loss Warning Bound</label>
+                <label class="form-label text-dark small font-bold d-block mb-2">TCP Retransmission Warning Bound</label>
                 <div class="input-group">
                     <input type="number" step="0.01" class="form-control bg-light border text-dark font-mono fw-bold" name="loss_threshold" value="{{ settings.loss_threshold }}" min="0" max="1">
-                    <span class="input-group-text bg-light border text-dark small font-mono">% (0.0 to 1.0)</span>
+                    <span class="input-group-text bg-light border text-dark small font-mono">ratio (0.0 to 1.0)</span>
                 </div>
-                <div class="form-text text-secondary small mt-1">Warning alert triggers when retransmission rate surpasses this ratio.</div>
+                <div class="form-text text-secondary small mt-1">Warning triggers when the estimated TCP retransmission rate exceeds this fraction; it is not a direct packet-loss measurement.</div>
             </div>
 
             <!-- Latency Threshold -->
             <div class="col-md-6">
-                <label class="form-label text-dark small font-bold d-block mb-2">Maximum Tolerable RTT Latency</label>
+                <label class="form-label text-dark small font-bold d-block mb-2">Maximum Tolerable Agent API RTT</label>
                 <div class="input-group">
                     <input type="number" step="0.001" class="form-control bg-light border text-dark font-mono fw-bold" name="latency_threshold" value="{{ settings.latency_threshold }}" min="0" max="5">
                     <span class="input-group-text bg-light border text-dark small font-mono">Seconds</span>
                 </div>
-                <div class="form-text text-secondary small mt-1">Maximum acceptable delay before latency alarms are logged (e.g., 0.150 is 150ms).</div>
+                <div class="form-text text-secondary small mt-1">Maximum acceptable agent-to-server telemetry request time, including server processing (e.g., 0.150 is 150ms).</div>
             </div>
 
             <!-- Classifier Confidence Threshold -->

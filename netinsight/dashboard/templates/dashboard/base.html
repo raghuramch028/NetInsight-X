@@ -494,7 +494,9 @@
             localStorage.setItem('netinsight_sidebar_collapsed', isCollapsed ? 'true' : 'false');
         }
 
-        if (localStorage.getItem('netinsight_sidebar_collapsed') === 'true') {
+        const savedSidebarState = localStorage.getItem('netinsight_sidebar_collapsed');
+        const shouldCollapseForMobile = window.matchMedia('(max-width: 767px)').matches;
+        if (savedSidebarState === 'true' || shouldCollapseForMobile) {
             const container = document.getElementById('app-window-container');
             if (container) container.classList.add('sidebar-collapsed');
         }
@@ -507,6 +509,16 @@
         }
 
         let currentAlertFilter = 'all';
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
 
         function filterAlerts(severity) {
             currentAlertFilter = severity || 'all';
@@ -552,16 +564,17 @@
 
             let html = '';
             alertsList.forEach(alert => {
-                const sev = alert.severity || 'Warning';
+                const sev = escapeHtml(alert.severity || 'Warning');
                 const sevLower = sev.toLowerCase();
                 const isCrit = sevLower === 'critical';
                 const isWarn = sevLower === 'warning';
                 const icon = isCrit ? 'shield-alert' : (isWarn ? 'alert-triangle' : 'info');
                 const iconColor = isCrit ? 'text-danger' : (isWarn ? 'text-warning' : 'text-info');
                 const badgeColor = isCrit ? 'rose' : (isWarn ? 'terracotta' : 'emerald');
-                const moduleName = alert.module || 'QoS Performance';
-                const msg = alert.message || alert.description || '';
-                const act = alert.action || alert.recommendation || 'Monitor network conditions';
+                const moduleName = escapeHtml(alert.module || 'QoS Performance');
+                const msg = escapeHtml(alert.message || alert.description || '');
+                const act = escapeHtml(alert.action || alert.recommendation || 'Monitor network conditions');
+                const title = escapeHtml(alert.title || 'System Alert');
 
                 html += `
                     <div class="p-3 rounded-3 border alert-item-card alert-severity-${sev}" data-severity="${sev}" style="background: var(--bg-main-canvas); border-color: rgba(0,0,0,0.06) !important;">
@@ -574,7 +587,7 @@
                                 ${sev}
                             </span>
                         </div>
-                        <div class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">${alert.title || 'System Alert'}</div>
+                        <div class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">${title}</div>
                         <div class="text-secondary small mb-2" style="font-size: 0.8rem; line-height: 1.4;">${msg}</div>
                         <div class="p-2 rounded bg-white border font-mono small text-dark" style="font-size:0.75rem;">
                             <i data-lucide="arrow-right" class="d-inline-block me-1" style="width:12px;height:12px;color:var(--accent-terracotta);"></i><strong>Action:</strong> ${act}

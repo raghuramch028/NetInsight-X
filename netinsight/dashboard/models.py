@@ -17,6 +17,8 @@ class Agent(models.Model):
     disk_usage = models.FloatField(default=0.0)
     bytes_sent = models.BigIntegerField(default=0)
     bytes_recv = models.BigIntegerField(default=0)
+    current_throughput = models.FloatField(default=0.0)
+    throughput_sampled_at = models.DateTimeField(null=True, blank=True)
     active_connections = models.IntegerField(default=0)
 
     def __str__(self):
@@ -36,6 +38,7 @@ class PacketRecord(models.Model):
     ttl = models.IntegerField()
     timestamp = models.FloatField(db_index=True)
     tcp_seq = models.BigIntegerField(null=True, blank=True, default=None)
+    threat_label = models.CharField(max_length=100, null=True, blank=True, default=None)
 
     def __str__(self):
         return f"{self.protocol} {self.src_ip}:{self.src_port} -> {self.dst_ip}:{self.dst_port}"
@@ -102,6 +105,8 @@ class SystemSettings(models.Model):
     loss_threshold = models.FloatField(default=0.05)
     latency_threshold = models.FloatField(default=0.15)
     lp_priorities = models.JSONField(default=list)
+    qos_min_bandwidth = models.JSONField(default=list)
+    qos_max_bandwidth = models.JSONField(default=list)
     llm_confidence_threshold = models.FloatField(default=0.80)
 
     def __str__(self):

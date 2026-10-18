@@ -31,13 +31,23 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
     """Orchestrates system telemetry ingestion and metrics aggregation."""
     try:
         # 1. Update Agent stats synchronously with numerical bounds clamping
+        sample_time = timezone.now()
+        previous_sample_time = agent.throughput_sampled_at
+        previous_total_bytes = agent.bytes_sent + agent.bytes_recv
         agent.cpu_usage = max(0.0, min(100.0, float(stats_data.get("cpu_usage", 0.0))))
         agent.memory_usage = max(0.0, min(100.0, float(stats_data.get("memory_usage", 0.0))))
         agent.disk_usage = max(0.0, min(100.0, float(stats_data.get("disk_usage", 0.0))))
         agent.bytes_sent = max(0, int(stats_data.get("bytes_sent", 0)))
         agent.bytes_recv = max(0, int(stats_data.get("bytes_recv", 0)))
+        if previous_sample_time is None:
+            agent.current_throughput = 0.0
+        else:
+            elapsed = max(0.1, (sample_time - previous_sample_time).total_seconds())
+            current_total_bytes = agent.bytes_sent + agent.bytes_recv
+            agent.current_throughput = max(0, current_total_bytes - previous_total_bytes) * 8.0 / elapsed
+        agent.throughput_sampled_at = sample_time
         agent.active_connections = max(0, int(stats_data.get("active_connections", 0)))
-        agent.last_seen = timezone.now()
+        agent.last_seen = sample_time
 
         for attempt in range(5):
             try:
@@ -63,7 +73,7 @@ def handle_telemetry_ingestion(agent: Agent, stats_data: dict, packets_list: lis
         logger.error(f"Error handling telemetry payload: {e}", exc_info=True)
 
 
-def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[dict]) -> None:
+def _async_telemetry_worker(agent_id, stats_data: dict, packets_list: list[dict]) -> None:
     """Handles heavy processing tasks asynchronously without blocking client uploads."""
     close_old_connections()
     try:
@@ -84,7 +94,7 @@ def _async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[
         _telemetry_inflight_semaphore.release()
 
 
-def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_list: list[dict]) -> None:
+def _execute_async_telemetry_worker(agent_id, stats_data: dict, packets_list: list[dict]) -> None:
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -102,20 +112,24 @@ def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_lis
     if packet_objects:
         PacketRecord.objects.bulk_create(packet_objects, ignore_conflicts=True)
 
-    # B. Calculate Server-Side Network-Wide Metrics (window: last 15 seconds)
+    # B. Aggregate the latest byte-counter rate from each recently active agent.
+    active_cutoff = timezone.now() - timedelta(seconds=15)
+    throughput = Agent.objects.filter(last_seen__gte=active_cutoff).aggregate(
+        total=Sum("current_throughput")
+    )["total"] or 0.0
+
+    # C. Calculate network-wide captured packet rate over the recent window
     window_start = now_ts - 15.0
     active_packets = PacketRecord.objects.filter(timestamp__gte=window_start)
-
     packet_count = active_packets.count()
-    total_bytes = active_packets.aggregate(total_bytes=Sum("size"))["total_bytes"] or 0
-
-    throughput = (total_bytes * 8.0) / 15.0
     packet_rate = float(packet_count) / 15.0
 
+    # D. Get link capacity and compute utilization
     from netinsight.dashboard import speed_monitor
     link_capacity = speed_monitor.get_current_capacity()
     bandwidth_util = (throughput / link_capacity) * 100.0 if link_capacity > 0 else 0.0
 
+    # E. Latency — measured as HTTP API roundtrip time from agent
     _DEFAULT_LATENCY_SECONDS = 0.015
     _MAX_PLAUSIBLE_LATENCY_SECONDS = 10.0
     reported_rtt = stats_data.get("rtt_seconds")
@@ -128,22 +142,26 @@ def _execute_async_telemetry_worker(agent_id: int, stats_data: dict, packets_lis
     else:
         latency = _DEFAULT_LATENCY_SECONDS
 
-    # Calculate packet loss from TCP sequence retransmissions
-    tcp_packets = active_packets.filter(protocol__iexact="TCP")
-    total_tcp = tcp_packets.count()
+    # F. Estimate TCP retransmissions from repeated sequence numbers over a wider sample.
+    loss_window_start = now_ts - 60.0
+    tcp_data_packets = PacketRecord.objects.filter(
+        timestamp__gte=loss_window_start,
+        protocol__iexact="TCP",
+        size__gt=54,
+    )
+    tcp_data_with_seq = tcp_data_packets.exclude(tcp_seq__isnull=True)
     packet_loss = 0.0
-    if total_tcp > 0:
-        tcp_with_seq = tcp_packets.exclude(tcp_seq__isnull=True)
-        if tcp_with_seq.exists():
-            duplicate_groups = (
-                tcp_with_seq.values("src_ip", "dst_ip", "src_port", "dst_port", "tcp_seq")
-                .annotate(occurrences=Count("id"))
-                .filter(occurrences__gt=1)
-            )
-            retransmission_like_packets = sum(max(0, g["occurrences"] - 1) for g in duplicate_groups)
-            packet_loss = (float(retransmission_like_packets) / max(1, total_tcp)) * 100.0
+    tcp_data_count = tcp_data_with_seq.count()
+    if tcp_data_count:
+        duplicate_groups = (
+            tcp_data_with_seq.values("agent_id", "src_ip", "dst_ip", "src_port", "dst_port", "tcp_seq")
+            .annotate(occurrences=Count("id"))
+            .filter(occurrences__gt=1)
+        )
+        retransmission_like_packets = sum(max(0, group["occurrences"] - 1) for group in duplicate_groups)
+        packet_loss = (float(retransmission_like_packets) / tcp_data_count) * 100.0
 
-    # Commit calculated metrics to MetricRecord
+    # G. Commit calculated metrics to MetricRecord
     MetricRecord.objects.create(
         timestamp=now_ts,
         throughput=throughput,

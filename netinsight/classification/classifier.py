@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 from netinsight.classification.llm_classifier import LLMClassifier
 from netinsight.classification.xgboost_classifier import XGBoostTrafficClassifier
@@ -20,9 +21,10 @@ class TrafficClassifier:
         self.xgb_classifier = XGBoostTrafficClassifier()
         self.llm_classifier = LLMClassifier()
         self.last_engine_used = "XGBoost ML Engine"
-        self.last_llm_latency_ms = 0.3
+        self.last_llm_latency_ms = None
         self.last_llm_provider = "XGBoost (CICIoT2023)"
         self.last_llm_reasoning = ""
+        self.last_llm_reasoning_ts = 0.0
         self.last_llm_confidence: float | None = None
 
         self.ip_history = {}
@@ -154,8 +156,12 @@ class TrafficClassifier:
 
     def classify_packet(self, packet_dict: dict) -> str:
         """Performs hybrid local XGBoost ML / LLM / heuristic inference on packet features."""
-        # 1. Primary Engine: Sub-millisecond Local XGBoost ML Model (CICIoT2023 / UNSW-NB15)
-        if self.xgb_classifier and self.xgb_classifier.is_loaded:
+        # 1. Primary Engine: Sub-millisecond Local XGBoost ML Model (CICIoT2023)
+        # Only use XGBoost for flow-level classification where we have enough context.
+        # Single/early packets lack flow statistics and produce false positives (the model
+        # was trained on flow-level features, not individual packet features).
+        pkt_count = int(packet_dict.get("packet_count", 1))
+        if self.xgb_classifier and self.xgb_classifier.is_loaded and pkt_count >= 5:
             xgb_res = self.xgb_classifier.classify_packet(packet_dict)
             if xgb_res and isinstance(xgb_res, dict):
                 label = xgb_res.get("label", "Normal")
@@ -172,6 +178,7 @@ class TrafficClassifier:
                 self.last_llm_latency_ms = latency_ms
                 self.last_llm_provider = "XGBoost (CICIoT2023)"
                 self.last_llm_reasoning = reasoning
+                self.last_llm_reasoning_ts = time.time()
                 self.last_llm_confidence = confidence
                 return label
 
@@ -180,6 +187,7 @@ class TrafficClassifier:
         if rule_label != "Normal":
             self.last_engine_used = "Heuristics"
             self.last_llm_reasoning = f"Heuristic IDS Rule Triggered: Detected {rule_label} traffic pattern."
+            self.last_llm_reasoning_ts = time.time()
             return rule_label
         try:
             if hasattr(self.llm_classifier, 'classify_packet'):
@@ -210,6 +218,7 @@ class TrafficClassifier:
                         self.last_llm_latency_ms = getattr(self.llm_classifier, 'last_llm_latency_ms', 0.0)
                         self.last_llm_provider = "NVIDIA DeepSeek AI"
                         self.last_llm_reasoning = getattr(self.llm_classifier, 'last_llm_reasoning', "")
+                        self.last_llm_reasoning_ts = time.time()
                         self.last_llm_confidence = confidence
                         return label
                     logger.warning(f"LLM returned an unrecognized label {label!r}; falling back to Normal.")

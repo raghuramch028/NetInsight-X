@@ -204,16 +204,20 @@ def api_agent_telemetry(request):
 
         settings_obj = SystemSettings.objects.first()
         raw_priorities = settings_obj.lp_priorities if (settings_obj and settings_obj.lp_priorities) else settings.QOS_PRIORITIES
-        raw_min = settings.QOS_MIN_BANDWIDTH
-        raw_max = settings.QOS_MAX_BANDWIDTH
         capacity = speed_monitor.get_current_capacity()
 
         active_priorities = list(raw_priorities) if (raw_priorities and len(raw_priorities) >= 4) else [1.0, 2.0, 0.5, 3.0]
         scale_ratio = capacity / 100000000.0
-        base_min = list(raw_min) if (raw_min and len(raw_min) >= 4) else [5e6, 15e6, 2e6, 10e6]
-        base_max = list(raw_max) if (raw_max and len(raw_max) >= 4) else [40e6, 60e6, 30e6, 50e6]
-        active_min_bounds = [float(val * scale_ratio) for val in base_min]
-        active_max_bounds = [float(val * scale_ratio) for val in base_max]
+        custom_min = settings_obj.qos_min_bandwidth if settings_obj else []
+        custom_max = settings_obj.qos_max_bandwidth if settings_obj else []
+        if len(custom_min) >= 4 and len(custom_max) >= 4:
+            active_min_bounds = [float(value) for value in custom_min[:4]]
+            active_max_bounds = [float(value) for value in custom_max[:4]]
+        else:
+            base_min = list(settings.QOS_MIN_BANDWIDTH)
+            base_max = list(settings.QOS_MAX_BANDWIDTH)
+            active_min_bounds = [float(value * scale_ratio) for value in base_min]
+            active_max_bounds = [float(value * scale_ratio) for value in base_max]
 
         # Solve LP based on computed priorities and dynamic capacity bounds
         lp_result = optimizer.solve_allocation(active_priorities, active_min_bounds, active_max_bounds, capacity)
@@ -280,6 +284,7 @@ def api_live_metrics(request):
         latest["llm_reasoning"] = getattr(classifier, "last_llm_reasoning", "")
         latest["llm_provider"] = "AI Engine"
         latest["link_capacity_mbps"] = speed_monitor.get_current_capacity() / 1e6
+        latest["link_capacity_source"] = speed_monitor.get_current_capacity_source()
 
         return JsonResponse(_to_native_types(latest))
     except Exception as e:
@@ -325,6 +330,14 @@ def api_topology_graph(request):
     """Serves the interactive PyVis graph HTML directly for iframe inclusion."""
     html_graph = generate_topology_pyvis()
     return HttpResponse(html_graph, content_type="text/html")
+
+
+
+
+
+
+
+
 
 
 _SSE_MAX_CONNECTIONS = int(os.environ.get("NETINSIGHT_MAX_SSE_CONNECTIONS", "4"))

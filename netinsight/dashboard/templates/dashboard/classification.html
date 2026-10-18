@@ -13,7 +13,7 @@
                 </h4>
                 {% if xgb_active %}
                     <span class="pill-badge emerald font-mono" style="font-size:0.7rem;">
-                        <i data-lucide="zap" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>XGBoost Active (<1ms)
+                        <i data-lucide="zap" class="d-inline-block me-1" style="width:11px;height:11px;vertical-align:-1px;"></i>XGBoost Model Loaded
                     </span>
                 {% elif llm_active %}
                     <span class="pill-badge terracotta font-mono" style="font-size:0.7rem;">
@@ -31,19 +31,19 @@
             <ul class="list-group list-group-flush bg-transparent">
                 <li class="list-group-item bg-transparent border-bottom py-2 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Test Accuracy</span>
-                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_accuracy }}%</span>
+                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_accuracy|default:"N/A" }}{% if xgb_accuracy %}%{% endif %}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-bottom py-2 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Validation Accuracy</span>
-                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_val_accuracy }}%</span>
+                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_val_accuracy|default:"N/A" }}{% if xgb_val_accuracy %}%{% endif %}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-bottom py-2 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Train Accuracy</span>
-                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_train_accuracy }}%</span>
+                    <span class="font-mono fw-bold text-success" style="font-size:0.85rem;">{{ xgb_train_accuracy|default:"N/A" }}{% if xgb_train_accuracy %}%{% endif %}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-bottom py-2 px-0 text-dark d-flex justify-content-between align-items-center">
-                    <span class="text-secondary small font-mono fw-bold">Inference Latency</span>
-                    <span class="font-mono fw-bold" style="color: var(--accent-amber); font-size:0.85rem;">{{ llm_latency_ms|floatformat:2 }} ms</span>
+                    <span class="text-secondary small font-mono fw-bold">Last Inference Latency</span>
+                    <span class="font-mono fw-bold" style="color: var(--accent-amber); font-size:0.85rem;">{% if llm_latency_ms %}{{ llm_latency_ms|floatformat:2 }} ms{% else %}N/A{% endif %}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-bottom py-2 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">ML Algorithm</span>
@@ -51,7 +51,7 @@
                 </li>
                 <li class="list-group-item bg-transparent py-2 px-0 text-dark d-flex justify-content-between align-items-center">
                     <span class="text-secondary small font-mono fw-bold">Inference Status</span>
-                    <span class="text-success fw-bold" style="font-size:0.8rem;"><i data-lucide="circle-dot" class="d-inline-block align-middle me-1 text-success" style="width:12px;height:12px;"></i>ONLINE (<1ms)</span>
+                    <span class="fw-bold" style="font-size:0.8rem;">{% if xgb_active %}XGBOOST READY{% elif llm_active %}LLM CONFIGURED{% else %}HEURISTICS ONLY{% endif %}</span>
                 </li>
             </ul>
 
@@ -96,7 +96,7 @@
             </div>
             
             <p class="text-secondary small mb-0">
-                <strong>Why AI Engine:</strong> Tabular network features exhibit complex, nested non-linear boundaries. The AI models reason over these features directly from contextual classification rules without needing pre-trained residual trees.
+                <strong>Classification pipeline:</strong> Flow-level features are classified with XGBoost when sufficient packet context is available; deterministic heuristics provide a local fallback, with the optional LLM used when configured.
             </p>
         </div>
     </div>
@@ -105,12 +105,11 @@
 
 <!-- Classifications log table -->
 <div class="saas-card mb-4 p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+
         <h4 class="m-0 text-dark editorial-serif h6">
             <i data-lucide="shield-alert" class="d-inline-block me-2" style="color: var(--accent-emerald); width:16px;height:16px;vertical-align:-2px;"></i>Recent Packet Anomaly Detection & Threat History
         </h4>
-        <span class="pill-badge emerald font-mono" style="font-size:0.75rem;">LIVE ANOMALY LOGS</span>
-    </div>
+
     
     <div class="table-responsive rounded border" style="max-height: 380px; overflow-y: auto; overflow-x: auto;">
         <table class="table align-middle mb-0" style="font-size:0.85rem;">
@@ -142,9 +141,11 @@
                         <td><span class="pill-badge font-mono" style="font-size:0.7rem;">{{ pkt.src_port }} &rarr; {{ pkt.dst_port }}</span></td>
                         <td class="font-mono text-dark">{{ pkt.size }} Bytes</td>
                         <td>
-                            {% if pkt.classification == 'Normal' %}
+                            {% if pkt.classification == 'Not classified' %}
+                                <span class="pill-badge font-mono" style="font-size:0.7rem;">Not classified</span>
+                            {% elif pkt.classification == 'Normal' %}
                                 <span class="pill-badge emerald font-mono" style="font-size:0.7rem;"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:-1px;"></i>Normal</span>
-                            {% elif pkt.classification == 'DoS' or pkt.classification == 'DDoS' or pkt.classification == 'Mirai' %}
+                            {% elif pkt.classification == 'DoS' or pkt.classification == 'DDoS' or pkt.classification == 'Mirai' or pkt.classification == 'DoS / DDoS' or pkt.classification == 'Mirai Botnet' %}
                                 <span class="pill-badge rose font-mono" style="font-size:0.7rem;"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;"></i>{{ pkt.classification }}</span>
                             {% else %}
                                 <span class="pill-badge terracotta font-mono" style="font-size:0.7rem;"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i>{{ pkt.classification }}</span>

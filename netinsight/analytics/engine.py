@@ -70,11 +70,10 @@ class AnalyticsEngine:
             return pd.DataFrame(columns=["timestamp", "throughput", "packet_rate", "bandwidth_util", "latency", "packet_loss"])
 
     def get_active_devices_count(self, window_seconds: float = 15.0) -> int:
-        """Returns the number of unique active source devices in the recent window or total registered agents."""
+        """Returns the number of unique active source devices in the recent window."""
         try:
             cutoff = timezone.now() - timedelta(seconds=window_seconds)
-            cnt = Agent.objects.filter(last_seen__gte=cutoff).count()
-            return cnt if cnt > 0 else Agent.objects.count()
+            return Agent.objects.filter(last_seen__gte=cutoff).count()
         except Exception as e:
             logger.error(f"Error getting active devices count: {e}", exc_info=True)
             return 0

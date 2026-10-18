@@ -31,7 +31,7 @@ PROTOCOL_NUM_MAP = {
     "UDP": 17,
     "ICMP": 1,
     "6": 6,
-    "17": 1,
+    "17": 17,
 }
 
 class XGBoostTrafficClassifier:
@@ -73,14 +73,28 @@ class XGBoostTrafficClassifier:
 
         start_time = time.perf_counter()
         try:
-            pkt_size = float(packet_dict.get("size", 500))
-            pkt_rate = float(packet_dict.get("packet_rate", 15))
-            dst_port = float(packet_dict.get("dst_port", 80))
-            unique_ports = float(packet_dict.get("unique_ports", 1))
-            proto_raw = str(packet_dict.get("protocol", "TCP")).upper()
-            proto = float(PROTOCOL_NUM_MAP.get(proto_raw, 6))
+            pkt_size = float(packet_dict.get("size", 500))        # AVG: packet/flow avg size
+            pkt_rate = float(packet_dict.get("packet_rate", 15))   # Rate: packets per second
 
-            features = np.array([[pkt_size, pkt_rate, dst_port, unique_ports, proto]])
+            # Header_Length in CICIoT2023 = cumulative header bytes across all packets in the flow
+            # Per-packet header: TCP = 40 bytes (20 IP + 20 TCP), UDP = 28, other = 20
+            proto_raw = str(packet_dict.get("protocol", "TCP")).upper()
+            if proto_raw in ("TCP", "6"):
+                per_pkt_header = 40.0
+            elif proto_raw in ("UDP", "17"):
+                per_pkt_header = 28.0
+            else:
+                per_pkt_header = 20.0
+            pkt_count = float(packet_dict.get("packet_count", 1))
+            header_length = per_pkt_header * pkt_count  # Cumulative header bytes
+
+            # Number in CICIoT2023 has mean ~9.5, std ~0.8 — it's a derived feature
+            # Clamp to realistic range that the scaler was trained on
+            number_feature = min(max(pkt_count, 1.0), 20.0)
+
+            proto = float(PROTOCOL_NUM_MAP.get(proto_raw, 6))      # Protocol Type
+
+            features = np.array([[pkt_size, pkt_rate, header_length, number_feature, proto]])
             features_scaled = self.scaler.transform(features)
 
             probs = self.model.predict_proba(features_scaled)[0]

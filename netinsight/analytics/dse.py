@@ -6,6 +6,7 @@ to generate actionable advisory alerts for autonomous bandwidth optimization and
 import logging
 
 from netinsight.config.singletons import get_analytics_engine, get_traffic_classifier
+from netinsight.dashboard.models import SystemSettings
 
 logger = logging.getLogger(__name__)
 
@@ -23,38 +24,45 @@ class DecisionSupportEngine:
             latency = latest.get("latency", 0.0)
             packet_loss = latest.get("packet_loss", 0.0)
             bandwidth_util = latest.get("bandwidth_util", 0.0)
+            settings_obj = SystemSettings.objects.first()
+            bandwidth_warning = max(0.0, min(1.0, float(settings_obj.bandwidth_threshold))) if settings_obj else 0.75
+            loss_warning = max(0.0, min(1.0, float(settings_obj.loss_threshold))) if settings_obj else 0.05
+            latency_warning = max(0.0, float(settings_obj.latency_threshold)) if settings_obj else 0.15
+            bandwidth_warning_pct = bandwidth_warning * 100.0
+            bandwidth_critical_pct = min(100.0, max(85.0, bandwidth_warning_pct + 10.0))
 
             classifier = get_traffic_classifier()
             last_reasoning = getattr(classifier, "last_llm_reasoning", "")
+            last_provider = getattr(classifier, "last_llm_provider", "")
 
             # 1. Congestion & High Bandwidth Utilization Alert
-            if bandwidth_util >= 85.0:
+            if bandwidth_util >= bandwidth_critical_pct:
                 alerts.append({
                     "id": "alert-congestion-high",
                     "severity": "Critical",
                     "module": "Bandwidth Optimizer",
                     "title": "Severe Network Link Congestion",
-                    "message": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Autonomous LP Bandwidth Optimizer has dynamically adjusted QoS bounds.",
+                    "message": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Network link is severely congested.",
                     "action": "Prioritize Critical Services & Cap File Transfer Bandwidth",
-                    "description": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Autonomous LP Bandwidth Optimizer has dynamically adjusted QoS bounds.",
+                    "description": f"Bandwidth utilization reached {bandwidth_util:.1f}%. Recommend reducing non-essential traffic.",
                     "recommendation": "Prioritize Critical Services & Cap File Transfer Bandwidth",
                     "timestamp": latest.get("timestamp", 0)
                 })
-            elif bandwidth_util >= 60.0:
+            elif bandwidth_util >= bandwidth_warning_pct:
                 alerts.append({
                     "id": "alert-congestion-warn",
                     "severity": "Warning",
                     "module": "Bandwidth Optimizer",
                     "title": "High Link Utilization",
-                    "message": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). LP Optimizer is actively balancing traffic flow.",
+                    "message": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). Monitor traffic patterns.",
                     "action": "Monitor Streaming and Bulk Data Allocations",
-                    "description": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). LP Optimizer is actively balancing traffic flow.",
+                    "description": f"Bandwidth utilization is elevated ({bandwidth_util:.1f}%). Consider reviewing active data transfers.",
                     "recommendation": "Monitor Streaming and Bulk Data Allocations",
                     "timestamp": latest.get("timestamp", 0)
                 })
 
             # 2. High Latency Alert
-            if latency >= 0.15:
+            if latency >= latency_warning:
                 alerts.append({
                     "id": "alert-latency-high",
                     "severity": "Warning",
@@ -68,21 +76,26 @@ class DecisionSupportEngine:
                 })
 
             # 3. Packet Loss Alert
-            if packet_loss >= 5.0:
+            loss_warning_pct = loss_warning * 100.0
+            if packet_loss >= loss_warning_pct:
                 alerts.append({
                     "id": "alert-loss-high",
-                    "severity": "Warning" if packet_loss < 20.0 else "Critical",
+                    "severity": "Warning" if packet_loss < max(20.0, loss_warning_pct * 4.0) else "Critical",
                     "module": "QoS Performance",
-                    "title": "High Packet Loss Detected",
-                    "message": f"Packet loss rate is currently {packet_loss:.1f}%.",
+                    "title": "High TCP Retransmission Estimate",
+                    "message": f"Estimated TCP retransmission rate is currently {packet_loss:.1f}%.",
                     "action": "Throttle non-critical streaming to prevent queue drop cascades",
-                    "description": f"Packet loss rate is currently {packet_loss:.1f}%.",
+                    "description": f"Estimated TCP retransmission rate is currently {packet_loss:.1f}%.",
                     "recommendation": "Throttle non-critical streaming to prevent queue drop cascades",
                     "timestamp": latest.get("timestamp", 0)
                 })
 
-            # 4. DeepSeek AI Threat Alert (if reasoning is present)
-            if last_reasoning and "Normal" not in last_reasoning and "Heuristic" not in last_reasoning:
+            # 4. DeepSeek AI Threat Alert (only if reasoning was set recently — expires after 30s)
+            last_reasoning_ts = getattr(classifier, "last_llm_reasoning_ts", 0)
+            reasoning_age = latest.get("timestamp", 0) - last_reasoning_ts
+            if (last_provider == "NVIDIA DeepSeek AI" and last_reasoning
+                    and "Normal" not in last_reasoning and "Heuristic" not in last_reasoning
+                    and reasoning_age < 30):
                 alerts.append({
                     "id": "alert-ai-threat",
                     "severity": "Critical",

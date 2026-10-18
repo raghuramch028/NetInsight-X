@@ -62,7 +62,11 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
         tcp_seq = int(raw_tcp_seq) if raw_tcp_seq is not None else None
 
         # 2. Build normalized bi-directional flow key
-        flow_key = f"{min(src_ip, dst_ip)}_{max(src_ip, dst_ip)}_{min(src_port, dst_port)}_{max(src_port, dst_port)}_{protocol}"
+        # Bidirectional flow key: sort IP:Port endpoints as complete pairs to preserve 5-tuple
+        if (src_ip, src_port) < (dst_ip, dst_port):
+            flow_key = f"{src_ip}:{src_port}_{dst_ip}:{dst_port}_{protocol}"
+        else:
+            flow_key = f"{dst_ip}:{dst_port}_{src_ip}:{src_port}_{protocol}"
 
         # 3. Retrieve or create FlowRecord active within a 30s window
         cutoff_time = pkt_ts - 30.0
@@ -127,6 +131,7 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
             "protocol": protocol,
             "latency_est": 0.015,  # Heuristic fallback on server
             "packet_rate": packet_rate,
+            "packet_count": flow.packet_count,
         }
 
         # Classify threat label using trained model
@@ -187,6 +192,7 @@ def prepare_packet_record(agent: Agent, packet_dict: dict) -> PacketRecord:
             timestamp=pkt_ts,
             ttl=ttl,
             tcp_seq=tcp_seq,
+            threat_label=threat_label,
             agent=agent
         )
 

@@ -85,6 +85,7 @@ def index_view(request):
         "dse_alerts": dse_alerts,
         "settings": settings_obj,
         "link_capacity_mbps": speed_monitor.get_current_capacity() / 1e6,
+        "link_capacity_source": speed_monitor.get_current_capacity_source(),
     }
     return render(request, "dashboard/index.html", context)
 
@@ -102,8 +103,8 @@ def optimization_view(request):
         settings_obj.lp_priorities = priorities
         settings_obj.save()
 
-    min_bounds = settings.QOS_MIN_BANDWIDTH
-    max_bounds = settings.QOS_MAX_BANDWIDTH
+    min_bounds = settings_obj.qos_min_bandwidth or settings.QOS_MIN_BANDWIDTH
+    max_bounds = settings_obj.qos_max_bandwidth or settings.QOS_MAX_BANDWIDTH
     capacity = speed_monitor.get_current_capacity()
 
     if request.method == "POST":
@@ -122,13 +123,16 @@ def optimization_view(request):
             capacity = max(1e6, float(raw_capacity) * 1e6)
 
             settings_obj.lp_priorities = priorities
-            settings_obj.save()
+            settings_obj.qos_min_bandwidth = min_bounds
+            settings_obj.qos_max_bandwidth = max_bounds
+            settings_obj.save(update_fields=["lp_priorities", "qos_min_bandwidth", "qos_max_bandwidth"])
         except Exception as e:
             logger.error(f"Error loading manual custom LP settings: {e}")
     else:
-        scale_ratio = capacity / 100000000.0
-        min_bounds = [float(val * scale_ratio) for val in min_bounds]
-        max_bounds = [float(val * scale_ratio) for val in max_bounds]
+        if not settings_obj.qos_min_bandwidth or not settings_obj.qos_max_bandwidth:
+            scale_ratio = capacity / 100000000.0
+            min_bounds = [float(val * scale_ratio) for val in min_bounds]
+            max_bounds = [float(val * scale_ratio) for val in max_bounds]
 
     active_priorities = list(priorities)
     active_min_bounds = list(min_bounds)
@@ -175,7 +179,7 @@ def classification_view(request):
 
     packets_list = []
     for pkt in packets_qs:
-        rec = {
+        packets_list.append({
             "src_ip": pkt.src_ip,
             "dst_ip": pkt.dst_ip,
             "src_port": pkt.src_port,
@@ -184,29 +188,36 @@ def classification_view(request):
             "size": pkt.size,
             "timestamp": pkt.timestamp,
             "ttl": pkt.ttl,
-            "agent_hostname": pkt.agent.hostname
-        }
-        rec["classification"] = getattr(pkt, "classification", None) or classifier._classify_rule_based(rec)
-        packets_list.append(rec)
+            "agent_hostname": pkt.agent.hostname,
+            "classification": pkt.threat_label or "Not classified",
+        })
 
     llm_active = bool(getattr(settings, "NVIDIA_API_KEY", None))
     xgb_active = getattr(classifier.xgb_classifier, "is_loaded", False)
     xgb_metrics = getattr(classifier.xgb_classifier, "metrics", {}) or {}
-    train_acc = float(xgb_metrics.get("train_accuracy", 0.9943)) * 100.0
-    val_acc = float(xgb_metrics.get("validation_accuracy", 0.9887)) * 100.0
-    test_acc = float(xgb_metrics.get("test_accuracy", 0.9870)) * 100.0
+    def format_accuracy(value):
+        if not xgb_active or value is None:
+            return None
+        try:
+            return f"{float(value) * 100.0:.2f}"
+        except (TypeError, ValueError):
+            return None
+
+    train_acc = format_accuracy(xgb_metrics.get("train_accuracy"))
+    val_acc = format_accuracy(xgb_metrics.get("validation_accuracy"))
+    test_acc = format_accuracy(xgb_metrics.get("test_accuracy"))
 
     context = {
         "recent_packets": packets_list,
         "llm_active": llm_active,
         "xgb_active": xgb_active,
-        "xgb_train_accuracy": f"{train_acc:.2f}",
-        "xgb_val_accuracy": f"{val_acc:.2f}",
-        "xgb_accuracy": f"{test_acc:.2f}",
+        "xgb_train_accuracy": train_acc,
+        "xgb_val_accuracy": val_acc,
+        "xgb_accuracy": test_acc,
         "xgb_dataset": "Real CICIoT2023 Dataset (34 Attack Types)",
         "engine_name": getattr(classifier, "last_engine_used", "XGBoost ML Engine"),
         "model_name": "XGBClassifier (Gradient Boosted Trees)",
-        "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", 0.3),
+        "llm_latency_ms": getattr(classifier, "last_llm_latency_ms", None),
         "llm_reasoning": getattr(classifier, "last_llm_reasoning", ""),
         "llm_confidence": getattr(classifier, "last_llm_confidence", 0.987),
         "llm_provider": getattr(classifier, "last_llm_provider", "XGBoost (CICIoT2023)"),
@@ -223,10 +234,23 @@ def settings_view(request):
 
     if request.method == "POST":
         try:
-            settings_obj.bandwidth_threshold = float(request.POST.get("bandwidth_threshold", 0.75))
-            settings_obj.loss_threshold = float(request.POST.get("loss_threshold", 0.05))
-            settings_obj.latency_threshold = float(request.POST.get("latency_threshold", 0.15))
-            settings_obj.llm_confidence_threshold = float(request.POST.get("llm_confidence_threshold", 0.80))
+            bandwidth_threshold = float(request.POST.get("bandwidth_threshold", 0.75))
+            loss_threshold = float(request.POST.get("loss_threshold", 0.05))
+            latency_threshold = float(request.POST.get("latency_threshold", 0.15))
+            confidence_threshold = float(request.POST.get("llm_confidence_threshold", 0.80))
+            if not 0.0 <= bandwidth_threshold <= 1.0:
+                raise ValueError("Bandwidth threshold must be between 0 and 1.")
+            if not 0.0 <= loss_threshold <= 1.0:
+                raise ValueError("Retransmission threshold must be between 0 and 1.")
+            if not 0.0 <= confidence_threshold <= 1.0:
+                raise ValueError("Confidence threshold must be between 0 and 1.")
+            if not 0.0 <= latency_threshold <= 5.0:
+                raise ValueError("Latency threshold must be between 0 and 5 seconds.")
+
+            settings_obj.bandwidth_threshold = bandwidth_threshold
+            settings_obj.loss_threshold = loss_threshold
+            settings_obj.latency_threshold = latency_threshold
+            settings_obj.llm_confidence_threshold = confidence_threshold
             settings_obj.save()
             logger.info("Successfully updated SystemSettings thresholds dynamically.")
             return redirect("dashboard:index")
